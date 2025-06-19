@@ -1,4 +1,4 @@
-"use client"
+"use client";
 
 import { useState, useEffect, useRef } from "react"
 import { Input } from "@/components/ui/input"
@@ -36,8 +36,6 @@ export function AddressAutocomplete({ placeholder, onAddressSelect, value, onCha
   useEffect(() => {
     if (typeof window !== "undefined" && window.google && window.google.maps && window.google.maps.places) {
       autocompleteService.current = new google.maps.places.AutocompleteService()
-
-      // Create a dummy div for PlacesService (required by Google Maps API)
       const dummyDiv = document.createElement("div")
       placesService.current = new google.maps.places.PlacesService(dummyDiv)
     }
@@ -50,24 +48,17 @@ export function AddressAutocomplete({ placeholder, onAddressSelect, value, onCha
       return
     }
 
-    // Debounce the search
-    if (debounceRef.current) {
-      clearTimeout(debounceRef.current)
-    }
-
+    if (debounceRef.current) clearTimeout(debounceRef.current)
     debounceRef.current = setTimeout(async () => {
       setIsLoading(true)
       try {
-        // Try Google Places first
         if (autocompleteService.current && placesService.current) {
           await searchWithGooglePlaces(value)
         } else {
-          // Fallback to Geoapify
           await searchWithGeoapify(value)
         }
       } catch (error) {
         console.error("Error fetching suggestions:", error)
-        // Try Geoapify as fallback
         await searchWithGeoapify(value)
       } finally {
         setIsLoading(false)
@@ -75,9 +66,7 @@ export function AddressAutocomplete({ placeholder, onAddressSelect, value, onCha
     }, 300)
 
     return () => {
-      if (debounceRef.current) {
-        clearTimeout(debounceRef.current)
-      }
+      if (debounceRef.current) clearTimeout(debounceRef.current)
     }
   }, [value])
 
@@ -91,15 +80,16 @@ export function AddressAutocomplete({ placeholder, onAddressSelect, value, onCha
       autocompleteService.current.getPlacePredictions(
         {
           input: query,
-          componentRestrictions: { country: "mx" },
+          componentRestrictions: { country: "ni" },      // Cambiado a NI para Nicaragua
           types: ["establishment", "geocode"],
         },
         (predictions, status) => {
           if (status === google.maps.places.PlacesServiceStatus.OK && predictions) {
             const newSuggestions: Suggestion[] = []
             let completed = 0
+            const limit = Math.min(predictions.length, 5)
 
-            predictions.slice(0, 5).forEach((prediction) => {
+            predictions.slice(0, limit).forEach((prediction) => {
               placesService.current!.getDetails(
                 {
                   placeId: prediction.place_id,
@@ -107,27 +97,25 @@ export function AddressAutocomplete({ placeholder, onAddressSelect, value, onCha
                 },
                 (place, detailStatus) => {
                   completed++
-
-                  if (detailStatus === google.maps.places.PlacesServiceStatus.OK && place && place.geometry?.location) {
+                  if (detailStatus === google.maps.places.PlacesServiceStatus.OK && place?.geometry?.location) {
                     newSuggestions.push({
                       formatted: place.formatted_address || prediction.description,
                       lat: place.geometry.location.lat(),
                       lon: place.geometry.location.lng(),
                     })
                   }
-
-                  if (completed === predictions.length || completed === 5) {
+                  if (completed === limit) {
                     setSuggestions(newSuggestions)
                     setShowSuggestions(true)
                     resolve()
                   }
-                },
+                }
               )
             })
           } else {
             reject(new Error("Google Places request failed"))
           }
-        },
+        }
       )
     })
   }
@@ -143,13 +131,10 @@ export function AddressAutocomplete({ placeholder, onAddressSelect, value, onCha
       const response = await fetch(
         `https://api.geoapify.com/v1/geocode/autocomplete?text=${encodeURIComponent(
           query,
-        )}&apiKey=${apiKey}&limit=5&filter=countrycode:mx`,
+        )}&apiKey=${apiKey}&limit=5&filter=countrycode:ni`,   // Cambiado a NI
       )
 
-      if (!response.ok) {
-        throw new Error(`API error: ${response.status}`)
-      }
-
+      if (!response.ok) throw new Error(`API error: ${response.status}`)
       const data = await response.json()
 
       if (data.features) {
@@ -163,7 +148,6 @@ export function AddressAutocomplete({ placeholder, onAddressSelect, value, onCha
       }
     } catch (error) {
       console.error("Error fetching suggestions from Geoapify:", error)
-      // Don't show error to user, just don't show suggestions
     }
   }
 

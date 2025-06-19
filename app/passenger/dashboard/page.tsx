@@ -140,11 +140,8 @@ function PassengerDashboardContent() {
                 <div className="p-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white">
                   <h3 className="font-semibold flex items-center">
                     <MapPin className="h-5 w-5 mr-2" />
-                    Mapa Interactivo
+                    Mapa
                   </h3>
-                  <p className="text-blue-100 text-sm mt-1">
-                    En producción: Mapa de Google Maps con funcionalidad completa
-                  </p>
                 </div>
                 <MapComponent
                   userType="passenger"

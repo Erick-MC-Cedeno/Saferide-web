@@ -107,3 +107,20 @@ Para configurar y ejecutar el proyecto localmente, sigue estos pasos:
 ## Licencia
 
 Este proyecto está bajo la licencia [MIT](https://opensource.org/licenses/MIT). (O la licencia que corresponda)
+
+
+## Screenshots
+
+![root1](./utils/screenshots/root.png)  
+
+# Settings  
+![Settings](frontend/src/assets/screenshots/Settings.png)  
+
+# Transactions  
+![Transa](frontend/src/assets/screenshots/trans.png)  
+
+# Transactions History  
+![Transa](frontend/src/assets/screenshots/history.png)  
+
+# Dashboard wallets  
+![Wallet](frontend/src/assets/screenshots/wallet.png)  

@@ -1,18 +1,21 @@
 # Saferide-web
 
-Este proyecto es una aplicación web para un servicio de transporte, construida con Next.js y una variedad de tecnologías modernas para ofrecer una experiencia de usuario fluida y robusta.
+This project is a web application for a transportation service, built with Next.js and a variety of modern technologies to deliver a smooth and robust user experience.
 
-## Características
+# still in development
 
-- **Autenticación de Usuarios:** Gestión de inicio de sesión y registro.
-- **Paneles de Control:** Interfaces separadas para conductores y pasajeros.
-- **Integración con Mapas:** Utiliza Google Maps para la visualización y seguimiento de rutas.
-- **Comunicación en Tiempo Real:** Funcionalidades de chat y notificaciones de estado de viaje.
-- **Componentes Reutilizables:** Desarrollado con una biblioteca de componentes UI para consistencia y eficiencia.
 
-## Tecnologías Utilizadas
+# Characteristics
 
-Aquí están las principales tecnologías y librerías utilizadas en este proyecto:
+- **User Authentication:** Login and registration management.
+- **Dashboards:** Separate interfaces for drivers and passengers.
+- **Maps Integration:** Uses Google Maps for route viewing and tracking.
+- **Real-Time Communication:** Chat features and trip status notifications.
+- **Reusable Components:** Developed with a UI component library for consistency and efficiency.
+
+## Technologies Used
+
+Here are the main technologies and libraries used in this project:
 
 - **Next.js**
   [![Next.js](https://img.shields.io/badge/Next.js-Black?style=for-the-badge&logo=next.js&logoColor=white)](https://nextjs.org/)
@@ -53,61 +56,60 @@ Aquí están las principales tecnologías y librerías utilizadas en este proyec
 - **Recharts**
   [![Recharts](https://img.shields.io/badge/Recharts-8884d8?style=for-the-badge&logo=recharts&logoColor=white)](https://recharts.org/en-US/)
 
-## Instalación y Uso
+# Installation and Use
 
-Para configurar y ejecutar el proyecto localmente, sigue estos pasos:
+To configure and run the project locally, follow these steps:
 
-1.  **Clona el repositorio:**
+1.  **Clone repo:**
     ```bash
     git clone [URL_DEL_REPOSITORIO]
     cd Saferide-web
     ```
 
-2.  **Instala las dependencias:**
+2.  **Install dependen:**
     ```bash
     npm install
     # o si usas pnpm
     pnpm install
     ```
 
-3.  **Configura las variables de entorno:**
-    Crea un archivo `.env.local` en la raíz del proyecto y añade tus variables de entorno (por ejemplo, claves de API de Supabase, Firebase, Google Maps).
+3.  **Configure environment variables:**
+    Create a `.env` file in the project root and add your environment variables (e.g., API keys for Supabase, Firebase, and Google Maps)
 
-4.  **Ejecuta la aplicación:**
+4.  **Run app:**
     ```bash
     npm run dev
     # o si usas pnpm
     pnpm dev
     ```
 
-    La aplicación estará disponible en `http://localhost:3000`.
+    server will be running `http://localhost:3000`.
 
 
 
-## Contribución
+# Contribution
 
-¡Las contribuciones son bienvenidas! Por favor, abre un 'issue' o envía un 'pull request' con tus mejoras.
+Contributions are welcome! Please open an issue or submit a pull request with your improvements.
 
-## Licencia
+# License
 
-Este proyecto está bajo la licencia [MIT](https://opensource.org/licenses/MIT). (O la licencia que corresponda)
-
+This project is licensed under the [MIT](https://opensource.org/licenses/MIT). (Or the applicable license)
 
 ## Screenshots
-# root1
+# root-1
 ![root1](./utils/screenshots/root.png)  
 
-# root2 
+# root-2 
 ![root2](/utils//screenshots/root2.png)  
 
-# root3
+# root-3
 ![root3](./utils/screenshots/root3.png)  
 
 # Dashboard
 ![Dashboard](./utils/screenshots/dashboard.png)  
 
-# Dashboard pass
+# Dashboard-pass
 ![pass](./utils/screenshots/passangerdash.png)  
 
-# Dashboard driver
+# Dashboard-driver
 ![pass](./utils/screenshots/driverdash.png)  

@@ -24,7 +24,7 @@ export function useGoogleMapsLoader() {
         // Si ya está completamente cargado, actualizar el estado
         if (typeof window !== "undefined" && 
             window.google?.maps?.Map && 
-            window.google?.maps?.Marker && 
+            window.google?.maps?.marker?.AdvancedMarkerElement && 
             window.google?.maps?.places) {
           setState({ isLoaded: true, isLoading: false, error: null })
           return
@@ -43,14 +43,14 @@ export function useGoogleMapsLoader() {
           globalLoader = new Loader({
             apiKey,
             version: "weekly",
-            libraries: ["places", "geometry"],
+            libraries: ["places", "geometry", "marker"],
           }).load().then(async () => {
             // Esperar a que todos los componentes estén disponibles
             await new Promise<void>((resolve) => {
               const checkComponents = () => {
                 if (
                   window.google?.maps?.Map &&
-                  window.google?.maps?.Marker &&
+                  window.google?.maps?.marker?.AdvancedMarkerElement &&
                   window.google?.maps?.places
                 ) {
                   resolve()

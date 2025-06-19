@@ -127,7 +127,7 @@ function PassengerDashboardContent() {
               </h1>
               <p className="text-gray-600 mt-1">¿A dónde quieres ir hoy?</p>
             </div>
-            <Badge className="bg-blue-100 text-blue-800 px-4 py-2">Pasajero Premium</Badge>
+            
           </div>
         </div>
 
@@ -320,7 +320,6 @@ function PassengerDashboardContent() {
             <Card className="shadow-lg">
               <CardHeader>
                 <CardTitle className="text-lg">Destinos Rápidos</CardTitle>
-                <CardDescription>Toca para seleccionar destino</CardDescription>
               </CardHeader>
               <CardContent className="space-y-2">
                 {quickDestinations.map((dest, index) => (

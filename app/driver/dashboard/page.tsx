@@ -125,8 +125,7 @@ function DriverDashboardContent() {
                 {/* Add this note above the map */}
                 <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
                   <p className="text-sm text-blue-800">
-                    <strong>Nota:</strong> En el entorno de producción, aquí se mostraría un mapa interactivo de Google
-                    Maps con funcionalidad completa.
+                    <strong>Mapa:</strong> de clientes
                   </p>
                 </div>
                 <MapComponent

@@ -26,7 +26,7 @@ export function MapComponent({
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null)
   const { isLoaded, isLoading, error, retry } = useGoogleMapsLoader()
   const [isInitialized, setIsInitialized] = useState(false)
-  const markersRef = useRef<google.maps.Marker[]>([])
+  const markersRef = useRef<Array<google.maps.marker.AdvancedMarkerElement | google.maps.Marker>>([])
   const directionsRendererRef = useRef<google.maps.DirectionsRenderer | null>(null)
 
   // Espera activa hasta que google.maps.Map esté disponible
@@ -46,6 +46,9 @@ export function MapComponent({
       check()
     })
   }
+
+  // Referencia para el ID del seguimiento de ubicación
+  const watchIdRef = useRef<number | null>(null)
 
   // Inicializa el mapa una vez que Google Maps esté cargado
   useEffect(() => {
@@ -71,6 +74,7 @@ export function MapComponent({
         const mapInstance = new window.google.maps.Map(mapRef.current!, {
           center: defaultLocation,
           zoom: 13,
+          mapId: "DEMO_MAP_ID", // Requerido para marcadores avanzados
           styles: [
             {
               featureType: "poi",
@@ -89,6 +93,7 @@ export function MapComponent({
 
         // Obtener ubicación del usuario
         if (navigator.geolocation) {
+          // Obtener la posición inicial
           navigator.geolocation.getCurrentPosition(
             (position) => {
               const userLoc = {
@@ -103,6 +108,21 @@ export function MapComponent({
               mapInstance.setCenter(defaultLocation)
             }
           )
+          
+          // Configurar seguimiento en tiempo real de la ubicación
+          watchIdRef.current = navigator.geolocation.watchPosition(
+            (position) => {
+              const userLoc = {
+                lat: position.coords.latitude,
+                lng: position.coords.longitude,
+              }
+              setUserLocation(userLoc)
+            },
+            (error) => {
+              console.error("Error en seguimiento de ubicación:", error)
+            },
+            { enableHighAccuracy: true, maximumAge: 10000, timeout: 5000 }
+          )
         }
       } catch (error) {
         console.error("Error inicializando el mapa:", error)
@@ -110,6 +130,14 @@ export function MapComponent({
     }
 
     initMap()
+
+    // Limpiar el seguimiento cuando el componente se desmonte
+    return () => {
+      if (watchIdRef.current !== null) {
+        navigator.geolocation.clearWatch(watchIdRef.current)
+        watchIdRef.current = null
+      }
+    }
   }, [isLoaded, isInitialized])
 
   const reverseGeocode = async (lat: number, lng: number): Promise<string> => {
@@ -137,7 +165,13 @@ export function MapComponent({
   }
 
   const clearMarkers = () => {
-    markersRef.current.forEach((marker) => marker.setMap(null))
+    markersRef.current.forEach((marker) => {
+      if (marker instanceof google.maps.Marker) {
+        marker.setMap(null)
+      } else if (marker instanceof google.maps.marker.AdvancedMarkerElement) {
+        marker.map = null
+      }
+    })
     markersRef.current = []
     if (directionsRendererRef.current) {
       directionsRendererRef.current.setMap(null)
@@ -145,62 +179,91 @@ export function MapComponent({
     }
   }
 
+  // Referencia para el marcador de ubicación del usuario
+  const userLocationMarkerRef = useRef<google.maps.marker.AdvancedMarkerElement | null>(null)
+
   useEffect(() => {
     if (!map || !isLoaded) return
 
-    const userLocationMarker = markersRef.current.find((m) => m.getTitle() === "Tu ubicación")
     clearMarkers()
 
-    if (userLocationMarker) markersRef.current.push(userLocationMarker)
+    // Crear o actualizar el marcador de ubicación del usuario
+    if (userLocation) {
+      if (userLocationMarkerRef.current) {
+        userLocationMarkerRef.current.position = userLocation
+      } else {
+        // Crear un pin personalizado para la ubicación del usuario
+        const pinElement = new google.maps.marker.PinElement({
+          background: "#3B82F6", // Azul
+          borderColor: "#FFFFFF",
+          glyphColor: "#FFFFFF",
+          scale: 1.2,
+        });
+        
+        userLocationMarkerRef.current = new google.maps.marker.AdvancedMarkerElement({
+          position: userLocation,
+          map,
+          title: "Tu ubicación",
+          content: pinElement.element,
+          zIndex: 999, // Para que aparezca por encima de otros marcadores
+        })
+      }
+    }
 
     if (pickupLocation) {
-      const pickupMarker = new google.maps.Marker({
+      // Crear un pin personalizado para el punto de recogida
+      const pickupPinElement = new google.maps.marker.PinElement({
+        background: "#10B981", // Verde
+        borderColor: "#FFFFFF",
+        glyphColor: "#FFFFFF",
+        glyph: "P",
+        scale: 1.2,
+      });
+      
+      const pickupMarker = new google.maps.marker.AdvancedMarkerElement({
         position: pickupLocation,
         map,
         title: "Punto de recogida",
-        icon: {
-          path: google.maps.SymbolPath.BACKWARD_CLOSED_ARROW,
-          scale: 6,
-          fillColor: "#10B981",
-          fillOpacity: 1,
-          strokeColor: "#FFFFFF",
-          strokeWeight: 2,
-        },
+        content: pickupPinElement.element,
       })
       markersRef.current.push(pickupMarker)
     }
 
     if (destinationLocation) {
-      const destinationMarker = new google.maps.Marker({
+      // Crear un pin personalizado para el destino
+      const destinationPinElement = new google.maps.marker.PinElement({
+        background: "#EF4444", // Rojo
+        borderColor: "#FFFFFF",
+        glyphColor: "#FFFFFF",
+        glyph: "D",
+        scale: 1.2,
+      });
+      
+      const destinationMarker = new google.maps.marker.AdvancedMarkerElement({
         position: destinationLocation,
         map,
         title: "Destino",
-        icon: {
-          path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
-          scale: 6,
-          fillColor: "#EF4444",
-          fillOpacity: 1,
-          strokeColor: "#FFFFFF",
-          strokeWeight: 2,
-        },
+        content: destinationPinElement.element,
       })
       markersRef.current.push(destinationMarker)
     }
 
     if (userType === "passenger" && driverLocations.length > 0) {
       driverLocations.forEach((driver) => {
-        const driverMarker = new google.maps.Marker({
+        // Crear un pin personalizado para cada conductor
+        const driverPinElement = new google.maps.marker.PinElement({
+          background: "#F59E0B", // Naranja
+          borderColor: "#FFFFFF",
+          glyphColor: "#FFFFFF",
+          glyph: "C",
+          scale: 1.2,
+        });
+        
+        const driverMarker = new google.maps.marker.AdvancedMarkerElement({
           position: { lat: driver.lat, lng: driver.lng },
           map,
           title: `Conductor: ${driver.name}`,
-          icon: {
-            path: google.maps.SymbolPath.CIRCLE,
-            scale: 10,
-            fillColor: "#F59E0B",
-            fillOpacity: 1,
-            strokeColor: "#FFFFFF",
-            strokeWeight: 2,
-          },
+          content: driverPinElement.element,
         })
         markersRef.current.push(driverMarker)
       })

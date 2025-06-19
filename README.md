@@ -98,13 +98,13 @@ Este proyecto está bajo la licencia [MIT](https://opensource.org/licenses/MIT).
 ![root1](./utils/screenshots/root.png)  
 
 # root2 
-![root2](/utils//screenshots//root2.png)  
+![root2](/utils//screenshots/root2.png)  
 
 # root3
 ![root3](./utils/screenshots/root3.png)  
 
 # Dashboard
-![Dashboard](./utils/screenshots//dashboard.png)  
+![Dashboard](./utils/screenshots/dashboard.png)  
 
 # Dashboard pass
 ![pass](./utils/screenshots/passangerdash.png)  

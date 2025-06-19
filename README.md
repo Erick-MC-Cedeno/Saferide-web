@@ -95,6 +95,11 @@ Contributions are welcome! Please open an issue or submit a pull request with yo
 
 This project is licensed under the [MIT](https://opensource.org/licenses/MIT). (Or the applicable license)
 
+# flowchart
+
+![Flowchart](./utils/screenshots/DIAGRAMA%20(1).png) 
+
+
 ## Screenshots
 # root-1
 ![root1](./utils/screenshots/root.png)  

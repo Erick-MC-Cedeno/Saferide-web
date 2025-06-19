@@ -103,11 +103,11 @@ export function useRealTimeRides(driverId?: string, passengerId?: string) {
             }
           )
           .subscribe(async (status) => {
-            console.log("Subscription status:", status);
+           
             isConnectingRef.current = false;
             
             if (status === "SUBSCRIBED") {
-              console.log("Successfully subscribed to realtime updates");
+              
               retryCountRef.current = 0;
             } else if (status === "CHANNEL_ERROR" || status === "CLOSED" || status === "TIMED_OUT") {
               console.error(`Channel error occurred: ${status}`);
@@ -115,7 +115,7 @@ export function useRealTimeRides(driverId?: string, passengerId?: string) {
               if (retryCountRef.current < maxRetries) {
                 retryCountRef.current++;
                 const delay = Math.min(1000 * 2 ** retryCountRef.current, 30000);
-                console.log(`Retrying connection in ${delay}ms (attempt ${retryCountRef.current}/${maxRetries})`);
+                
               
                 reconnectTimeoutRef.current = setTimeout(() => {
                   setupRealtimeSubscription();

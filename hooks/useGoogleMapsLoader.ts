@@ -65,7 +65,7 @@ export function useGoogleMapsLoader() {
 
         // Esperar a que se complete la carga
         await globalLoader
-        console.log("✅ Google Maps cargado exitosamente")
+        
         setState({ isLoaded: true, isLoading: false, error: null })
       } catch (error) {
         console.error("Error cargando Google Maps:", error)

@@ -35,7 +35,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setFirebaseReady(ready)
 
         if (!ready) {
-          console.log("Firebase not ready, retrying in 1 second...")
+          
           setTimeout(() => {
             if (mounted) {
               initializeAuth()
@@ -53,13 +53,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           return
         }
 
-        console.log("Setting up Firebase Auth listener...")
+        
 
         // Set up auth state listener
         unsubscribe = onAuthStateChanged(auth, async (user) => {
           try {
             if (user) {
-              console.log("User authenticated:", user.uid)
+              
               setUser(user)
 
               // Try to get user data from both tables
@@ -80,7 +80,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 document.cookie = `user-type=${type}; path=/; max-age=86400`
               }
             } else {
-              console.log("User not authenticated")
+             
               setUser(null)
               setUserData(null)
               setUserType(null)
@@ -100,7 +100,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
         })
 
-        console.log("Firebase Auth listener set up successfully")
+        
       } catch (error) {
         console.error("Error initializing auth:", error)
         setFirebaseReady(false)

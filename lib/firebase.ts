@@ -60,26 +60,26 @@ const initializeFirebaseSync = () => {
     // Initialize Firebase App
     if (getApps().length === 0) {
       firebaseApp = initializeApp(firebaseConfig)
-      console.log("✅ Firebase app initialized")
+      
     } else {
       firebaseApp = getApp()
-      console.log("✅ Firebase app already exists")
+      
     }
 
     // Initialize Auth immediately after app
     if (firebaseApp) {
       firebaseAuth = getAuth(firebaseApp)
-      console.log("✅ Firebase Auth initialized")
+      
     }
 
     // Initialize Firestore
     if (firebaseApp) {
       firebaseDb = getFirestore(firebaseApp)
-      console.log("✅ Firestore initialized")
+      
     }
 
     isInitialized = true
-    console.log("✅ Firebase fully initialized")
+    
 
     return { app: firebaseApp, auth: firebaseAuth, db: firebaseDb }
   } catch (error) {

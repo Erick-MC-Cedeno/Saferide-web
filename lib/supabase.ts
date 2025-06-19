@@ -17,7 +17,7 @@ export const getSupabase = () => {
           },
         },
       })
-      console.log("Supabase initialized successfully")
+      
     } catch (error) {
       console.error("Error initializing Supabase:", error)
     }

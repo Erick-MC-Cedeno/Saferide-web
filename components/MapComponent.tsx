@@ -75,13 +75,6 @@ export function MapComponent({
           center: defaultLocation,
           zoom: 13,
           mapId: "DEMO_MAP_ID", // Requerido para marcadores avanzados
-          styles: [
-            {
-              featureType: "poi",
-              elementType: "labels",
-              stylers: [{ visibility: "off" }],
-            },
-          ],
           mapTypeControl: false,
           streetViewControl: false,
           fullscreenControl: false,

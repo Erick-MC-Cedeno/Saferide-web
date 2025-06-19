@@ -17,13 +17,12 @@ export function useGoogleMapsLoader() {
   })
 
   useEffect(() => {
-    // Check if Google Maps is already loaded
-    if (typeof window !== "undefined" && window.google && window.google.maps) {
+    // Si ya está cargado, no hacer nada
+    if (typeof window !== "undefined" && window.google?.maps) {
       setState({ isLoaded: true, isLoading: false, error: null })
       return
     }
 
-    // Start loading
     setState({ isLoaded: false, isLoading: true, error: null })
 
     const loadGoogleMaps = async () => {
@@ -40,15 +39,33 @@ export function useGoogleMapsLoader() {
           return
         }
 
-        // Use the official Google Maps JS API Loader
         const loader = new Loader({
           apiKey: apiKey,
           version: "weekly",
           libraries: ["places", "geometry"],
         })
 
-        // Load the Google Maps API
         await loader.load()
+
+        // Esperar hasta que `window.google.maps` esté disponible realmente
+        const waitForGoogleMaps = () => {
+          return new Promise<void>((resolve, reject) => {
+            const timeout = setTimeout(() => reject(new Error("Timeout esperando Google Maps")), 5000)
+
+            const check = () => {
+              if (window.google?.maps?.Map) {
+                clearTimeout(timeout)
+                resolve()
+              } else {
+                requestAnimationFrame(check)
+              }
+            }
+
+            check()
+          })
+        }
+
+        await waitForGoogleMaps()
 
         setState({ isLoaded: true, isLoading: false, error: null })
       } catch (error: any) {
@@ -66,10 +83,7 @@ export function useGoogleMapsLoader() {
   }, [])
 
   const retry = () => {
-    // Reset state and reload
     setState({ isLoaded: false, isLoading: true, error: null })
-
-    // Force reload the page to retry
     window.location.reload()
   }
 

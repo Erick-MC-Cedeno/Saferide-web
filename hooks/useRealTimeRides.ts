@@ -102,7 +102,7 @@ export function useRealTimeRides(driverId?: string, passengerId?: string) {
                 retryCount++;
                 const delay = Math.min(1000 * 2 ** retryCount, 30000); // Backoff exponencial con máximo de 30 segundos
                 console.log(`Retrying connection in ${delay}ms (attempt ${retryCount}/${maxRetries})`);
-                
+              
                 setTimeout(() => {
                   setupRealtimeSubscription();
                 }, delay);

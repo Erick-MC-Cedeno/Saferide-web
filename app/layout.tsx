@@ -9,7 +9,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary"
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "SafeRide - Transporte Seguro y Confiable",
+  title: "SafeRide",
   description: "La plataforma de transporte más segura. Viajes seguros, conductores verificados, disponible 24/7.",
   keywords: "transporte, taxi, uber, seguro, conductores verificados, viajes",
   authors: [{ name: "SafeRide Team" }],
@@ -18,7 +18,7 @@ export const metadata: Metadata = {
     description: "La plataforma de transporte más segura. Viajes seguros, conductores verificados, disponible 24/7.",
     type: "website",
   },
-    generator: 'v0.dev'
+    generator: 'saferide'
 }
 
 export default function RootLayout({

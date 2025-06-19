@@ -82,22 +82,6 @@ Para configurar y ejecutar el proyecto localmente, sigue estos pasos:
 
     La aplicación estará disponible en `http://localhost:3000`.
 
-## Estructura del Proyecto
-
-. (raíz del proyecto)
-├── app/                  # Rutas y páginas de Next.js
-│   ├── api/              # Endpoints de API
-│   ├── auth/             # Páginas de autenticación
-│   ├── driver/           # Panel de control del conductor
-│   ├── passenger/        # Panel de control del pasajero
-│   └── layout.tsx        # Layout principal de la aplicación
-├── components/           # Componentes UI reutilizables
-│   └── ui/               # Componentes de Shadcn/ui (Radix UI + Tailwind CSS)
-├── hooks/                # Hooks personalizados de React
-├── lib/                  # Utilidades, configuraciones de Firebase/Supabase, contexto de autenticación
-├── public/               # Archivos estáticos
-├── styles/               # Estilos globales
-└── ...otros archivos de configuración (package.json, next.config.mjs, tailwind.config.ts, etc.)
 
 
 ## Contribución
@@ -110,17 +94,20 @@ Este proyecto está bajo la licencia [MIT](https://opensource.org/licenses/MIT).
 
 
 ## Screenshots
-
+# root1
 ![root1](./utils/screenshots/root.png)  
 
-# Settings  
-![Settings](frontend/src/assets/screenshots/Settings.png)  
+# root2 
+![root2](/utils//screenshots//root2.png)  
 
-# Transactions  
-![Transa](frontend/src/assets/screenshots/trans.png)  
+# root3
+![root3](./utils/screenshots/root3.png)  
 
-# Transactions History  
-![Transa](frontend/src/assets/screenshots/history.png)  
+# Dashboard
+![Dashboard](./utils/screenshots//dashboard.png)  
 
-# Dashboard wallets  
-![Wallet](frontend/src/assets/screenshots/wallet.png)  
+# Dashboard pass
+![pass](./utils/screenshots/passangerdash.png)  
+
+# Dashboard driver
+![pass](./utils/screenshots/driverdash.png)  

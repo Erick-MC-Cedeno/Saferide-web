@@ -32,7 +32,7 @@ export default function LoginPage() {
     if (!authLoading && user) {
       // Redirect if already logged in
       const redirectPath = userType === "driver" ? "/driver/dashboard" : "/passenger/dashboard"
-      window.location.href = redirectPath // Usar window.location.href para forzar un refresh completo
+      router.push(redirectPath)
     }
   }, [user, authLoading, userType])
 

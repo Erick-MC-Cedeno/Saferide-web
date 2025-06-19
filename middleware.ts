@@ -27,11 +27,15 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(loginUrl)
   }
 
-  // If user is authenticated and trying to access auth pages
-  if (authToken && (pathname.startsWith("/auth/login") || pathname.startsWith("/auth/register"))) {
-    // Redirect to appropriate dashboard based on user type
+  // If it's a public route and user is authenticated, redirect to dashboard
+  if (isPublicRoute && authToken) {
     const dashboardUrl = userType === "driver" ? "/driver/dashboard" : "/passenger/dashboard"
     return NextResponse.redirect(new URL(dashboardUrl, request.url))
+  }
+
+  // Ensure page refresh after login
+  if (authToken && pathname === "/auth/login") {
+    return NextResponse.redirect(new URL(pathname, request.url))
   }
 
   // Check user type access for specific routes

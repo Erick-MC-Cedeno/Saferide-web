@@ -50,19 +50,24 @@ export function MapComponent({
   // Inicializa el mapa una vez que Google Maps esté cargado
   useEffect(() => {
     if (!isLoaded || !mapRef.current || isInitialized) {
-      console.log("Esperando para inicializar el mapa...")
-      console.log("isLoaded:", isLoaded)
-      console.log("mapRef.current:", mapRef.current)
-      console.log("window.google.maps.Map:", window.google?.maps?.Map)
+      if (isLoading) {
+        console.log("🔄 Cargando Google Maps...")
+      }
       return
     }
 
     const initMap = async () => {
       try {
-        await waitForGoogleMapsReady()
-
+        console.log("🚀 Iniciando configuración del mapa...")
         const defaultLocation = { lat: 19.4326, lng: -99.1332 }
+        
+        // Verificación adicional de seguridad
+        if (!window.google?.maps?.Map) {
+          console.error("❌ Google Maps no está disponible todavía")
+          return
+        }
 
+        console.log("✨ Creando instancia del mapa...")
         const mapInstance = new window.google.maps.Map(mapRef.current!, {
           center: defaultLocation,
           zoom: 13,
@@ -82,6 +87,7 @@ export function MapComponent({
         setIsInitialized(true)
         console.log("✅ Mapa inicializado correctamente")
 
+        // Obtener ubicación del usuario
         if (navigator.geolocation) {
           navigator.geolocation.getCurrentPosition(
             (position) => {
@@ -92,7 +98,10 @@ export function MapComponent({
               setUserLocation(userLoc)
               mapInstance.setCenter(userLoc)
             },
-            () => console.error("Error obteniendo ubicación del usuario")
+            (error) => {
+              console.error("Error obteniendo ubicación del usuario:", error)
+              mapInstance.setCenter(defaultLocation)
+            }
           )
         }
       } catch (error) {

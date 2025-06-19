@@ -9,6 +9,8 @@ interface GoogleMapsLoaderState {
   error: string | null
 }
 
+let globalLoader: Promise<void> | null = null
+
 export function useGoogleMapsLoader() {
   const [state, setState] = useState<GoogleMapsLoaderState>({
     isLoaded: false,
@@ -17,74 +19,76 @@ export function useGoogleMapsLoader() {
   })
 
   useEffect(() => {
-    // Si ya está cargado, no hacer nada
-    if (typeof window !== "undefined" && window.google?.maps) {
-      setState({ isLoaded: true, isLoading: false, error: null })
-      return
-    }
-
-    setState({ isLoaded: false, isLoading: true, error: null })
-
     const loadGoogleMaps = async () => {
       try {
-        const apiKey = process.env.NEXT_PUBLIC_GOOGLE_API_KEY
-
-        if (!apiKey) {
-          setState({
-            isLoaded: false,
-            isLoading: false,
-            error:
-              "Google Maps API key no configurada. Verifica NEXT_PUBLIC_GOOGLE_API_KEY en las variables de entorno.",
-          })
+        // Si ya está completamente cargado, actualizar el estado
+        if (typeof window !== "undefined" && 
+            window.google?.maps?.Map && 
+            window.google?.maps?.Marker && 
+            window.google?.maps?.places) {
+          setState({ isLoaded: true, isLoading: false, error: null })
           return
         }
 
-        const loader = new Loader({
-          apiKey: apiKey,
-          version: "weekly",
-          libraries: ["places", "geometry"],
-        })
+        setState({ isLoaded: false, isLoading: true, error: null })
 
-        await loader.load()
+        const apiKey = process.env.NEXT_PUBLIC_GOOGLE_API_KEY
 
-        // Esperar hasta que `window.google.maps` esté disponible realmente
-        const waitForGoogleMaps = () => {
-          return new Promise<void>((resolve, reject) => {
-            const timeout = setTimeout(() => reject(new Error("Timeout esperando Google Maps")), 5000)
+        if (!apiKey) {
+          throw new Error("Google Maps API key no configurada. Verifica NEXT_PUBLIC_GOOGLE_API_KEY en las variables de entorno.")
+        }
 
-            const check = () => {
-              if (window.google?.maps?.Map) {
-                clearTimeout(timeout)
-                resolve()
-              } else {
-                requestAnimationFrame(check)
+        // Usar una única instancia del loader para toda la aplicación
+        if (!globalLoader) {
+          globalLoader = new Loader({
+            apiKey,
+            version: "weekly",
+            libraries: ["places", "geometry"],
+          }).load().then(async () => {
+            // Esperar a que todos los componentes estén disponibles
+            await new Promise<void>((resolve) => {
+              const checkComponents = () => {
+                if (
+                  window.google?.maps?.Map &&
+                  window.google?.maps?.Marker &&
+                  window.google?.maps?.places
+                ) {
+                  resolve()
+                } else {
+                  setTimeout(checkComponents, 100)
+                }
               }
-            }
-
-            check()
+              checkComponents()
+            })
           })
         }
 
-        await waitForGoogleMaps()
-
+        // Esperar a que se complete la carga
+        await globalLoader
+        console.log("✅ Google Maps cargado exitosamente")
         setState({ isLoaded: true, isLoading: false, error: null })
-      } catch (error: any) {
-        console.error("Error loading Google Maps:", error)
+      } catch (error) {
+        console.error("Error cargando Google Maps:", error)
         setState({
           isLoaded: false,
           isLoading: false,
-          error:
-            error.message || "Error al cargar Google Maps. Verifica tu conexión a internet y la validez de la API key.",
+          error: error instanceof Error ? error.message : "Error desconocido al cargar Google Maps",
         })
+        globalLoader = null // Resetear el loader global en caso de error
       }
     }
 
     loadGoogleMaps()
   }, [])
 
-  const retry = () => {
+  const retry = async () => {
     setState({ isLoaded: false, isLoading: true, error: null })
-    window.location.reload()
+    globalLoader = null // Resetear el loader global
+    try {
+      await loadGoogleMaps()
+    } catch (error) {
+      console.error("Error en retry:", error)
+    }
   }
 
   return { ...state, retry }
@@ -95,4 +99,20 @@ declare global {
   interface Window {
     google: any
   }
+}
+
+async function loadGoogleMaps() {
+  // Esta función se usa en el retry
+  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_API_KEY
+  if (!apiKey) {
+    throw new Error("Google Maps API key no configurada")
+  }
+
+  const loader = new Loader({
+    apiKey,
+    version: "weekly",
+    libraries: ["places", "geometry"],
+  })
+
+  await loader.load()
 }

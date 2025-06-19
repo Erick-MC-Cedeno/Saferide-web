@@ -83,3 +83,27 @@ Para configurar y ejecutar el proyecto localmente, sigue estos pasos:
     La aplicación estará disponible en `http://localhost:3000`.
 
 ## Estructura del Proyecto
+
+. (raíz del proyecto)
+├── app/                  # Rutas y páginas de Next.js
+│   ├── api/              # Endpoints de API
+│   ├── auth/             # Páginas de autenticación
+│   ├── driver/           # Panel de control del conductor
+│   ├── passenger/        # Panel de control del pasajero
+│   └── layout.tsx        # Layout principal de la aplicación
+├── components/           # Componentes UI reutilizables
+│   └── ui/               # Componentes de Shadcn/ui (Radix UI + Tailwind CSS)
+├── hooks/                # Hooks personalizados de React
+├── lib/                  # Utilidades, configuraciones de Firebase/Supabase, contexto de autenticación
+├── public/               # Archivos estáticos
+├── styles/               # Estilos globales
+└── ...otros archivos de configuración (package.json, next.config.mjs, tailwind.config.ts, etc.)
+
+
+## Contribución
+
+¡Las contribuciones son bienvenidas! Por favor, abre un 'issue' o envía un 'pull request' con tus mejoras.
+
+## Licencia
+
+Este proyecto está bajo la licencia [MIT](https://opensource.org/licenses/MIT). (O la licencia que corresponda)

@@ -17,7 +17,6 @@ export const getSupabase = () => {
           },
         },
       })
-      
     } catch (error) {
       console.error("Error initializing Supabase:", error)
     }
@@ -150,6 +149,7 @@ export interface Database {
           completed_at: string | null
           passenger_rating: number | null
           driver_rating: number | null
+          passenger_comment: string | null
           created_at: string
           updated_at: string
         }
@@ -172,6 +172,7 @@ export interface Database {
           completed_at?: string | null
           passenger_rating?: number | null
           driver_rating?: number | null
+          passenger_comment?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -194,6 +195,7 @@ export interface Database {
           completed_at?: string | null
           passenger_rating?: number | null
           driver_rating?: number | null
+          passenger_comment?: string | null
           created_at?: string
           updated_at?: string
         }

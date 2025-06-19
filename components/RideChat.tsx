@@ -60,25 +60,43 @@ export function RideChat({ rideId, driverId, driverName, passengerId, passengerN
 
     loadMessages()
 
-    // Subscribe to new messages
+    // Subscribe to new messages - CORREGIDO
     const channel = supabase
-      .channel(`ride_messages:${rideId}`)
+      .channel(`ride_messages_${rideId}`) // Nombre único del canal
       .on(
         "postgres_changes",
         {
-          event: "INSERT",
+          event: "*", // Escuchar todos los eventos (INSERT, UPDATE, DELETE)
           schema: "public",
           table: "ride_messages",
           filter: `ride_id=eq.${rideId}`,
         },
         (payload) => {
-          const newMessage = payload.new as Message
-          setMessages((prev) => [...prev, newMessage])
+          console.log("Mensaje recibido en tiempo real:", payload)
+
+          if (payload.eventType === "INSERT") {
+            const newMessage = payload.new as Message
+            setMessages((prev) => {
+              // Evitar duplicados
+              const exists = prev.some((msg) => msg.id === newMessage.id)
+              if (exists) return prev
+              return [...prev, newMessage]
+            })
+          } else if (payload.eventType === "UPDATE") {
+            const updatedMessage = payload.new as Message
+            setMessages((prev) => prev.map((msg) => (msg.id === updatedMessage.id ? updatedMessage : msg)))
+          } else if (payload.eventType === "DELETE") {
+            const deletedMessage = payload.old as Message
+            setMessages((prev) => prev.filter((msg) => msg.id !== deletedMessage.id))
+          }
         },
       )
-      .subscribe()
+      .subscribe((status) => {
+        console.log("Estado de suscripción:", status)
+      })
 
     return () => {
+      console.log("Limpiando suscripción de chat")
       supabase.removeChannel(channel)
     }
   }, [rideId])
@@ -92,22 +110,32 @@ export function RideChat({ rideId, driverId, driverName, passengerId, passengerN
     e.preventDefault()
     if (!newMessage.trim() || !user) return
 
+    const messageText = newMessage.trim()
+    setNewMessage("") // Limpiar inmediatamente para mejor UX
+
     try {
       const messageData = {
         ride_id: rideId,
         sender_id: user.uid,
         sender_name: userType === "driver" ? driverName : passengerName,
         sender_type: userType,
-        message: newMessage.trim(),
+        message: messageText,
       }
 
-      const { error } = await supabase.from("ride_messages").insert(messageData)
+      console.log("Enviando mensaje:", messageData)
+
+      const { data, error } = await supabase.from("ride_messages").insert(messageData).select() // IMPORTANTE: Seleccionar el mensaje insertado
 
       if (error) throw error
-      setNewMessage("")
+
+      console.log("Mensaje enviado exitosamente:", data)
+
+      // El mensaje se agregará automáticamente via suscripción en tiempo real
+      // No necesitamos agregarlo manualmente aquí
     } catch (err: any) {
       console.error("Error sending message:", err)
       setError("No se pudo enviar el mensaje. Intenta de nuevo.")
+      setNewMessage(messageText) // Restaurar el mensaje si falló
     }
   }
 

@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { MapPin, Star, Car, Clock, DollarSign, Navigation, Calendar, X } from "lucide-react"
@@ -784,6 +784,9 @@ function PassengerDashboardContent() {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Califica tu viaje</DialogTitle>
+            <DialogDescription>
+              Ayuda a otros pasajeros compartiendo tu experiencia con este conductor
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="text-center">

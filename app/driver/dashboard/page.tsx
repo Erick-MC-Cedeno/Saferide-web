@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Switch } from "@/components/ui/switch"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import {
@@ -74,29 +74,31 @@ function DriverDashboardContent() {
       if (!supabase || !driverId) return
 
       try {
-        // Get driver info
-        const { data: driverData } = await supabase
-          .from("drivers")
-          .select("rating, total_trips")
-          .eq("uid", driverId)
-          .single()
+        // Get driver info (only rating, we'll calculate total_trips from rides)
+        const { data: driverData } = await supabase.from("drivers").select("rating").eq("uid", driverId).single()
 
-        // Get completed rides for earnings calculation
-        const { data: completedRides } = await supabase
+        // Get ALL completed rides for this driver (not just recent ones)
+        const { data: allCompletedRides } = await supabase
           .from("rides")
           .select("actual_fare, estimated_fare, completed_at")
           .eq("driver_id", driverId)
           .eq("status", "completed")
           .order("completed_at", { ascending: false })
 
-        if (completedRides) {
+        if (allCompletedRides) {
           const today = new Date().toDateString()
           const thisWeek = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
           const thisMonth = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
 
-          const todayRides = completedRides.filter((ride) => new Date(ride.completed_at).toDateString() === today)
-          const weeklyRides = completedRides.filter((ride) => new Date(ride.completed_at) >= thisWeek)
-          const monthlyRides = completedRides.filter((ride) => new Date(ride.completed_at) >= thisMonth)
+          const todayRides = allCompletedRides.filter((ride) => new Date(ride.completed_at).toDateString() === today)
+          const weeklyRides = allCompletedRides.filter((ride) => new Date(ride.completed_at) >= thisWeek)
+          const monthlyRides = allCompletedRides.filter((ride) => new Date(ride.completed_at) >= thisMonth)
+
+          // Calculate total earnings from all completed rides
+          // const totalEarnings = allCompletedRides.reduce(
+          //   (sum, ride) => sum + (ride.actual_fare || ride.estimated_fare),
+          //   0,
+          // )
 
           setDriverStats({
             todayTrips: todayRides.length,
@@ -104,12 +106,31 @@ function DriverDashboardContent() {
             todayHours: todayRides.length * 0.5, // Estimate 30 min per ride
             weeklyEarnings: weeklyRides.reduce((sum, ride) => sum + (ride.actual_fare || ride.estimated_fare), 0),
             monthlyEarnings: monthlyRides.reduce((sum, ride) => sum + (ride.actual_fare || ride.estimated_fare), 0),
-            totalTrips: driverData?.total_trips || 0,
+            totalTrips: allCompletedRides.length, // Calculate from actual completed rides
+            rating: driverData?.rating || 0,
+          })
+
+          // Update the drivers table with the correct total_trips count
+          await supabase
+            .from("drivers")
+            .update({
+              total_trips: allCompletedRides.length,
+            })
+            .eq("uid", driverId)
+        } else {
+          // No completed rides found
+          setDriverStats({
+            todayTrips: 0,
+            todayEarnings: 0,
+            todayHours: 0,
+            weeklyEarnings: 0,
+            monthlyEarnings: 0,
+            totalTrips: 0,
             rating: driverData?.rating || 0,
           })
         }
 
-        // Get recent trips
+        // Get recent trips for display
         const { data: recent } = await supabase
           .from("rides")
           .select("*")
@@ -719,7 +740,10 @@ function DriverDashboardContent() {
                       <span className="font-semibold">
                         $
                         {driverStats.totalTrips > 0
-                          ? (driverStats.monthlyEarnings / driverStats.totalTrips).toFixed(0)
+                          ? (
+                              (driverStats.todayEarnings + driverStats.weeklyEarnings + driverStats.monthlyEarnings) /
+                              driverStats.totalTrips
+                            ).toFixed(0)
                           : 0}
                       </span>
                     </div>
@@ -761,6 +785,9 @@ function DriverDashboardContent() {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Califica al pasajero</DialogTitle>
+            <DialogDescription>
+              Ayuda a otros conductores compartiendo tu experiencia con este pasajero
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="text-center">

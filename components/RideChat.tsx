@@ -78,7 +78,9 @@ export function RideChat({ rideId, driverId, driverName, passengerId, passengerN
   const cleanupChannel = useCallback(async () => {
     if (channelRef.current) {
       try {
-        await supabase.removeChannel(channelRef.current)
+        console.log("Cleaning up realtime channel")
+        const status = await supabase.removeChannel(channelRef.current)
+        console.log("Channel cleanup status:", status)
         channelRef.current = null
       } catch (err: any) {
         console.error("Error removing channel:", err)
@@ -92,32 +94,68 @@ export function RideChat({ rideId, driverId, driverName, passengerId, passengerN
 
     await cleanupChannel()
 
-    // Nuevo nombre de canal recomendado
-    const channel = supabase
-      .channel("realtime:public:ride_messages")
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "ride_messages", filter: `ride_id=eq.${rideId}` },
-        (payload) =>
-          setMessages((prev) => (prev.some((m) => m.id === payload.new.id) ? prev : [...prev, payload.new as Message])),
-      )
-      .subscribe((status) => {
-        if (!mountedRef.current) return
-        if (status === "SUBSCRIBED") {
-          setRealtimeOK(true)
-          setError(null)
-          retryCountRef.current = 0
-        }
-        if (["CHANNEL_ERROR", "TIMED_OUT", "CLOSED"].includes(status)) {
-          setRealtimeOK(false)
-          if (retryCountRef.current < maxRetries) {
-            retryCountRef.current++
-            setTimeout(setupRealtimeSubscription, 2000 * retryCountRef.current)
-          }
-        }
-      })
+    try {
+      // Usar un nombre de canal más simple y único por ride
+      const channelName = `ride-chat-${rideId}`
 
-    channelRef.current = channel
+      const channel = supabase
+        .channel(channelName)
+        .on(
+          "postgres_changes",
+          {
+            event: "INSERT",
+            schema: "public",
+            table: "ride_messages",
+            filter: `ride_id=eq.${rideId}`,
+          },
+          (payload) => {
+            if (!mountedRef.current) return
+
+            setMessages((prev) => {
+              // Evitar duplicados
+              if (prev.some((m) => m.id === payload.new.id)) {
+                return prev
+              }
+              return [...prev, payload.new as Message]
+            })
+          },
+        )
+        .subscribe((status, err) => {
+          if (!mountedRef.current) return
+
+          console.log(`Realtime subscription status: ${status}`)
+
+          if (status === "SUBSCRIBED") {
+            setRealtimeOK(true)
+            setError(null)
+            retryCountRef.current = 0
+            console.log("Successfully subscribed to ride chat")
+          } else if (status === "CHANNEL_ERROR") {
+            console.error("Channel error:", err)
+            setRealtimeOK(false)
+            if (retryCountRef.current < maxRetries) {
+              retryCountRef.current++
+              console.log(`Retrying connection (${retryCountRef.current}/${maxRetries})`)
+              setTimeout(() => {
+                if (mountedRef.current) {
+                  setupRealtimeSubscription()
+                }
+              }, 2000 * retryCountRef.current)
+            }
+          } else if (status === "TIMED_OUT") {
+            console.warn("Realtime connection timed out")
+            setRealtimeOK(false)
+          } else if (status === "CLOSED") {
+            console.warn("Realtime connection closed")
+            setRealtimeOK(false)
+          }
+        })
+
+      channelRef.current = channel
+    } catch (error) {
+      console.error("Error setting up realtime subscription:", error)
+      setRealtimeOK(false)
+    }
   }, [rideId, cleanupChannel])
 
   // Efecto principal

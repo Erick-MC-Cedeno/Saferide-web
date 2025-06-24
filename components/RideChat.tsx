@@ -2,12 +2,12 @@
 
 import type React from "react"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Send, X, AlertCircle } from "lucide-react"
+import { Send, X, AlertCircle, Loader2 } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
 import { supabase } from "@/lib/supabase"
 
@@ -34,84 +34,121 @@ export function RideChat({ rideId, driverId, driverName, passengerId, passengerN
   const [messages, setMessages] = useState<Message[]>([])
   const [newMessage, setNewMessage] = useState("")
   const [loading, setLoading] = useState(true)
+  const [sending, setSending] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null)
+  const mountedRef = useRef(true)
+  const retryCountRef = useRef(0)
+  const maxRetries = 3
   const { user, userType } = useAuth()
+  const [realtimeOK, setRealtimeOK] = useState(true)
+  const intervalRef = useRef<NodeJS.Timeout | null>(null)
 
-  // Load initial messages
-  useEffect(() => {
-    const loadMessages = async () => {
-      try {
-        const { data, error } = await supabase
-          .from("ride_messages")
-          .select("*")
-          .eq("ride_id", rideId)
-          .order("created_at", { ascending: true })
+  // Función para cargar mensajes iniciales
+  const loadMessages = useCallback(async () => {
+    if (!mountedRef.current) return
 
-        if (error) throw error
+    try {
+      setError(null)
+      const { data, error } = await supabase
+        .from("ride_messages")
+        .select("*")
+        .eq("ride_id", rideId)
+        .order("created_at", { ascending: true })
+
+      if (error) throw error
+
+      if (mountedRef.current) {
         setMessages(data || [])
-      } catch (err: any) {
-        console.error("Error loading messages:", err)
+      }
+    } catch (err: any) {
+      console.error("Error loading messages:", err)
+      if (mountedRef.current) {
         setError("No se pudieron cargar los mensajes. Intenta de nuevo.")
-      } finally {
+      }
+    } finally {
+      if (mountedRef.current) {
         setLoading(false)
       }
     }
-
-    loadMessages()
-
-    // Subscribe to new messages - CORREGIDO
-    const channel = supabase
-      .channel(`ride_messages_${rideId}`) // Nombre único del canal
-      .on(
-        "postgres_changes",
-        {
-          event: "*", // Escuchar todos los eventos (INSERT, UPDATE, DELETE)
-          schema: "public",
-          table: "ride_messages",
-          filter: `ride_id=eq.${rideId}`,
-        },
-        (payload) => {
-          console.log("Mensaje recibido en tiempo real:", payload)
-
-          if (payload.eventType === "INSERT") {
-            const newMessage = payload.new as Message
-            setMessages((prev) => {
-              // Evitar duplicados
-              const exists = prev.some((msg) => msg.id === newMessage.id)
-              if (exists) return prev
-              return [...prev, newMessage]
-            })
-          } else if (payload.eventType === "UPDATE") {
-            const updatedMessage = payload.new as Message
-            setMessages((prev) => prev.map((msg) => (msg.id === updatedMessage.id ? updatedMessage : msg)))
-          } else if (payload.eventType === "DELETE") {
-            const deletedMessage = payload.old as Message
-            setMessages((prev) => prev.filter((msg) => msg.id !== deletedMessage.id))
-          }
-        },
-      )
-      .subscribe((status) => {
-        console.log("Estado de suscripción:", status)
-      })
-
-    return () => {
-      console.log("Limpiando suscripción de chat")
-      supabase.removeChannel(channel)
-    }
   }, [rideId])
 
-  // Scroll to bottom when messages change
+  // Función para limpiar canal
+  const cleanupChannel = useCallback(async () => {
+    if (channelRef.current) {
+      try {
+        await supabase.removeChannel(channelRef.current)
+        channelRef.current = null
+      } catch (err: any) {
+        console.error("Error removing channel:", err)
+      }
+    }
+  }, [])
+
+  // Función para configurar suscripción en tiempo real
+  const setupRealtimeSubscription = useCallback(async () => {
+    if (!mountedRef.current) return
+
+    await cleanupChannel()
+
+    // Nuevo nombre de canal recomendado
+    const channel = supabase
+      .channel("realtime:public:ride_messages")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "ride_messages", filter: `ride_id=eq.${rideId}` },
+        (payload) =>
+          setMessages((prev) => (prev.some((m) => m.id === payload.new.id) ? prev : [...prev, payload.new as Message])),
+      )
+      .subscribe((status) => {
+        if (!mountedRef.current) return
+        if (status === "SUBSCRIBED") {
+          setRealtimeOK(true)
+          setError(null)
+          retryCountRef.current = 0
+        }
+        if (["CHANNEL_ERROR", "TIMED_OUT", "CLOSED"].includes(status)) {
+          setRealtimeOK(false)
+          if (retryCountRef.current < maxRetries) {
+            retryCountRef.current++
+            setTimeout(setupRealtimeSubscription, 2000 * retryCountRef.current)
+          }
+        }
+      })
+
+    channelRef.current = channel
+  }, [rideId, cleanupChannel])
+
+  // Efecto principal
+  useEffect(() => {
+    mountedRef.current = true
+
+    const initializeChat = async () => {
+      await loadMessages()
+      await setupRealtimeSubscription()
+    }
+
+    initializeChat()
+
+    return () => {
+      mountedRef.current = false
+      cleanupChannel()
+    }
+  }, [loadMessages, setupRealtimeSubscription, cleanupChannel])
+
+  // Scroll automático
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
   }, [messages])
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!newMessage.trim() || !user) return
+    if (!newMessage.trim() || !user || sending) return
 
     const messageText = newMessage.trim()
-    setNewMessage("") // Limpiar inmediatamente para mejor UX
+    setNewMessage("")
+    setSending(true)
 
     try {
       const messageData = {
@@ -124,18 +161,18 @@ export function RideChat({ rideId, driverId, driverName, passengerId, passengerN
 
       console.log("Enviando mensaje:", messageData)
 
-      const { data, error } = await supabase.from("ride_messages").insert(messageData).select() // IMPORTANTE: Seleccionar el mensaje insertado
+      const { data, error } = await supabase.from("ride_messages").insert(messageData).select()
 
       if (error) throw error
 
       console.log("Mensaje enviado exitosamente:", data)
-
-      // El mensaje se agregará automáticamente via suscripción en tiempo real
-      // No necesitamos agregarlo manualmente aquí
+      setError(null)
     } catch (err: any) {
       console.error("Error sending message:", err)
       setError("No se pudo enviar el mensaje. Intenta de nuevo.")
-      setNewMessage(messageText) // Restaurar el mensaje si falló
+      setNewMessage(messageText) // Restaurar mensaje si falló
+    } finally {
+      setSending(false)
     }
   }
 
@@ -147,11 +184,23 @@ export function RideChat({ rideId, driverId, driverName, passengerId, passengerN
     return { isCurrentUser, name, initial }
   }
 
+  useEffect(() => {
+    if (!realtimeOK) {
+      intervalRef.current = setInterval(loadMessages, 4000)
+    } else {
+      clearInterval(intervalRef.current)
+    }
+    return () => clearInterval(intervalRef.current)
+  }, [realtimeOK, loadMessages])
+
   if (loading) {
     return (
       <Card className="w-full max-w-md mx-auto">
         <CardContent className="p-4 flex justify-center items-center h-64">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <div className="flex items-center space-x-2">
+            <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
+            <span className="text-gray-600">Cargando chat...</span>
+          </div>
         </CardContent>
       </Card>
     )
@@ -161,7 +210,10 @@ export function RideChat({ rideId, driverId, driverName, passengerId, passengerN
     <Card className="w-full max-w-md mx-auto shadow-lg">
       <CardHeader className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white">
         <div className="flex justify-between items-center">
-          <CardTitle className="text-lg flex items-center">Chat del Viaje</CardTitle>
+          <CardTitle className="text-lg flex items-center">
+            Chat del Viaje
+            {error && <AlertCircle className="h-4 w-4 ml-2 text-yellow-300" />}
+          </CardTitle>
           {onClose && (
             <Button variant="ghost" size="sm" onClick={onClose} className="h-8 w-8 p-0 text-white hover:bg-blue-700">
               <X className="h-4 w-4" />
@@ -230,9 +282,10 @@ export function RideChat({ rideId, driverId, driverName, passengerId, passengerN
             onChange={(e) => setNewMessage(e.target.value)}
             placeholder="Escribe un mensaje..."
             className="flex-1"
+            disabled={sending}
           />
-          <Button type="submit" disabled={!newMessage.trim()}>
-            <Send className="h-4 w-4" />
+          <Button type="submit" disabled={!newMessage.trim() || sending}>
+            {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
           </Button>
         </form>
       </CardFooter>

@@ -13,7 +13,16 @@ export const getSupabase = () => {
       supabaseInstance = createClient(supabaseUrl, supabaseAnonKey, {
         realtime: {
           params: {
-            eventsPerSecond: 10,
+            eventsPerSecond: 2, // Reducir eventos por segundo
+          },
+        },
+        auth: {
+          persistSession: true,
+          autoRefreshToken: true,
+        },
+        global: {
+          headers: {
+            "x-client-info": "saferide-web@1.0.0",
           },
         },
       })

@@ -29,12 +29,24 @@ import { MapComponent } from "@/components/MapComponent"
 import { useAuth } from "@/lib/auth-context"
 import { ProtectedRoute } from "@/components/ProtectedRoute"
 import { RideTracker } from "@/components/RideTracker"
+import { RealtimeStatus } from "@/components/RealtimeStatus"
+import { useToast } from "@/hooks/use-toast"
+import { RideChat } from "@/components/RideChat"
 
 function DriverDashboardContent() {
   const { user } = useAuth()
+  const { toast } = useToast()
   const driverId = user?.uid || "current-driver-id"
   const { isOnline, loading: statusLoading, updateOnlineStatus } = useDriverStatus(driverId)
-  const { rides, loading: ridesLoading } = useRealTimeRides(driverId)
+  const {
+    rides,
+    loading: ridesLoading,
+    acceptRide,
+    rejectRide,
+    updateRideStatus,
+    lastUpdate,
+    refreshRides,
+  } = useRealTimeRides(driverId)
   const [driverStats, setDriverStats] = useState({
     todayTrips: 0,
     todayEarnings: 0,
@@ -49,6 +61,7 @@ function DriverDashboardContent() {
   const [completedRide, setCompletedRide] = useState(null)
   const [passengerRating, setPassengerRating] = useState(0)
   const [ratingComment, setRatingComment] = useState("")
+  const [showChatDialog, setShowChatDialog] = useState(false)
 
   const pendingRides = rides.filter((ride) => ride.status === "pending")
   const activeRide = rides.find(
@@ -131,30 +144,85 @@ function DriverDashboardContent() {
       // Get driver name
       const { data: driverData } = await supabase.from("drivers").select("name").eq("uid", driverId).single()
 
-      const { error } = await supabase
-        .from("rides")
-        .update({
-          driver_id: driverId,
-          driver_name: driverData?.name || "Conductor",
-          status: "accepted",
-          accepted_at: new Date().toISOString(),
-        })
-        .eq("id", rideId)
-        .eq("status", "pending")
+      const result = await acceptRide(rideId, driverData?.name || "Conductor")
 
-      if (error) {
-        console.error("Error accepting ride:", error)
+      if (!result.success) {
+        toast({
+          title: "Error",
+          description: "No se pudo aceptar el viaje: " + result.error,
+          variant: "destructive",
+        })
         return
       }
+
+      toast({
+        title: "Viaje Aceptado",
+        description: "Has aceptado el viaje exitosamente",
+      })
 
       console.log("Ride accepted successfully")
     } catch (error) {
       console.error("Error accepting ride:", error)
+      toast({
+        title: "Error",
+        description: "Error inesperado al aceptar el viaje",
+        variant: "destructive",
+      })
     }
   }
 
   const handleRejectRide = async (rideId: string) => {
-    console.log("Ride rejected:", rideId)
+    const result = await rejectRide(rideId, "No disponible en este momento")
+
+    if (!result.success) {
+      toast({
+        title: "Error",
+        description: "No se pudo rechazar el viaje",
+        variant: "destructive",
+      })
+      return
+    }
+
+    toast({
+      title: "Viaje Rechazado",
+      description: "Has rechazado el viaje",
+    })
+
+    console.log("Ride rejected successfully")
+  }
+
+  const handleStatusUpdate = async (rideId: string, status: string) => {
+    try {
+      const result = await updateRideStatus(rideId, status)
+
+      if (!result.success) {
+        toast({
+          title: "Error",
+          description: "No se pudo actualizar el estado del viaje: " + result.error,
+          variant: "destructive",
+        })
+        return
+      }
+
+      const statusMessages = {
+        "in-progress": "Viaje iniciado",
+        completed: "Viaje completado",
+      }
+
+      toast({
+        title: "Estado Actualizado",
+        description: statusMessages[status] || `Estado cambiado a ${status}`,
+      })
+
+      console.log("Ride status updated:", rideId, status)
+    } catch (error) {
+      console.error("Error updating ride status:", error)
+      toast({
+        title: "Error",
+        description: "Error inesperado al actualizar el estado",
+        variant: "destructive",
+      })
+    }
   }
 
   const handleRatePassenger = async () => {
@@ -194,9 +262,56 @@ function DriverDashboardContent() {
       setRatingComment("")
       setCompletedRide(null)
 
+      toast({
+        title: "Calificación Enviada",
+        description: "Has calificado al pasajero exitosamente",
+      })
+
       console.log("Passenger rated successfully")
     } catch (err) {
       console.error("Error submitting passenger rating:", err)
+      toast({
+        title: "Error",
+        description: "No se pudo enviar la calificación",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const handleCancelActiveRide = async (rideId: string) => {
+    try {
+      const { error } = await supabase
+        .from("rides")
+        .update({
+          status: "cancelled",
+          cancelled_at: new Date().toISOString(),
+          cancellation_reason: "Cancelado por el conductor durante el viaje",
+        })
+        .eq("id", rideId)
+
+      if (error) {
+        console.error("Error cancelling ride:", error)
+        toast({
+          title: "Error",
+          description: "No se pudo cancelar el viaje",
+          variant: "destructive",
+        })
+        return
+      }
+
+      toast({
+        title: "Viaje Cancelado",
+        description: "El viaje ha sido cancelado exitosamente",
+      })
+
+      refreshRides()
+    } catch (error) {
+      console.error("Error cancelling active ride:", error)
+      toast({
+        title: "Error",
+        description: "Error inesperado al cancelar el viaje",
+        variant: "destructive",
+      })
     }
   }
 
@@ -220,6 +335,7 @@ function DriverDashboardContent() {
               <Badge variant="secondary">Conductor</Badge>
             </div>
             <div className="flex items-center space-x-4">
+              <RealtimeStatus lastUpdate={lastUpdate} onRefresh={refreshRides} isLoading={ridesLoading} />
               <div className="flex items-center space-x-2">
                 <span className="text-sm text-gray-600">Estado:</span>
                 <Switch checked={isOnline} onCheckedChange={updateOnlineStatus} disabled={statusLoading} />
@@ -276,13 +392,35 @@ function DriverDashboardContent() {
 
                 {/* Active Ride */}
                 {activeRide && (
-                  <RideTracker
-                    ride={activeRide}
-                    userType="driver"
-                    onStatusUpdate={(rideId, status) => {
-                      console.log("Ride status updated:", rideId, status)
-                    }}
-                  />
+                  <div className="space-y-4">
+                    <RideTracker ride={activeRide} userType="driver" onStatusUpdate={handleStatusUpdate} />
+
+                    {/* Chat and Cancel Options for In-Progress Rides */}
+                    {activeRide.status === "in-progress" && (
+                      <Card className="border-orange-200 bg-orange-50">
+                        <CardContent className="p-4">
+                          <div className="flex items-center justify-between mb-4">
+                            <h4 className="font-semibold text-orange-800">Viaje en Progreso</h4>
+                            <Badge variant="secondary" className="bg-orange-100 text-orange-800">
+                              En camino
+                            </Badge>
+                          </div>
+                          <div className="flex space-x-2">
+                            <Button variant="outline" className="flex-1" onClick={() => setShowChatDialog(true)}>
+                              💬 Chat con Pasajero
+                            </Button>
+                            <Button
+                              variant="destructive"
+                              className="flex-1"
+                              onClick={() => handleCancelActiveRide(activeRide.id)}
+                            >
+                              ❌ Cancelar Viaje
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )}
+                  </div>
                 )}
 
                 {/* Today's Stats */}
@@ -598,6 +736,25 @@ function DriverDashboardContent() {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Chat Dialog */}
+      <Dialog open={showChatDialog} onOpenChange={setShowChatDialog}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Chat con Pasajero</DialogTitle>
+          </DialogHeader>
+          {activeRide && (
+            <RideChat
+              rideId={activeRide.id}
+              driverId={activeRide.driver_id}
+              driverName={activeRide.driver_name}
+              passengerId={activeRide.passenger_id}
+              passengerName={activeRide.passenger_name}
+              onClose={() => setShowChatDialog(false)}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Rating Dialog for Driver to Rate Passenger */}
       <Dialog open={showRatingDialog} onOpenChange={setShowRatingDialog}>

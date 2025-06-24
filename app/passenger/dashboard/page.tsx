@@ -9,18 +9,20 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
-import { MapPin, Star, Car, Clock, DollarSign, Navigation, Calendar } from "lucide-react"
+import { MapPin, Star, Car, Clock, DollarSign, Navigation, Calendar, X } from "lucide-react"
 import { useRealTimeRides } from "@/hooks/useRealTimeRides"
 import { useAuth } from "@/lib/auth-context"
 import { supabase } from "@/lib/supabase"
 import { MapComponent } from "@/components/MapComponent"
 import { AddressAutocomplete } from "@/components/AddressAutocomplete"
 import { ProtectedRoute } from "@/components/ProtectedRoute"
-import { RideTracker } from "@/components/RideTracker"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { useToast } from "@/hooks/use-toast"
+import { RideChat } from "@/components/RideChat"
 
 function PassengerDashboardContent() {
   const { user, userData } = useAuth()
+  const { toast } = useToast()
   const [pickup, setPickup] = useState("")
   const [destination, setDestination] = useState("")
   const [pickupCoords, setPickupCoords] = useState<{ lat: number; lng: number } | null>(null)
@@ -39,9 +41,17 @@ function PassengerDashboardContent() {
     totalSpent: 0,
     averageRating: 0,
   })
+  const [showChatDialog, setShowChatDialog] = useState(false)
 
-  const { rides, loading } = useRealTimeRides(undefined, user?.uid)
+  const { rides, loading, cancelRide, refreshRides } = useRealTimeRides(undefined, user?.uid)
   const currentRide = rides.find((ride) => ["pending", "accepted", "in-progress"].includes(ride.status))
+
+  // Reset ride status when no current ride
+  useEffect(() => {
+    if (!currentRide && rideStatus !== "idle") {
+      setRideStatus("idle")
+    }
+  }, [currentRide, rideStatus])
 
   // Load passenger statistics and recent trips
   useEffect(() => {
@@ -75,7 +85,7 @@ function PassengerDashboardContent() {
               : 0
 
           setPassengerStats({
-            totalTrips: completedRides.length, // Use actual completed rides count
+            totalTrips: completedRides.length,
             totalSpent,
             averageRating,
           })
@@ -162,15 +172,82 @@ function PassengerDashboardContent() {
       if (error) {
         console.error("Error creating ride:", error)
         setRideStatus("idle")
+        toast({
+          title: "Error",
+          description: "No se pudo crear el viaje. Intenta de nuevo.",
+          variant: "destructive",
+        })
         return
       }
 
       console.log("Ride created:", data)
       setShowDriverSelection(false)
       setSelectedDriver("")
+      setRideStatus("pending")
+
+      toast({
+        title: "Viaje solicitado",
+        description: "Tu viaje ha sido solicitado. Esperando confirmación del conductor.",
+      })
+
+      // Refresh rides to get the latest data
+      refreshRides()
     } catch (error) {
       console.error("Error requesting ride:", error)
       setRideStatus("idle")
+      toast({
+        title: "Error",
+        description: "Ocurrió un error al solicitar el viaje.",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const handleCancelRide = async (rideId: string, reason?: string) => {
+    try {
+      const ride = rides.find((r) => r.id === rideId)
+      const cancellationReason =
+        reason ||
+        (ride?.status === "in-progress" ? "Cancelado por el pasajero durante el viaje" : "Cancelado por el pasajero")
+
+      const result = await cancelRide(rideId, cancellationReason)
+
+      if (!result.success) {
+        console.error("Error cancelling ride:", result.error)
+        toast({
+          title: "Error",
+          description: "No se pudo cancelar el viaje. Intenta de nuevo.",
+          variant: "destructive",
+        })
+        return
+      }
+
+      console.log("Ride cancelled successfully")
+
+      // Reset all states to allow new ride request
+      setRideStatus("idle")
+      setPickup("")
+      setDestination("")
+      setPickupCoords(null)
+      setDestinationCoords(null)
+      setSelectedDriver("")
+      setShowDriverSelection(false)
+      setShowChatDialog(false) // Close chat if open
+
+      toast({
+        title: "Viaje cancelado",
+        description: "Tu viaje ha sido cancelado exitosamente.",
+      })
+
+      // Refresh rides to get updated data
+      refreshRides()
+    } catch (error) {
+      console.error("Error in handleCancelRide:", error)
+      toast({
+        title: "Error",
+        description: "Ocurrió un error al cancelar el viaje.",
+        variant: "destructive",
+      })
     }
   }
 
@@ -209,9 +286,29 @@ function PassengerDashboardContent() {
       setRating(0)
       setComment("")
       setCompletedRide(null)
+
+      toast({
+        title: "Calificación enviada",
+        description: "Gracias por calificar tu viaje.",
+      })
     } catch (err) {
       console.error("Error submitting rating:", err)
+      toast({
+        title: "Error",
+        description: "No se pudo enviar la calificación.",
+        variant: "destructive",
+      })
     }
+  }
+
+  const resetRideForm = () => {
+    setPickup("")
+    setDestination("")
+    setPickupCoords(null)
+    setDestinationCoords(null)
+    setSelectedDriver("")
+    setShowDriverSelection(false)
+    setRideStatus("idle")
   }
 
   const calculateEstimatedFare = (pickup: { lat: number; lng: number }, destination: { lat: number; lng: number }) => {
@@ -248,6 +345,9 @@ function PassengerDashboardContent() {
     { name: "Centro", address: "Centro Histórico", coords: { lat: 19.4326, lng: -99.1332 }, icon: "🏛️" },
   ]
 
+  const canRequestNewRide = !currentRide && rideStatus === "idle"
+  const hasActiveRide = currentRide && ["pending", "accepted", "in-progress"].includes(currentRide.status)
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -258,8 +358,16 @@ function PassengerDashboardContent() {
               <h1 className="text-3xl font-bold text-gray-900">
                 ¡Hola, {userData?.name?.split(" ")[0] || "Usuario"}! 👋
               </h1>
-              <p className="text-gray-600 mt-1">¿A dónde quieres ir hoy?</p>
+              <p className="text-gray-600 mt-1">
+                {hasActiveRide ? "Tienes un viaje activo" : "¿A dónde quieres ir hoy?"}
+              </p>
             </div>
+            {hasActiveRide && (
+              <Button variant="outline" onClick={resetRideForm} className="flex items-center space-x-2">
+                <X className="h-4 w-4" />
+                <span>Nuevo Viaje</span>
+              </Button>
+            )}
           </div>
         </div>
 
@@ -294,13 +402,92 @@ function PassengerDashboardContent() {
 
             {/* Current Ride Status */}
             {currentRide && (
-              <RideTracker
-                ride={currentRide}
-                userType="passenger"
-                onStatusUpdate={(rideId, status) => {
-                  console.log("Ride status updated:", rideId, status)
-                }}
-              />
+              <div className="space-y-4">
+                <Card className="shadow-lg border-l-4 border-l-blue-500">
+                  <CardHeader>
+                    <CardTitle className="flex items-center justify-between">
+                      <span>Viaje Actual</span>
+                      <Badge variant={currentRide.status === "pending" ? "secondary" : "default"}>
+                        {currentRide.status === "pending" && "Esperando conductor"}
+                        {currentRide.status === "accepted" && "Conductor asignado"}
+                        {currentRide.status === "in-progress" && "En progreso"}
+                      </Badge>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <p className="text-sm font-medium text-gray-600">Origen</p>
+                          <p className="text-gray-900">{currentRide.pickup_address}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-gray-600">Destino</p>
+                          <p className="text-gray-900">{currentRide.destination_address}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-gray-600">Tarifa estimada</p>
+                          <p className="text-gray-900">${currentRide.estimated_fare}</p>
+                        </div>
+                        {currentRide.driver_name && (
+                          <div>
+                            <p className="text-sm font-medium text-gray-600">Conductor</p>
+                            <p className="text-gray-900">{currentRide.driver_name}</p>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Action Buttons */}
+                      <div className="flex space-x-2">
+                        {["pending", "accepted"].includes(currentRide.status) && (
+                          <Button
+                            variant="destructive"
+                            onClick={() => handleCancelRide(currentRide.id)}
+                            className="flex-1"
+                          >
+                            <X className="h-4 w-4 mr-2" />
+                            Cancelar Viaje
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Chat and Cancel Options for In-Progress Rides */}
+                {currentRide.status === "in-progress" && (
+                  <Card className="shadow-lg border-l-4 border-l-orange-500 bg-orange-50">
+                    <CardHeader>
+                      <CardTitle className="flex items-center space-x-2 text-orange-800">
+                        <span>🚗 Viaje en Progreso</span>
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        <p className="text-sm text-orange-700">
+                          Tu conductor está en camino al destino. Puedes comunicarte con él o cancelar si es necesario.
+                        </p>
+                        <div className="flex space-x-2">
+                          <Button
+                            variant="outline"
+                            className="flex-1 border-orange-300 text-orange-700 hover:bg-orange-100"
+                            onClick={() => setShowChatDialog(true)}
+                          >
+                            💬 Chat con Conductor
+                          </Button>
+                          <Button
+                            variant="destructive"
+                            className="flex-1"
+                            onClick={() => handleCancelRide(currentRide.id, "Cancelado durante el viaje")}
+                          >
+                            ❌ Cancelar Viaje
+                          </Button>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
             )}
 
             {/* Recent Trips */}
@@ -367,125 +554,133 @@ function PassengerDashboardContent() {
           {/* Sidebar */}
           <div className="space-y-6">
             {/* Request Ride Form */}
-            <Card className="shadow-lg">
-              <CardHeader className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white">
-                <CardTitle>Solicitar Viaje</CardTitle>
-                <CardDescription className="text-blue-100">Ingresa tu destino y encuentra un conductor</CardDescription>
-              </CardHeader>
-              <CardContent className="p-6 space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="pickup" className="text-sm font-medium">
-                    Punto de Recogida
-                  </Label>
-                  <AddressAutocomplete
-                    placeholder="Tu ubicación actual"
-                    value={pickup}
-                    onChange={setPickup}
-                    onAddressSelect={(address, coords) => {
-                      setPickup(address)
-                      setPickupCoords(coords)
-                    }}
-                  />
-                </div>
+            {canRequestNewRide && (
+              <Card className="shadow-lg">
+                <CardHeader className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white">
+                  <CardTitle>Solicitar Viaje</CardTitle>
+                  <CardDescription className="text-blue-100">
+                    Ingresa tu destino y encuentra un conductor
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="p-6 space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="pickup" className="text-sm font-medium">
+                      Punto de Recogida
+                    </Label>
+                    <AddressAutocomplete
+                      placeholder="Tu ubicación actual"
+                      value={pickup}
+                      onChange={setPickup}
+                      onAddressSelect={(address, coords) => {
+                        setPickup(address)
+                        setPickupCoords(coords)
+                      }}
+                    />
+                  </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="destination" className="text-sm font-medium">
-                    Destino
-                  </Label>
-                  <AddressAutocomplete
-                    placeholder="¿A dónde vas?"
-                    value={destination}
-                    onChange={setDestination}
-                    onAddressSelect={(address, coords) => {
-                      setDestination(address)
-                      setDestinationCoords(coords)
-                    }}
-                  />
-                </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="destination" className="text-sm font-medium">
+                      Destino
+                    </Label>
+                    <AddressAutocomplete
+                      placeholder="¿A dónde vas?"
+                      value={destination}
+                      onChange={setDestination}
+                      onAddressSelect={(address, coords) => {
+                        setDestination(address)
+                        setDestinationCoords(coords)
+                      }}
+                    />
+                  </div>
 
-                {/* Trip Summary */}
-                {pickupCoords && destinationCoords && (
-                  <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
-                    <h4 className="font-medium text-gray-900 mb-3">Resumen del Viaje</h4>
-                    <div className="space-y-2 text-sm">
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Distancia:</span>
-                        <span className="font-medium">
-                          {calculateDistance(
-                            pickupCoords.lat,
-                            pickupCoords.lng,
-                            destinationCoords.lat,
-                            destinationCoords.lng,
-                          ).toFixed(1)}{" "}
-                          km
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Tiempo estimado:</span>
-                        <span className="font-medium">
-                          {calculateEstimatedDuration(pickupCoords, destinationCoords)} min
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center pt-2 border-t border-blue-200">
-                        <span className="text-gray-600">Tarifa estimada:</span>
-                        <div className="flex items-center space-x-1">
-                          <DollarSign className="h-4 w-4 text-green-600" />
-                          <span className="font-bold text-green-600 text-lg">
-                            {calculateEstimatedFare(pickupCoords, destinationCoords)}
+                  {/* Trip Summary */}
+                  {pickupCoords && destinationCoords && (
+                    <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
+                      <h4 className="font-medium text-gray-900 mb-3">Resumen del Viaje</h4>
+                      <div className="space-y-2 text-sm">
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Distancia:</span>
+                          <span className="font-medium">
+                            {calculateDistance(
+                              pickupCoords.lat,
+                              pickupCoords.lng,
+                              destinationCoords.lat,
+                              destinationCoords.lng,
+                            ).toFixed(1)}{" "}
+                            km
                           </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Tiempo estimado:</span>
+                          <span className="font-medium">
+                            {calculateEstimatedDuration(pickupCoords, destinationCoords)} min
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center pt-2 border-t border-blue-200">
+                          <span className="text-gray-600">Tarifa estimada:</span>
+                          <div className="flex items-center space-x-1">
+                            <DollarSign className="h-4 w-4 text-green-600" />
+                            <span className="font-bold text-green-600 text-lg">
+                              {calculateEstimatedFare(pickupCoords, destinationCoords)}
+                            </span>
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                )}
-
-                <Button
-                  className="w-full h-12 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg"
-                  onClick={handleRequestRide}
-                  disabled={!pickup || !destination || !pickupCoords || !destinationCoords || rideStatus !== "idle"}
-                >
-                  {rideStatus === "idle" ? (
-                    <>
-                      <Car className="mr-2 h-5 w-5" />
-                      Solicitar Viaje
-                    </>
-                  ) : (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                      Buscando...
-                    </>
                   )}
-                </Button>
-              </CardContent>
-            </Card>
+
+                  <Button
+                    className="w-full h-12 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg"
+                    onClick={handleRequestRide}
+                    disabled={
+                      !pickup || !destination || !pickupCoords || !destinationCoords || rideStatus === "searching"
+                    }
+                  >
+                    {rideStatus === "searching" ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                        Buscando...
+                      </>
+                    ) : (
+                      <>
+                        <Car className="mr-2 h-5 w-5" />
+                        Solicitar Viaje
+                      </>
+                    )}
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
 
             {/* Quick Destinations */}
-            <Card className="shadow-lg">
-              <CardHeader>
-                <CardTitle className="text-lg">Destinos Rápidos</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                {quickDestinations.map((dest, index) => (
-                  <Button
-                    key={index}
-                    variant="outline"
-                    className="w-full justify-start h-auto p-4 hover:bg-blue-50 hover:border-blue-200"
-                    onClick={() => {
-                      setDestination(dest.address)
-                      setDestinationCoords(dest.coords)
-                    }}
-                  >
-                    <div className="flex items-center space-x-3">
-                      <span className="text-2xl">{dest.icon}</span>
-                      <div className="text-left">
-                        <p className="font-medium">{dest.name}</p>
-                        <p className="text-sm text-gray-500">{dest.address}</p>
+            {canRequestNewRide && (
+              <Card className="shadow-lg">
+                <CardHeader>
+                  <CardTitle className="text-lg">Destinos Rápidos</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  {quickDestinations.map((dest, index) => (
+                    <Button
+                      key={index}
+                      variant="outline"
+                      className="w-full justify-start h-auto p-4 hover:bg-blue-50 hover:border-blue-200"
+                      onClick={() => {
+                        setDestination(dest.address)
+                        setDestinationCoords(dest.coords)
+                      }}
+                    >
+                      <div className="flex items-center space-x-3">
+                        <span className="text-2xl">{dest.icon}</span>
+                        <div className="text-left">
+                          <p className="font-medium">{dest.name}</p>
+                          <p className="text-sm text-gray-500">{dest.address}</p>
+                        </div>
                       </div>
-                    </div>
-                  </Button>
-                ))}
-              </CardContent>
-            </Card>
+                    </Button>
+                  ))}
+                </CardContent>
+              </Card>
+            )}
 
             {/* User Stats */}
             <Card className="shadow-lg">
@@ -512,6 +707,25 @@ function PassengerDashboardContent() {
           </div>
         </div>
       </div>
+
+      {/* Chat Dialog */}
+      <Dialog open={showChatDialog} onOpenChange={setShowChatDialog}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Chat con Conductor</DialogTitle>
+          </DialogHeader>
+          {currentRide && currentRide.driver_id && (
+            <RideChat
+              rideId={currentRide.id}
+              driverId={currentRide.driver_id}
+              driverName={currentRide.driver_name || "Conductor"}
+              passengerId={currentRide.passenger_id}
+              passengerName={currentRide.passenger_name}
+              onClose={() => setShowChatDialog(false)}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Driver Selection Dialog */}
       <Dialog open={showDriverSelection} onOpenChange={setShowDriverSelection}>

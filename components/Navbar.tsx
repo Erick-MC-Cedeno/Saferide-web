@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useRef } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
@@ -18,11 +18,33 @@ import { Shield, User, Settings, History, CreditCard, LogOut, Menu, X } from "lu
 import { useAuth } from "@/lib/auth-context"
 
 export function Navbar() {
-  const { user, userData, userType, signOut } = useAuth()
+  const { user, userData, userType, signOut, refreshUserData } = useAuth()
   const router = useRouter()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [profileImage, setProfileImage] = useState<string | null>(null)
+  const hasInitialLoad = useRef(false)
+
+  // Update profile image when userData changes
+  useEffect(() => {
+    if (userData?.profile_image) {
+      setProfileImage(userData.profile_image)
+    } else {
+      setProfileImage(null)
+    }
+  }, [userData])
+
+  // Only refresh if we have a user but no userData yet (initial load scenario)
+  useEffect(() => {
+    if (user?.uid && !userData && !hasInitialLoad.current) {
+      hasInitialLoad.current = true
+      refreshUserData()
+    } else if (!user?.uid) {
+      hasInitialLoad.current = false
+    }
+  }, [user?.uid, userData, refreshUserData])
 
   const handleSignOut = async () => {
+    hasInitialLoad.current = false // Reset flag on logout
     await signOut()
     router.push("/")
   }
@@ -34,6 +56,7 @@ export function Navbar() {
         .map((n: string) => n[0])
         .join("")
         .toUpperCase()
+        .slice(0, 2)
     }
     return user?.email?.[0].toUpperCase() || "U"
   }
@@ -91,9 +114,13 @@ export function Navbar() {
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" className="relative h-10 w-10 rounded-full">
-                      <Avatar className="h-10 w-10 border-2 border-blue-200">
-                        <AvatarImage src="/placeholder.svg?height=40&width=40" />
-                        <AvatarFallback className="bg-blue-100 text-blue-700 font-semibold">
+                      <Avatar className="h-10 w-10 border-2 border-blue-200 hover:border-blue-300 transition-colors">
+                        <AvatarImage
+                          src={profileImage || "/placeholder.svg?height=40&width=40"}
+                          alt="Foto de perfil"
+                          className="object-cover"
+                        />
+                        <AvatarFallback className="bg-gradient-to-br from-blue-500 to-indigo-600 text-white font-semibold">
                           {getUserInitials()}
                         </AvatarFallback>
                       </Avatar>

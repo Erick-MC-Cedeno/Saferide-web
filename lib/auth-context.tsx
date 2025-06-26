@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { createContext, useContext, useEffect, useState } from "react"
+import { createContext, useContext, useEffect, useState, useRef } from "react"
 import { type User, onAuthStateChanged } from "firebase/auth"
 import { getFirebaseAuth, isFirebaseReady } from "./firebase"
 import { getUserData } from "./auth"
@@ -13,6 +13,7 @@ interface AuthContextType {
   loading: boolean
   signOut: () => Promise<void>
   isFirebaseReady: boolean
+  refreshUserData: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -23,6 +24,42 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [userType, setUserType] = useState<"passenger" | "driver" | null>(null)
   const [loading, setLoading] = useState(true)
   const [firebaseReady, setFirebaseReady] = useState(false)
+  const isLoadingUserData = useRef(false)
+
+  const loadUserData = async (userId: string, source = "unknown") => {
+    // Prevent multiple simultaneous loads
+    if (isLoadingUserData.current) {
+      return
+    }
+
+    isLoadingUserData.current = true
+
+    try {
+      // Try to get user data from both tables
+      let data = await getUserData(userId, "passenger")
+      let type: "passenger" | "driver" = "passenger"
+
+      if (!data) {
+        data = await getUserData(userId, "driver")
+        type = "driver"
+      }
+
+      setUserData(data)
+      setUserType(type)
+    } catch (error) {
+      console.error("Error loading user data:", error)
+    } finally {
+      isLoadingUserData.current = false
+    }
+  }
+
+  const refreshUserData = async () => {
+    if (!user?.uid) {
+      return
+    }
+
+    await loadUserData(user.uid, "manual-refresh")
+  }
 
   useEffect(() => {
     let unsubscribe: (() => void) | null = null
@@ -35,7 +72,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setFirebaseReady(ready)
 
         if (!ready) {
-          
           setTimeout(() => {
             if (mounted) {
               initializeAuth()
@@ -53,37 +89,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           return
         }
 
-        
-
         // Set up auth state listener
         unsubscribe = onAuthStateChanged(auth, async (user) => {
           try {
             if (user) {
-              
               setUser(user)
 
-              // Try to get user data from both tables
-              let data = await getUserData(user.uid, "passenger")
-              let type: "passenger" | "driver" = "passenger"
-
-              if (!data) {
-                data = await getUserData(user.uid, "driver")
-                type = "driver"
-              }
-
-              setUserData(data)
-              setUserType(type)
+              // Load user data
+              await loadUserData(user.uid, "auth-state-change")
 
               // Set cookies for middleware
               if (typeof document !== "undefined") {
                 document.cookie = `auth-token=${user.uid}; path=/; max-age=86400`
-                document.cookie = `user-type=${type}; path=/; max-age=86400`
               }
             } else {
-             
               setUser(null)
               setUserData(null)
               setUserType(null)
+              isLoadingUserData.current = false // Reset loading flag
 
               // Clear cookies
               if (typeof document !== "undefined") {
@@ -99,8 +122,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             }
           }
         })
-
-        
       } catch (error) {
         console.error("Error initializing auth:", error)
         setFirebaseReady(false)
@@ -121,6 +142,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [])
 
+  // Update cookies when userType changes
+  useEffect(() => {
+    if (userType && typeof document !== "undefined") {
+      document.cookie = `user-type=${userType}; path=/; max-age=86400`
+    }
+  }, [userType])
+
   const signOut = async () => {
     try {
       const auth = getFirebaseAuth()
@@ -139,6 +167,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     loading,
     signOut,
     isFirebaseReady: firebaseReady,
+    refreshUserData,
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

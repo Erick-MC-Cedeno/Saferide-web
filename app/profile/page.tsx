@@ -1,6 +1,8 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import type React from "react"
+
+import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -26,11 +28,14 @@ import {
   Award,
   TrendingUp,
   Calendar,
+  AlertTriangle,
+  RefreshCw,
 } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
 import { supabase } from "@/lib/supabase"
 import { ProtectedRoute } from "@/components/ProtectedRoute"
 import { useToast } from "@/hooks/use-toast"
+import { ImageCropModal } from "@/components/ImageCropModal"
 
 interface UserProfile {
   name: string
@@ -56,11 +61,13 @@ interface UserStats {
 }
 
 function ProfileContent() {
-  const { user, userData, userType } = useAuth()
+  const { user, userData, userType, refreshUserData, loading: authLoading } = useAuth()
   const { toast } = useToast()
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [stats, setStats] = useState<UserStats | null>(null)
   const [loading, setLoading] = useState(true)
+  const [profileError, setProfileError] = useState<string | null>(null)
+  const [retryCount, setRetryCount] = useState(0)
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
   const [editForm, setEditForm] = useState({
@@ -68,17 +75,43 @@ function ProfileContent() {
     phone: "",
   })
 
-  useEffect(() => {
-    loadUserProfile()
-    loadUserStats()
-  }, [user?.uid, userType])
+  const [uploading, setUploading] = useState(false)
+  const [imagePreview, setImagePreview] = useState<string | null>(null)
+  const [cropModalOpen, setCropModalOpen] = useState(false)
+  const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null)
 
-  const loadUserProfile = async () => {
-    if (!user?.uid || !supabase) return
+  // Prevent duplicate loads
+  const isLoadingProfile = useRef(false)
+  const hasLoadedProfile = useRef(false)
+  const isLoadingAll = useRef(false)
+
+  const loadUserProfile = async (showRetryToast = false) => {
+    // Don't try to load if auth is still loading or no user
+    if (authLoading || !user?.uid || !userType || !supabase) {
+      return
+    }
+
+    // Prevent duplicate loads unless it's a manual retry
+    if (isLoadingProfile.current && !showRetryToast) {
+      return
+    }
+
+    // If already loaded and not a retry, skip
+    if (hasLoadedProfile.current && !showRetryToast) {
+      return
+    }
+
+    isLoadingProfile.current = true
 
     try {
+      setProfileError(null)
       const table = userType === "driver" ? "drivers" : "passengers"
+
       const { data, error } = await supabase.from(table).select("*").eq("uid", user.uid).single()
+
+      if (error) {
+        throw error
+      }
 
       if (data) {
         const profileData: UserProfile = {
@@ -95,20 +128,36 @@ function ProfileContent() {
           name: profileData.name,
           phone: profileData.phone,
         })
+        setRetryCount(0) // Reset retry count on success
+        hasLoadedProfile.current = true
+
+        if (showRetryToast) {
+          toast({
+            title: "Perfil cargado",
+            description: "La información del perfil se ha cargado correctamente.",
+          })
+        }
       }
     } catch (error) {
       console.error("Error loading profile:", error)
-      toast({
-        title: "Error",
-        description: "No se pudo cargar el perfil.",
-        variant: "destructive",
-      })
+      setProfileError("No se pudo cargar la información del perfil.")
+      hasLoadedProfile.current = false
+
+      // Don't show toast on first attempt, only on retries
+      if (showRetryToast) {
+        toast({
+          title: "Error",
+          description: "No se pudo cargar el perfil. Intenta de nuevo.",
+          variant: "destructive",
+        })
+      }
+    } finally {
+      isLoadingProfile.current = false
     }
   }
 
   const loadUserStats = async () => {
-    if (!user?.uid || !supabase) {
-      setLoading(false)
+    if (authLoading || !user?.uid || !userType || !supabase) {
       return
     }
 
@@ -165,9 +214,45 @@ function ProfileContent() {
       }
     } catch (error) {
       console.error("Error loading stats:", error)
-    } finally {
-      setLoading(false)
     }
+  }
+
+  // Combined load function to coordinate both loads
+  const loadAllData = async (showRetryToast = false) => {
+    // Prevent duplicate calls to loadAllData
+    if (isLoadingAll.current && !showRetryToast) {
+      return
+    }
+
+    if (!authLoading && user?.uid && userType && supabase) {
+      isLoadingAll.current = true
+      try {
+        // Load profile and stats in parallel
+        await Promise.all([loadUserProfile(showRetryToast), loadUserStats()])
+      } catch (error) {
+        console.error("Error in loadAllData:", error)
+      } finally {
+        // Only set loading to false after BOTH operations complete
+        setLoading(false)
+        isLoadingAll.current = false
+      }
+    } else if (!authLoading) {
+      setLoading(false)
+      isLoadingAll.current = false
+    }
+  }
+
+  // Initial load effect - only trigger when we have all required data
+  useEffect(() => {
+    loadAllData()
+  }, [user?.uid, userType, authLoading]) // Only depend on essential values
+
+  const handleRetry = async () => {
+    setRetryCount((prev) => prev + 1)
+    setLoading(true)
+    hasLoadedProfile.current = false // Reset loaded flag for retry
+    isLoadingAll.current = false // Reset loading flag for retry
+    await loadAllData(true) // Show toast on retry
   }
 
   const saveProfile = async () => {
@@ -248,7 +333,163 @@ function ProfileContent() {
     })
   }
 
-  if (loading) {
+  const validateImageFile = (file: File): { isValid: boolean; error?: string } => {
+    // Check file type
+    const allowedTypes = ["image/png", "image/jpeg", "image/jpg"]
+    if (!allowedTypes.includes(file.type.toLowerCase())) {
+      return {
+        isValid: false,
+        error: "Solo se permiten archivos PNG y JPG/JPEG.",
+      }
+    }
+
+    // Check file extension as additional validation
+    const fileName = file.name.toLowerCase()
+    const validExtensions = [".png", ".jpg", ".jpeg"]
+    const hasValidExtension = validExtensions.some((ext) => fileName.endsWith(ext))
+
+    if (!hasValidExtension) {
+      return {
+        isValid: false,
+        error: "El archivo debe tener una extensión válida (.png, .jpg, .jpeg).",
+      }
+    }
+
+    // Check file size (5MB)
+    const maxSize = 5 * 1024 * 1024
+    if (file.size > maxSize) {
+      return {
+        isValid: false,
+        error: "El archivo debe ser menor a 5MB.",
+      }
+    }
+
+    return { isValid: true }
+  }
+
+  const handleImageSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file || !user?.uid) {
+      return
+    }
+
+    // Validate file
+    const validation = validateImageFile(file)
+    if (!validation.isValid) {
+      toast({
+        title: "Archivo inválido",
+        description: validation.error,
+        variant: "destructive",
+      })
+      // Reset input
+      event.target.value = ""
+      return
+    }
+
+    // Set selected file and open crop modal
+    setSelectedImageFile(file)
+    setCropModalOpen(true)
+
+    // Reset input
+    event.target.value = ""
+  }
+
+  const handleCropComplete = async (croppedBlob: Blob) => {
+    if (!user?.uid) {
+      return
+    }
+
+    setUploading(true)
+    setCropModalOpen(false)
+
+    try {
+      // Create preview from blob
+      const previewUrl = URL.createObjectURL(croppedBlob)
+      setImagePreview(previewUrl)
+
+      // Convert blob to file for upload
+      const croppedFile = new File([croppedBlob], "profile-image.jpg", {
+        type: "image/jpeg",
+      })
+
+      // Upload to server
+      const formData = new FormData()
+      formData.append("file", croppedFile)
+      formData.append("userId", user.uid)
+      formData.append("userType", userType || "passenger")
+
+      const response = await fetch("/api/upload/profile-image", {
+        method: "POST",
+        body: formData,
+      })
+
+      const result = await response.json()
+
+      if (response.ok && result.success) {
+        // Reload profile to get updated image from database
+        hasLoadedProfile.current = false // Allow reload
+        await loadUserProfile()
+
+        // Refresh auth context to update navbar
+        if (refreshUserData) {
+          await refreshUserData()
+        }
+
+        toast({
+          title: "¡Foto actualizada!",
+          description: "Tu foto de perfil ha sido actualizada exitosamente.",
+        })
+
+        // Clean up preview URL
+        URL.revokeObjectURL(previewUrl)
+        setImagePreview(null)
+      } else {
+        throw new Error(result.error || "Upload failed")
+      }
+    } catch (error) {
+      console.error("Upload error:", error)
+
+      // Clean up preview
+      if (imagePreview) {
+        URL.revokeObjectURL(imagePreview)
+        setImagePreview(null)
+      }
+
+      let errorMessage = "No se pudo subir la imagen. Intenta de nuevo."
+
+      // Handle specific error codes from API
+      if (error instanceof Error) {
+        const errorText = error.message.toLowerCase()
+        if (errorText.includes("invalid_format") || errorText.includes("format")) {
+          errorMessage = "Solo se permiten archivos PNG y JPG/JPEG."
+        } else if (errorText.includes("file_too_large") || errorText.includes("large")) {
+          errorMessage = "El archivo es demasiado grande. Máximo 5MB."
+        } else if (errorText.includes("invalid_extension") || errorText.includes("extension")) {
+          errorMessage = "El archivo debe tener una extensión válida (.png, .jpg, .jpeg)."
+        } else if (errorText.includes("user_not_found")) {
+          errorMessage = "Usuario no encontrado. Intenta cerrar sesión e iniciar de nuevo."
+        } else if (errorText.includes("database")) {
+          errorMessage = "Error de base de datos. Intenta de nuevo en unos momentos."
+        }
+      }
+
+      toast({
+        title: "Error al subir imagen",
+        description: errorMessage,
+        variant: "destructive",
+      })
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  const handleCropCancel = () => {
+    setCropModalOpen(false)
+    setSelectedImageFile(null)
+  }
+
+  // Show loading while auth is loading OR while we're loading profile data
+  if (authLoading || (loading && !profile)) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center">
         <div className="text-center">
@@ -259,10 +500,37 @@ function ProfileContent() {
     )
   }
 
+  // Show error with retry option
+  if (profileError && !profile) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center">
+        <div className="max-w-md w-full mx-4">
+          <Alert className="border-red-200 bg-red-50">
+            <AlertTriangle className="h-4 w-4 text-red-600" />
+            <AlertDescription className="text-red-800 mb-4">
+              {profileError} Por favor, intenta de nuevo.
+            </AlertDescription>
+            <Button
+              onClick={handleRetry}
+              variant="outline"
+              size="sm"
+              className="border-red-300 text-red-700 hover:bg-red-100"
+            >
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Reintentar {retryCount > 0 && `(${retryCount})`}
+            </Button>
+          </Alert>
+        </div>
+      </div>
+    )
+  }
+
+  // Show fallback if still no profile
   if (!profile) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center">
         <Alert className="max-w-md">
+          <AlertTriangle className="h-4 w-4" />
           <AlertDescription>No se pudo cargar la información del perfil. Por favor, intenta de nuevo.</AlertDescription>
         </Alert>
       </div>
@@ -285,13 +553,34 @@ function ProfileContent() {
               <CardHeader className="text-center">
                 <div className="relative mx-auto mb-4">
                   <Avatar className="h-24 w-24 mx-auto">
-                    <AvatarImage src={profile.profileImage || "/placeholder.svg"} />
+                    <AvatarImage src={imagePreview || profile.profileImage || "/placeholder.svg"} />
                     <AvatarFallback className="text-xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white">
                       {getInitials(profile.name)}
                     </AvatarFallback>
                   </Avatar>
-                  <Button size="sm" variant="outline" className="absolute -bottom-2 -right-2 rounded-full h-8 w-8 p-0">
-                    <Camera className="h-4 w-4" />
+                  <input
+                    type="file"
+                    accept=".png,.jpg,.jpeg,image/png,image/jpeg"
+                    onChange={handleImageSelect}
+                    className="hidden"
+                    id="profile-image-upload"
+                    disabled={uploading}
+                  />
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="absolute -bottom-2 -right-2 rounded-full h-8 w-8 p-0"
+                    onClick={() => {
+                      document.getElementById("profile-image-upload")?.click()
+                    }}
+                    disabled={uploading}
+                    title="Subir foto (PNG o JPG, máx 5MB)"
+                  >
+                    {uploading ? (
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-400"></div>
+                    ) : (
+                      <Camera className="h-4 w-4" />
+                    )}
                   </Button>
                 </div>
                 <CardTitle className="text-xl">{profile.name}</CardTitle>
@@ -300,6 +589,17 @@ function ProfileContent() {
                     {userType === "driver" ? "Conductor" : "Pasajero"}
                   </Badge>
                 </CardDescription>
+
+                {/* Image format info */}
+                <div className="text-xs text-gray-500 mt-2">Solo PNG y JPG • Máx 5MB</div>
+
+                {/* Upload status */}
+                {uploading && (
+                  <div className="text-xs text-blue-600 mt-1 flex items-center justify-center space-x-1">
+                    <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-600"></div>
+                    <span>Subiendo imagen...</span>
+                  </div>
+                )}
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex items-center justify-center space-x-1">
@@ -457,6 +757,15 @@ function ProfileContent() {
             )}
           </div>
         </div>
+
+        {/* Image Crop Modal */}
+        <ImageCropModal
+          isOpen={cropModalOpen}
+          onClose={handleCropCancel}
+          onCrop={handleCropComplete}
+          imageFile={selectedImageFile}
+          uploading={uploading}
+        />
       </div>
     </div>
   )

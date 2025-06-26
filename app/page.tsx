@@ -206,7 +206,7 @@ export default function HomePage() {
                 isVisible ? "translate-x-0 opacity-100" : "translate-x-10 opacity-0"
               }`}
             >
-              <div className="relative mx-auto w-80 h-96 bg-gradient-to-br from-gray-900 to-gray-800 rounded-3xl shadow-2xl overflow-hidden transform hover:scale-105 transition-all duration-500">
+              <div className="relative mx-auto w-81 h-96 bg-gradient-to-br from-gray-900 to-gray-800 rounded-3xl shadow-2xl overflow-hidden transform hover:scale-105 transition-all duration-500">
                 {/* Phone Screen */}
                 <div className="absolute inset-2 bg-gradient-to-br from-blue-50 to-purple-50 rounded-2xl overflow-hidden">
                   {/* Status Bar */}

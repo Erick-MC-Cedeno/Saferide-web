@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Shield, Car, Users, Eye, EyeOff, Loader2, AlertCircle, Wifi, WifiOff } from "lucide-react"
+import { Shield, Car, Users, Eye, EyeOff, Loader2, AlertCircle, Wifi, WifiOff, Sparkles } from "lucide-react"
 import Link from "next/link"
 import { loginUser } from "@/lib/auth"
 import { useAuth } from "@/lib/auth-context"
@@ -67,13 +67,23 @@ export default function LoginPage() {
   // Show loading state while auth is initializing
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 flex items-center justify-center p-4">
-        <Card className="w-full max-w-md">
-          <CardContent className="flex flex-col items-center justify-center p-8">
-            <Shield className="h-12 w-12 text-blue-600 mb-4" />
-            <Loader2 className="h-8 w-8 animate-spin text-blue-600 mb-4" />
-            <h2 className="text-xl font-semibold text-gray-900 mb-2">SafeRide</h2>
-            <p className="text-gray-600 text-center">Inicializando servicios...</p>
+      <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-cyan-50 flex items-center justify-center p-4">
+        <Card className="w-full max-w-md shadow-2xl border-0 bg-white/80 backdrop-blur-sm">
+          <CardContent className="flex flex-col items-center justify-center p-12">
+            <div className="relative mb-6">
+              <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl blur opacity-75 animate-pulse"></div>
+              <div className="relative bg-gradient-to-r from-blue-600 to-purple-600 p-4 rounded-2xl">
+                <Shield className="h-12 w-12 text-white" />
+              </div>
+            </div>
+            <div className="flex items-center space-x-2 mb-4">
+              <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
+              <Sparkles className="h-4 w-4 text-purple-500 animate-pulse" />
+            </div>
+            <h2 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-2">
+              SafeRide
+            </h2>
+            <p className="text-gray-600 text-center animate-pulse">Inicializando servicios...</p>
           </CardContent>
         </Card>
       </div>
@@ -81,64 +91,87 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-cyan-50 flex items-center justify-center p-4 relative overflow-hidden">
+      {/* Animated background elements */}
+      <div className="absolute inset-0 overflow-hidden">
+        <div className="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-blue-400/20 to-purple-400/20 rounded-full blur-3xl animate-pulse"></div>
+        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-gradient-to-tr from-cyan-400/20 to-blue-400/20 rounded-full blur-3xl animate-pulse delay-1000"></div>
+      </div>
+
+      <div className="w-full max-w-md relative z-10">
         {/* Header */}
         <div className="text-center mb-8">
-          <div className="flex items-center justify-center space-x-3 mb-6">
-            <div className="bg-gradient-to-r from-blue-600 to-blue-700 p-3 rounded-xl shadow-lg">
-              <Shield className="h-8 w-8 text-white" />
+          <div className="flex items-center justify-center space-x-4 mb-8">
+            <div className="relative">
+              <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl blur opacity-75 animate-pulse"></div>
+              <div className="relative bg-gradient-to-r from-blue-600 to-purple-600 p-4 rounded-2xl shadow-2xl">
+                <Shield className="h-10 w-10 text-white" />
+              </div>
             </div>
-            <div>
-              <span className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent">
+            <div className="text-left">
+              <span className="text-4xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-cyan-600 bg-clip-text text-transparent">
                 SafeRide
               </span>
-              <div className="text-sm text-gray-500">Transporte Seguro</div>
+              <div className="text-sm text-gray-500 font-medium">Transporte Seguro</div>
             </div>
           </div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Bienvenido de vuelta</h1>
-          <p className="text-gray-600">Inicia sesión en tu cuenta de SafeRide</p>
+          <h1 className="text-3xl font-bold text-gray-900 mb-3">¡Bienvenido de vuelta!</h1>
+          <p className="text-gray-600 text-lg">Inicia sesión en tu cuenta de SafeRide</p>
         </div>
 
         {/* Firebase Status Indicator */}
-        <div className="mb-4">
+        <div className="mb-6">
           <div
-            className={`flex items-center justify-center space-x-2 p-2 rounded-lg ${
-              isFirebaseReady ? "bg-green-50 text-green-700" : "bg-yellow-50 text-yellow-700"
+            className={`flex items-center justify-center space-x-2 p-3 rounded-xl transition-all duration-300 ${
+              isFirebaseReady
+                ? "bg-gradient-to-r from-green-50 to-emerald-50 text-green-700 border border-green-200"
+                : "bg-gradient-to-r from-yellow-50 to-orange-50 text-yellow-700 border border-yellow-200"
             }`}
           >
-            {isFirebaseReady ? <Wifi className="h-4 w-4" /> : <WifiOff className="h-4 w-4" />}
-            <span className="text-sm">{isFirebaseReady ? "Servicios conectados" : "Conectando servicios..."}</span>
+            {isFirebaseReady ? (
+              <Wifi className="h-4 w-4 animate-pulse" />
+            ) : (
+              <WifiOff className="h-4 w-4 animate-bounce" />
+            )}
+            <span className="text-sm font-medium">
+              {isFirebaseReady ? "Servicios conectados" : "Conectando servicios..."}
+            </span>
           </div>
         </div>
 
-        <Card className="shadow-xl border-0">
-          <CardHeader className="space-y-4">
+        <Card className="shadow-2xl border-0 bg-white/80 backdrop-blur-sm">
+          <CardHeader className="space-y-6 pb-6">
             <Tabs value={userType} onValueChange={setUserType}>
-              <TabsList className="grid w-full grid-cols-2 bg-gray-100">
-                <TabsTrigger value="passenger" className="flex items-center space-x-2 data-[state=active]:bg-white">
+              <TabsList className="grid w-full grid-cols-2 bg-gray-100/80 backdrop-blur-sm p-1 rounded-xl">
+                <TabsTrigger
+                  value="passenger"
+                  className="flex items-center space-x-2 data-[state=active]:bg-white data-[state=active]:shadow-lg transition-all duration-300 rounded-lg"
+                >
                   <Users className="h-4 w-4" />
-                  <span>Pasajero</span>
+                  <span className="font-medium">Pasajero</span>
                 </TabsTrigger>
-                <TabsTrigger value="driver" className="flex items-center space-x-2 data-[state=active]:bg-white">
+                <TabsTrigger
+                  value="driver"
+                  className="flex items-center space-x-2 data-[state=active]:bg-white data-[state=active]:shadow-lg transition-all duration-300 rounded-lg"
+                >
                   <Car className="h-4 w-4" />
-                  <span>Conductor</span>
+                  <span className="font-medium">Conductor</span>
                 </TabsTrigger>
               </TabsList>
             </Tabs>
           </CardHeader>
 
-          <CardContent>
+          <CardContent className="px-8 pb-8">
             {error && (
-              <Alert className="mb-6 border-red-200 bg-red-50">
+              <Alert className="mb-6 border-red-200 bg-gradient-to-r from-red-50 to-pink-50 animate-in slide-in-from-top-2 duration-300">
                 <AlertCircle className="h-4 w-4 text-red-600" />
-                <AlertDescription className="text-red-700">{error}</AlertDescription>
+                <AlertDescription className="text-red-700 font-medium">{error}</AlertDescription>
               </Alert>
             )}
 
             <form onSubmit={handleLogin} className="space-y-6">
-              <div className="space-y-2">
-                <Label htmlFor="email" className="text-sm font-medium">
+              <div className="space-y-3">
+                <Label htmlFor="email" className="text-sm font-semibold text-gray-700">
                   Correo Electrónico
                 </Label>
                 <Input
@@ -148,13 +181,13 @@ export default function LoginPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
-                  className="h-11"
+                  className="h-12 border-2 border-gray-200 focus:border-blue-500 focus:ring-blue-500/20 transition-all duration-300 rounded-xl bg-white/50 backdrop-blur-sm"
                   disabled={loading || !isFirebaseReady}
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="password" className="text-sm font-medium">
+              <div className="space-y-3">
+                <Label htmlFor="password" className="text-sm font-semibold text-gray-700">
                   Contraseña
                 </Label>
                 <div className="relative">
@@ -164,30 +197,30 @@ export default function LoginPage() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
-                    className="h-11 pr-10"
+                    className="h-12 pr-12 border-2 border-gray-200 focus:border-blue-500 focus:ring-blue-500/20 transition-all duration-300 rounded-xl bg-white/50 backdrop-blur-sm"
                     disabled={loading || !isFirebaseReady}
                   />
                   <Button
                     type="button"
                     variant="ghost"
                     size="sm"
-                    className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                    className="absolute right-0 top-0 h-full px-4 hover:bg-transparent transition-all duration-300"
                     onClick={() => setShowPassword(!showPassword)}
                     disabled={loading || !isFirebaseReady}
                   >
                     {showPassword ? (
-                      <EyeOff className="h-4 w-4 text-gray-400" />
+                      <EyeOff className="h-5 w-5 text-gray-400 hover:text-gray-600 transition-colors" />
                     ) : (
-                      <Eye className="h-4 w-4 text-gray-400" />
+                      <Eye className="h-5 w-5 text-gray-400 hover:text-gray-600 transition-colors" />
                     )}
                   </Button>
                 </div>
               </div>
 
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between pt-2">
                 <Link
                   href="/auth/forgot-password"
-                  className="text-sm text-blue-600 hover:text-blue-700 hover:underline"
+                  className="text-sm text-blue-600 hover:text-blue-700 font-medium hover:underline transition-all duration-300"
                 >
                   ¿Olvidaste tu contraseña?
                 </Link>
@@ -195,24 +228,30 @@ export default function LoginPage() {
 
               <Button
                 type="submit"
-                className="w-full h-11 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 shadow-lg"
+                className="w-full h-12 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-[1.02]"
                 disabled={loading || !isFirebaseReady}
               >
                 {loading ? (
                   <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
                     Iniciando sesión...
                   </>
                 ) : (
-                  "Iniciar Sesión"
+                  <>
+                    <span>Iniciar Sesión</span>
+                    <Sparkles className="ml-2 h-4 w-4" />
+                  </>
                 )}
               </Button>
             </form>
 
             <div className="mt-8 text-center">
-              <p className="text-sm text-gray-600">
+              <p className="text-gray-600">
                 ¿No tienes cuenta?{" "}
-                <Link href="/auth/register" className="text-blue-600 hover:text-blue-700 font-medium hover:underline">
+                <Link
+                  href="/auth/register"
+                  className="text-blue-600 hover:text-purple-600 font-semibold hover:underline transition-all duration-300"
+                >
                   Regístrate aquí
                 </Link>
               </p>
@@ -221,14 +260,14 @@ export default function LoginPage() {
         </Card>
 
         {/* Security Notice */}
-        <div className="mt-6 text-center">
-          <p className="text-xs text-gray-500">
+        <div className="mt-8 text-center">
+          <p className="text-xs text-gray-500 leading-relaxed">
             Al iniciar sesión, aceptas nuestros{" "}
-            <Link href="/terms" className="text-blue-600 hover:underline">
+            <Link href="/terms" className="text-blue-600 hover:text-purple-600 hover:underline transition-colors">
               Términos de Servicio
             </Link>{" "}
             y{" "}
-            <Link href="/privacy" className="text-blue-600 hover:underline">
+            <Link href="/privacy" className="text-blue-600 hover:text-purple-600 hover:underline transition-colors">
               Política de Privacidad
             </Link>
           </p>

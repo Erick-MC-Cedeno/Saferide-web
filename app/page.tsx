@@ -18,6 +18,10 @@ import {
   Award,
   TrendingUp,
   Globe,
+  Crown,
+  Infinity,
+  CheckCircle,
+  Sparkles,
 } from "lucide-react"
 import Link from "next/link"
 import { DevelopmentNotice } from "@/components/DevelopmentNotice"
@@ -60,7 +64,7 @@ export default function HomePage() {
       icon: Heart,
       title: "Confiable",
       description: "Disponible 24/7 con soporte en español",
-      color: "from-purple-400 to-pink-600",
+      color: "from-purple-400 to-indigo-600",
       delay: "400ms",
     },
     {
@@ -74,25 +78,58 @@ export default function HomePage() {
 
   const services = [
     {
+      icon: Car,
       name: "SafeRide Estándar",
-      price: "Desde C$50",
-      description: "Viajes cómodos para el día a día",
+      price: "$1.50",
+      originalPrice: "$2.00",
+      duration: "5 días",
+      description: "Solicitudes ilimitadas para uso ocasional",
       popular: false,
       color: "border-blue-200 hover:border-blue-400",
+      bgColor: "from-blue-50 to-blue-100",
+      savings: "25% OFF",
+      features: [
+        "Solicitudes ilimitadas por 5 días",
+        "Conductores certificados",
+        "Seguimiento GPS en tiempo real",
+        "Soporte técnico básico",
+      ],
     },
     {
-      name: "SafeRide Express",
-      price: "Desde C$75",
-      description: "Llegada rápida cuando tienes prisa",
+      icon: Zap,
+      name: "SafeRide Plus",
+      price: "$3.50",
+      originalPrice: "$5.00",
+      duration: "15 días",
+      description: "Solicitudes ilimitadas para uso regular",
       popular: true,
       color: "border-purple-200 hover:border-purple-400",
+      bgColor: "from-purple-50 to-purple-100",
+      savings: "30% OFF",
+      features: [
+        "Solicitudes ilimitadas por 15 días",
+        "Prioridad en asignación",
+        "Rutas optimizadas",
+        "Soporte prioritario 24/7",
+      ],
     },
     {
+      icon: Crown,
       name: "SafeRide Premium",
-      price: "Desde C$150",
-      description: "Experiencia de lujo con vehículos premium",
+      price: "$6.99",
+      originalPrice: "$9.99",
+      duration: "1 mes",
+      description: "Solicitudes ilimitadas experiencia completa",
       popular: false,
-      color: "border-green-200 hover:border-green-400",
+      color: "border-amber-200 hover:border-amber-400",
+      bgColor: "from-amber-50 to-amber-100",
+      savings: "35% OFF",
+      features: [
+        "Solicitudes ilimitadas por 30 días",
+        "Conductores VIP certificados",
+        "Soporte dedicado 24/7",
+        "Cancelaciones gratuitas",
+      ],
     },
   ]
 
@@ -128,7 +165,7 @@ export default function HomePage() {
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-blue-400/20 to-purple-600/20 rounded-full blur-3xl animate-pulse"></div>
         <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-gradient-to-br from-green-400/20 to-blue-600/20 rounded-full blur-3xl animate-pulse delay-1000"></div>
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-gradient-to-br from-purple-400/10 to-pink-600/10 rounded-full blur-3xl animate-pulse delay-2000"></div>
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-gradient-to-br from-purple-400/10 to-indigo-600/10 rounded-full blur-3xl animate-pulse delay-2000"></div>
       </div>
 
       {/* Hero Section */}
@@ -147,7 +184,7 @@ export default function HomePage() {
               </div>
 
               <h1 className="text-5xl md:text-7xl font-bold leading-tight">
-                <span className="bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent animate-pulse">
+                <span className="bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 bg-clip-text text-transparent animate-pulse">
                   Viaja Seguro
                 </span>
                 <br />
@@ -156,8 +193,8 @@ export default function HomePage() {
 
               <p className="text-xl text-gray-600 leading-relaxed max-w-lg">
                 La plataforma de transporte más <span className="font-semibold text-blue-600">segura</span> y{" "}
-                <span className="font-semibold text-green-600">confiable</span> Conectamos pasajeros con
-                conductores verificados para viajes seguros las 24 horas.
+                <span className="font-semibold text-green-600">confiable</span> Conectamos pasajeros con conductores
+                verificados para viajes seguros las 24 horas.
               </p>
 
               <div className="flex flex-col sm:flex-row gap-4">
@@ -173,7 +210,7 @@ export default function HomePage() {
                 <Button
                   size="lg"
                   variant="outline"
-                  className="border-2 border-gray-300 hover:border-blue-500 px-8 py-4 text-lg font-semibold rounded-xl hover:shadow-lg transform hover:scale-105 transition-all duration-300"
+                  className="border-2 border-gray-300 hover:border-blue-500 px-8 py-4 text-lg font-semibold rounded-xl hover:shadow-lg transform hover:scale-105 transition-all duration-300 bg-transparent"
                 >
                   <Link href="/driver/dashboard" className="flex items-center">
                     <Car className="mr-2 h-5 w-5" />
@@ -238,7 +275,7 @@ export default function HomePage() {
                           <div className="flex justify-between items-center">
                             <div>
                               <div className="font-semibold text-gray-900 text-sm">{service.name}</div>
-                              <div className="text-xs text-gray-600">{service.description}</div>
+                              <div className="text-xs text-gray-600">{service.duration}</div>
                             </div>
                             <div className="text-blue-600 font-bold text-sm">{service.price}</div>
                           </div>
@@ -303,43 +340,87 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Services Section */}
+      {/* Services Section - UPDATED */}
       <section className="py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-r from-blue-50/50 to-purple-50/50">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-gray-900 mb-4">Nuestros Servicios</h2>
-            <p className="text-xl text-gray-600">Elige el servicio que mejor se adapte a tus necesidades</p>
+            <h2 className="text-4xl font-bold text-gray-900 mb-4">Planes de Suscripción</h2>
+            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+              Solicitudes ilimitadas con precios increíbles.
+              <span className="font-bold text-green-600 animate-pulse"> ¡Ahorra hasta un 35%!</span>
+            </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {services.map((service, index) => (
               <Card
                 key={index}
-                className={`relative overflow-hidden hover:shadow-2xl transition-all duration-500 ${service.color} bg-white/90 backdrop-blur-sm transform hover:scale-105`}
+                className={`relative overflow-hidden hover:shadow-2xl transition-all duration-500 ${service.color} bg-white/90 backdrop-blur-sm transform hover:scale-105 hover:-translate-y-2 ${
+                  service.popular ? "ring-4 ring-purple-400 ring-opacity-50 scale-105" : ""
+                }`}
               >
                 {service.popular && (
-                  <div className="absolute top-4 right-4">
-                    <Badge className="bg-gradient-to-r from-purple-500 to-pink-500 text-white animate-pulse">
-                      Más Popular
+                  <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-20">
+                    <Badge className="bg-gradient-to-r from-purple-500 to-indigo-600 text-white px-4 py-1 text-sm font-bold animate-pulse shadow-lg">
+                      <Star className="w-4 h-4 mr-1 animate-spin" />
+                      MÁS POPULAR
                     </Badge>
                   </div>
                 )}
-                <CardHeader className="text-center pb-4">
-                  <CardTitle className="text-2xl font-bold text-gray-900 mb-2">{service.name}</CardTitle>
-                  <div className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                    {service.price}
+
+                <div
+                  className={`absolute inset-0 bg-gradient-to-br ${service.bgColor} opacity-5 hover:opacity-10 transition-opacity duration-500`}
+                ></div>
+
+                <CardHeader className="text-center pb-4 relative z-10 pt-12">
+                  <div className="flex items-center justify-center mb-6">
+                    <div className="p-4 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 text-white shadow-xl transform hover:scale-110 hover:rotate-12 transition-all duration-500">
+                      <service.icon className="h-8 w-8" />
+                    </div>
                   </div>
+
+                  <div className="mb-4">
+                    <Badge variant="secondary" className="bg-green-100 text-green-700 mb-3 animate-pulse font-bold">
+                      {service.savings}
+                    </Badge>
+                    <div className="flex items-center justify-center space-x-2 mb-2">
+                      <span className="text-lg text-gray-400 line-through">{service.originalPrice}</span>
+                      <span className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                        {service.price}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-center text-purple-600 font-semibold">
+                      <Clock className="w-4 h-4 mr-1" />
+                      {service.duration}
+                      <Infinity className="w-5 h-5 ml-1 animate-spin text-blue-500" />
+                    </div>
+                  </div>
+
+                  <CardTitle className="text-2xl font-bold text-gray-900 mb-3">{service.name}</CardTitle>
+                  <p className="text-gray-600 mb-6 leading-relaxed">{service.description}</p>
                 </CardHeader>
-                <CardContent className="text-center space-y-4">
-                  <p className="text-gray-600">{service.description}</p>
+
+                <CardContent className="text-center space-y-4 relative z-10">
+                  <div className="space-y-3 mb-6">
+                    {service.features.map((feature, idx) => (
+                      <div key={idx} className="flex items-start text-sm text-gray-700">
+                        <CheckCircle className="h-4 w-4 text-green-500 mr-2 flex-shrink-0 mt-0.5 animate-pulse" />
+                        <span>{feature}</span>
+                      </div>
+                    ))}
+                  </div>
+
                   <Button
                     className={`w-full ${
                       service.popular
-                        ? "bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+                        ? "bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700"
                         : "bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
-                    } transform hover:scale-105 transition-all duration-300`}
+                    } transform hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-xl font-bold py-3`}
                   >
-                    Solicitar Ahora
+                    <Link href="/services" className="flex items-center justify-center">
+                      Seleccionar Plan
+                      <Sparkles className="ml-2 h-4 w-4 animate-pulse" />
+                    </Link>
                   </Button>
                 </CardContent>
               </Card>
@@ -350,10 +431,10 @@ export default function HomePage() {
             <Button
               size="lg"
               variant="outline"
-              className="border-2 border-blue-500 text-blue-600 hover:bg-blue-500 hover:text-white px-8 py-4 text-lg font-semibold rounded-xl hover:shadow-lg transform hover:scale-105 transition-all duration-300"
+              className="border-2 border-blue-500 text-blue-600 hover:bg-blue-500 hover:text-white px-8 py-4 text-lg font-semibold rounded-xl hover:shadow-lg transform hover:scale-105 transition-all duration-300 bg-transparent"
             >
               <Link href="/services" className="flex items-center">
-                Ver Todos los Servicios
+                Ver Todos los Planes
                 <ArrowRight className="ml-2 h-5 w-5" />
               </Link>
             </Button>
@@ -400,7 +481,7 @@ export default function HomePage() {
       </section>
 
       {/* CTA Section */}
-      <section className="py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 relative overflow-hidden">
+      <section className="py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 relative overflow-hidden">
         {/* Animated Background */}
         <div className="absolute inset-0">
           <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-r from-blue-600/90 to-purple-600/90"></div>
@@ -548,11 +629,11 @@ export default function HomePage() {
                 <ul className="space-y-3">
                   {[
                     "SafeRide Estándar",
-                    "SafeRide Express",
+                    "SafeRide Plus",
                     "SafeRide Premium",
-                    "SafeRide Delivery",
-                    "SafeRide Airport",
-                    "SafeRide Schedule",
+                    "SafeDelivery",
+                    "SafeAirport",
+                    "SafeSchedule",
                   ].map((service, index) => (
                     <li key={index}>
                       <Link
@@ -578,7 +659,6 @@ export default function HomePage() {
                     { name: "Acerca de SafeRide", href: "/about" },
                     { name: "Seguridad", href: "/safety" },
                     { name: "Soporte", href: "/support" },
-                    { name: "Carreras", href: "/careers" },
                     { name: "Blog", href: "/blog" },
                     { name: "Prensa", href: "/press" },
                   ].map((link, index) => (

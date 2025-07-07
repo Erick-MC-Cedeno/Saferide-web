@@ -86,7 +86,6 @@ To configure and run the project locally, follow these steps:
     server will be running `http://localhost:3000`.
 
 
-
 # Contribution
 
 Contributions are welcome! Please open an issue or submit a pull request with your improvements.

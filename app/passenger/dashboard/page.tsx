@@ -59,7 +59,6 @@ function PassengerDashboardContent() {
     averageRating: 0,
   })
   const [showChatDialog, setShowChatDialog] = useState(false)
-
   // Quick destinations state
   const [showQuickDestDialog, setShowQuickDestDialog] = useState(false)
   const [editingDestIndex, setEditingDestIndex] = useState<number | null>(null)
@@ -75,7 +74,6 @@ function PassengerDashboardContent() {
     coords: { lat: 0, lng: 0 },
     icon: "📍",
   })
-
   const { rides, loading, cancelRide, refreshRides } = useRealTimeRides(undefined, user?.uid)
   const currentRide = rides.find((ride) => ["pending", "accepted", "in-progress"].includes(ride.status))
 
@@ -90,7 +88,6 @@ function PassengerDashboardContent() {
   useEffect(() => {
     const loadPassengerData = async () => {
       if (!supabase || !user?.uid) return
-
       try {
         // Get passenger stats
         const { data: passengerData } = await supabase
@@ -109,7 +106,6 @@ function PassengerDashboardContent() {
 
         if (completedRides) {
           const totalSpent = completedRides.reduce((sum, ride) => sum + (ride.actual_fare || ride.estimated_fare), 0)
-
           // Calculate average rating from driver ratings
           const ratedRides = completedRides.filter((ride) => ride.driver_rating !== null)
           const averageRating =
@@ -122,14 +118,12 @@ function PassengerDashboardContent() {
             totalSpent,
             averageRating,
           })
-
           setRecentTrips(completedRides.slice(0, 5))
         }
       } catch (error) {
         console.error("Error loading passenger data:", error)
       }
     }
-
     loadPassengerData()
   }, [user?.uid])
 
@@ -137,20 +131,17 @@ function PassengerDashboardContent() {
   useEffect(() => {
     const loadAvailableDrivers = async () => {
       if (!supabase || !pickupCoords) return
-
       try {
         const { data: drivers } = await supabase
           .from("drivers")
           .select("uid, name, rating, vehicle_model, vehicle_plate, is_online")
           .eq("is_online", true)
           .eq("is_verified", true)
-
         setAvailableDrivers(drivers || [])
       } catch (error) {
         console.error("Error loading drivers:", error)
       }
     }
-
     if (pickupCoords && destinationCoords) {
       loadAvailableDrivers()
     }
@@ -161,7 +152,6 @@ function PassengerDashboardContent() {
     const completedRide = rides.find(
       (ride) => ride.status === "completed" && ride.passenger_id === user?.uid && !ride.passenger_rating,
     )
-
     if (completedRide) {
       setCompletedRide(completedRide)
       setShowRatingDialog(true)
@@ -177,7 +167,6 @@ function PassengerDashboardContent() {
     }
 
     setRideStatus("searching")
-
     try {
       const rideData = {
         passenger_id: user.uid,
@@ -217,12 +206,10 @@ function PassengerDashboardContent() {
       setShowDriverSelection(false)
       setSelectedDriver("")
       setRideStatus("pending")
-
       toast({
         title: "Viaje solicitado",
         description: "Tu viaje ha sido solicitado. Esperando confirmación del conductor.",
       })
-
       // Refresh rides to get the latest data
       refreshRides()
     } catch (error) {
@@ -256,7 +243,6 @@ function PassengerDashboardContent() {
       }
 
       console.log("Ride cancelled successfully")
-
       // Reset all states to allow new ride request
       setRideStatus("idle")
       setPickup("")
@@ -266,12 +252,10 @@ function PassengerDashboardContent() {
       setSelectedDriver("")
       setShowDriverSelection(false)
       setShowChatDialog(false) // Close chat if open
-
       toast({
         title: "Viaje cancelado",
         description: "Tu viaje ha sido cancelado exitosamente.",
       })
-
       // Refresh rides to get updated data
       refreshRides()
     } catch (error) {
@@ -310,7 +294,6 @@ function PassengerDashboardContent() {
 
       if (driverRides) {
         const avgRating = driverRides.reduce((sum, ride) => sum + (ride.passenger_rating ?? 0), 0) / driverRides.length
-
         await supabase.from("drivers").update({ rating: avgRating }).eq("uid", completedRide.driver_id)
       }
 
@@ -319,7 +302,6 @@ function PassengerDashboardContent() {
       setRating(0)
       setComment("")
       setCompletedRide(null)
-
       toast({
         title: "Calificación enviada",
         description: "Gracias por calificar tu viaje.",
@@ -413,7 +395,6 @@ function PassengerDashboardContent() {
     }
 
     const updatedDestinations = [...quickDestinations]
-
     if (editingDestIndex !== null) {
       // Edit existing destination
       updatedDestinations[editingDestIndex] = newDestination
@@ -437,7 +418,6 @@ function PassengerDashboardContent() {
         description: `${newDestination.name} ha sido agregado a tus destinos rápidos`,
       })
     }
-
     setQuickDestinations(updatedDestinations)
     setShowQuickDestDialog(false)
     setEditingDestIndex(null)
@@ -462,7 +442,7 @@ function PassengerDashboardContent() {
       {/* Enhanced Header */}
       <header className="bg-white/80 backdrop-blur-md shadow-lg border-b border-blue-100">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-6">
+          <div className="flex flex-col sm:flex-row justify-between items-center py-6 space-y-4 sm:space-y-0">
             <div className="flex items-center space-x-4">
               <div className="p-3 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl shadow-lg">
                 <Users className="h-8 w-8 text-white" />
@@ -480,7 +460,7 @@ function PassengerDashboardContent() {
               <Button
                 variant="outline"
                 onClick={resetRideForm}
-                className="flex items-center space-x-2 bg-white/60 border-blue-200 hover:bg-blue-50"
+                className="flex items-center space-x-2 bg-white/60 border-blue-200 hover:bg-blue-50 w-full sm:w-auto"
               >
                 <X className="h-4 w-4" />
                 <span>Nuevo Viaje</span>
@@ -585,9 +565,8 @@ function PassengerDashboardContent() {
                           </div>
                         )}
                       </div>
-
                       {/* Enhanced Action Buttons */}
-                      <div className="flex space-x-3">
+                      <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3">
                         {["pending", "accepted"].includes(currentRide.status) && (
                           <Button
                             variant="destructive"
@@ -622,7 +601,7 @@ function PassengerDashboardContent() {
                             necesario.
                           </p>
                         </div>
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           <Button
                             variant="outline"
                             className="bg-white/80 border-orange-300 text-orange-700 hover:bg-orange-100 font-semibold py-3"
@@ -657,33 +636,33 @@ function PassengerDashboardContent() {
                 <CardDescription className="text-blue-100">Historial de tus últimos viajes completados</CardDescription>
               </CardHeader>
               <CardContent className="p-0">
-                <ScrollArea className="h-96 px-6 py-6">
+                <ScrollArea className="h-96 px-4 py-4 sm:px-6 sm:py-6">
                   <div className="space-y-6">
                     {recentTrips.length > 0 ? (
                       recentTrips.map((trip) => (
                         <div
                           key={trip.id}
-                          className="p-8 bg-gradient-to-r from-gray-50 to-slate-50 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 border border-gray-100"
+                          className="p-3 sm:p-4 md:p-6 bg-gradient-to-r from-gray-50 to-slate-50 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 border border-gray-100"
                         >
-                          <div className="flex items-center justify-between">
-                            <div className="flex-1">
+                          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between space-y-4 sm:space-y-0">
+                            <div className="flex-1 w-full">
                               <div className="flex items-center space-x-4 mb-4">
-                                <Avatar className="h-16 w-16 ring-2 ring-blue-200">
-                                  <AvatarFallback className="bg-gradient-to-r from-blue-500 to-indigo-500 text-white font-bold text-xl">
+                                <Avatar className="h-12 w-12 ring-2 ring-blue-200">
+                                  <AvatarFallback className="bg-gradient-to-r from-blue-500 to-indigo-500 text-white font-bold text-lg">
                                     {trip.driver_name?.charAt(0) || "D"}
                                   </AvatarFallback>
                                 </Avatar>
                                 <div>
-                                  <p className="font-bold text-xl text-gray-800">{trip.driver_name}</p>
-                                  <p className="text-base text-gray-600 font-medium">
+                                  <p className="font-bold text-lg text-gray-800">{trip.driver_name}</p>
+                                  <p className="text-sm text-gray-600 font-medium">
                                     {new Date(trip.completed_at).toLocaleDateString()} • {trip.estimated_duration} min
                                   </p>
                                 </div>
                               </div>
-                              <div className="bg-white/80 p-4 rounded-lg mb-4 border border-gray-200">
+                              <div className="bg-white/80 p-3 rounded-lg mb-4 border border-gray-200">
                                 <div className="flex items-center space-x-3 mb-2">
-                                  <Navigation className="h-5 w-5 text-gray-500" />
-                                  <p className="font-semibold text-gray-900 text-base">
+                                  <Navigation className="h-4 w-4 text-gray-500" />
+                                  <p className="font-semibold text-gray-900 text-sm">
                                     {trip.pickup_address} → {trip.destination_address}
                                   </p>
                                 </div>
@@ -692,23 +671,23 @@ function PassengerDashboardContent() {
                                 {[...Array(5)].map((_, i) => (
                                   <Star
                                     key={i}
-                                    className={`h-5 w-5 ${
+                                    className={`h-4 w-4 ${
                                       i < (trip.passenger_rating || 0)
                                         ? "fill-yellow-400 text-yellow-400"
                                         : "text-gray-300"
                                     }`}
                                   />
                                 ))}
-                                <span className="text-base text-gray-600 ml-3 font-medium">
+                                <span className="text-sm text-gray-600 ml-3 font-medium">
                                   ({trip.passenger_rating || 0}/5)
                                 </span>
                               </div>
                             </div>
-                            <div className="text-right">
-                              <Badge className="bg-gradient-to-r from-green-500 to-emerald-500 text-white px-6 py-3 text-xl font-bold mb-3">
+                            <div className="text-right w-full sm:w-auto">
+                              <Badge className="bg-gradient-to-r from-green-500 to-emerald-500 text-white px-4 py-2 text-lg font-bold mb-2">
                                 ${trip.actual_fare || trip.estimated_fare}
                               </Badge>
-                              <p className="text-base text-green-600 font-bold">✅ Completado</p>
+                              <p className="text-sm text-green-600 font-bold">✅ Completado</p>
                             </div>
                           </div>
                         </div>
@@ -757,7 +736,6 @@ function PassengerDashboardContent() {
                       }}
                     />
                   </div>
-
                   <div className="space-y-3">
                     <Label htmlFor="destination" className="text-sm font-semibold text-gray-700">
                       Destino
@@ -808,7 +786,6 @@ function PassengerDashboardContent() {
                       </div>
                     </div>
                   )}
-
                   <Button
                     className="w-full h-14 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-xl font-bold text-lg"
                     onClick={handleRequestRide}
@@ -949,7 +926,6 @@ function PassengerDashboardContent() {
                   className="h-12"
                 />
               </div>
-
               <div className="space-y-2">
                 <Label htmlFor="dest-address" className="text-sm font-semibold">
                   Dirección
@@ -967,15 +943,14 @@ function PassengerDashboardContent() {
                   }}
                 />
               </div>
-
               <div className="space-y-2">
                 <Label className="text-sm font-semibold">Icono</Label>
-                <div className="grid grid-cols-6 gap-2">
+                <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
                   {availableIcons.map((icon) => (
                     <Button
                       key={icon}
                       variant="outline"
-                      className={`h-12 w-12 text-2xl p-0 ${
+                      className={`h-10 w-10 text-xl p-0 sm:h-12 sm:w-12 sm:text-2xl ${
                         newDestination.icon === icon
                           ? "bg-blue-100 border-blue-500 ring-2 ring-blue-200"
                           : "hover:bg-blue-50"
@@ -988,8 +963,7 @@ function PassengerDashboardContent() {
                 </div>
               </div>
             </div>
-
-            <div className="flex space-x-3">
+            <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3">
               <Button
                 className="flex-1 bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 font-semibold"
                 onClick={handleSaveDestination}
@@ -1079,7 +1053,7 @@ function PassengerDashboardContent() {
                 ))}
               </SelectContent>
             </Select>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <Button
                 className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 font-semibold"
                 onClick={handleRequestRide}
@@ -1121,7 +1095,6 @@ function PassengerDashboardContent() {
               <p className="font-bold text-lg text-gray-800">{completedRide?.driver_name}</p>
               <p className="text-gray-600 font-medium">¿Cómo fue tu experiencia?</p>
             </div>
-
             <div className="flex justify-center space-x-2">
               {[1, 2, 3, 4, 5].map((star) => (
                 <button key={star} onClick={() => setRating(star)} className="p-2 hover:scale-110 transition-transform">
@@ -1133,7 +1106,6 @@ function PassengerDashboardContent() {
                 </button>
               ))}
             </div>
-
             <div className="space-y-3">
               <Label htmlFor="comment" className="text-base font-semibold">
                 Comentario (opcional)
@@ -1147,8 +1119,7 @@ function PassengerDashboardContent() {
                 className="border-gray-200 focus:border-blue-400"
               />
             </div>
-
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Button
                 className="bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 font-semibold"
                 onClick={handleRateDriver}

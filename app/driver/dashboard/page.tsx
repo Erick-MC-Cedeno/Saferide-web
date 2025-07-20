@@ -34,7 +34,6 @@ import { MapComponent } from "@/components/MapComponent"
 import { useAuth } from "@/lib/auth-context"
 import { ProtectedRoute } from "@/components/ProtectedRoute"
 import { RideTracker } from "@/components/RideTracker"
-import { RealtimeStatus } from "@/components/RealtimeStatus"
 import { useToast } from "@/hooks/use-toast"
 import { RideChat } from "@/components/RideChat"
 
@@ -77,7 +76,6 @@ function DriverDashboardContent() {
   useEffect(() => {
     const loadDriverStats = async () => {
       if (!supabase || !driverId) return
-
       try {
         // Get driver info (only rating, we'll calculate total_trips from rides)
         const { data: driverData } = await supabase.from("drivers").select("rating").eq("uid", driverId).single()
@@ -98,12 +96,6 @@ function DriverDashboardContent() {
           const todayRides = allCompletedRides.filter((ride) => new Date(ride.completed_at).toDateString() === today)
           const weeklyRides = allCompletedRides.filter((ride) => new Date(ride.completed_at) >= thisWeek)
           const monthlyRides = allCompletedRides.filter((ride) => new Date(ride.completed_at) >= thisMonth)
-
-          // Calculate total earnings from all completed rides
-          // const totalEarnings = allCompletedRides.reduce(
-          //   (sum, ride) => sum + (ride.actual_fare || ride.estimated_fare),
-          //   0,
-          // )
 
           setDriverStats({
             todayTrips: todayRides.length,
@@ -143,13 +135,11 @@ function DriverDashboardContent() {
           .eq("status", "completed")
           .order("completed_at", { ascending: false })
           .limit(5)
-
         setRecentTrips(recent || [])
       } catch (error) {
         console.error("Error loading driver stats:", error)
       }
     }
-
     loadDriverStats()
   }, [driverId])
 
@@ -158,7 +148,6 @@ function DriverDashboardContent() {
     const completedRide = rides.find(
       (ride) => ride.status === "completed" && ride.driver_id === driverId && !ride.driver_rating,
     )
-
     if (completedRide) {
       setCompletedRide(completedRide)
       setShowRatingDialog(true)
@@ -169,9 +158,7 @@ function DriverDashboardContent() {
     try {
       // Get driver name
       const { data: driverData } = await supabase.from("drivers").select("name").eq("uid", driverId).single()
-
       const result = await acceptRide(rideId, driverData?.name || "Conductor")
-
       if (!result.success) {
         toast({
           title: "Error",
@@ -180,12 +167,10 @@ function DriverDashboardContent() {
         })
         return
       }
-
       toast({
         title: "Viaje Aceptado",
         description: "Has aceptado el viaje exitosamente",
       })
-
       console.log("Ride accepted successfully")
     } catch (error) {
       console.error("Error accepting ride:", error)
@@ -199,7 +184,6 @@ function DriverDashboardContent() {
 
   const handleRejectRide = async (rideId: string) => {
     const result = await rejectRide(rideId, "No disponible en este momento")
-
     if (!result.success) {
       toast({
         title: "Error",
@@ -208,19 +192,16 @@ function DriverDashboardContent() {
       })
       return
     }
-
     toast({
       title: "Viaje Rechazado",
       description: "Has rechazado el viaje",
     })
-
     console.log("Ride rejected successfully")
   }
 
   const handleStatusUpdate = async (rideId: string, status: string) => {
     try {
       const result = await updateRideStatus(rideId, status)
-
       if (!result.success) {
         toast({
           title: "Error",
@@ -229,17 +210,14 @@ function DriverDashboardContent() {
         })
         return
       }
-
       const statusMessages = {
         "in-progress": "Viaje iniciado",
         completed: "Viaje completado",
       }
-
       toast({
         title: "Estado Actualizado",
         description: statusMessages[status] || `Estado cambiado a ${status}`,
       })
-
       console.log("Ride status updated:", rideId, status)
     } catch (error) {
       console.error("Error updating ride status:", error)
@@ -253,7 +231,6 @@ function DriverDashboardContent() {
 
   const handleRatePassenger = async () => {
     if (!completedRide || passengerRating === 0) return
-
     try {
       // 1. Guardar la calificación del conductor al pasajero
       const { error } = await supabase
@@ -278,7 +255,6 @@ function DriverDashboardContent() {
       if (passengerRides && passengerRides.length > 0) {
         const avgRating =
           passengerRides.reduce((sum, ride) => sum + (ride.driver_rating ?? 0), 0) / passengerRides.length
-
         await supabase.from("passengers").update({ rating: avgRating }).eq("uid", completedRide.passenger_id)
       }
 
@@ -287,12 +263,10 @@ function DriverDashboardContent() {
       setPassengerRating(0)
       setRatingComment("")
       setCompletedRide(null)
-
       toast({
         title: "Calificación Enviada",
         description: "Has calificado al pasajero exitosamente",
       })
-
       console.log("Passenger rated successfully")
     } catch (err) {
       console.error("Error submitting passenger rating:", err)
@@ -324,12 +298,10 @@ function DriverDashboardContent() {
         })
         return
       }
-
       toast({
         title: "Viaje Cancelado",
         description: "El viaje ha sido cancelado exitosamente",
       })
-
       refreshRides()
     } catch (error) {
       console.error("Error cancelling active ride:", error)
@@ -354,20 +326,21 @@ function DriverDashboardContent() {
       {/* Enhanced Header */}
       <header className="bg-white/80 backdrop-blur-md shadow-lg border-b border-blue-100">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-6">
+          <div className="flex flex-col sm:flex-row justify-between items-center py-6 space-y-4 sm:space-y-0">
             <div className="flex items-center space-x-3">
               <div className="p-2 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl shadow-lg">
                 <Shield className="h-8 w-8 text-white" />
               </div>
               <div>
-                
-                <Badge variant="secondary" className="ml-2 bg-blue-100 text-blue-700 border-blue-200">
+                <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                  SafeRide
+                </h1>
+                <Badge variant="secondary" className="mt-1 bg-blue-100 text-blue-700 border-blue-200">
                   Conductor
                 </Badge>
               </div>
             </div>
-            <div className="flex items-center space-x-6">
-              
+            <div className="flex items-center space-x-6 mt-4 sm:mt-0">
               <div className="flex items-center space-x-3 bg-white/60 rounded-full px-4 py-2 border border-blue-200">
                 <Activity className="h-4 w-4 text-blue-600" />
                 <span className="text-sm font-medium text-gray-700">Estado:</span>
@@ -377,15 +350,18 @@ function DriverDashboardContent() {
                 </span>
                 {isOnline && <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />}
               </div>
-              
             </div>
           </div>
         </div>
       </header>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <Tabs defaultValue="dashboard" className="space-y-8">
-          <TabsList className="grid w-full grid-cols-4 bg-white/60 backdrop-blur-sm border border-blue-200 rounded-xl p-1">
+        <Tabs defaultValue="dashboard" className="space-y-12">
+          {" "}
+          {/* Increased space-y from 8 to 12 */}
+          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 bg-white/60 backdrop-blur-sm border border-blue-200 rounded-xl p-1 gap-4">
+            {" "}
+            {/* Increased gap from 2 to 4 */}
             <TabsTrigger
               value="dashboard"
               className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-indigo-500 data-[state=active]:text-white rounded-lg font-medium"
@@ -415,7 +391,6 @@ function DriverDashboardContent() {
               Ganancias
             </TabsTrigger>
           </TabsList>
-
           <TabsContent value="dashboard" className="space-y-8">
             <div className="grid lg:grid-cols-3 gap-8">
               {/* Main Content */}
@@ -455,12 +430,11 @@ function DriverDashboardContent() {
                 {activeRide && (
                   <div className="space-y-6">
                     <RideTracker ride={activeRide} userType="driver" onStatusUpdate={handleStatusUpdate} />
-
                     {/* Enhanced Chat and Cancel Options */}
                     {activeRide.status === "in-progress" && (
                       <Card className="border-0 shadow-xl bg-gradient-to-r from-orange-50 to-amber-50">
                         <CardContent className="p-6">
-                          <div className="flex items-center justify-between mb-6">
+                          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 space-y-4 sm:space-y-0">
                             <div className="flex items-center space-x-3">
                               <div className="p-2 bg-orange-500 rounded-full">
                                 <Car className="h-5 w-5 text-white" />
@@ -474,7 +448,7 @@ function DriverDashboardContent() {
                               En camino
                             </Badge>
                           </div>
-                          <div className="grid grid-cols-2 gap-4">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <Button
                               variant="outline"
                               className="bg-white/80 border-orange-200 hover:bg-orange-100 text-orange-700 font-medium"
@@ -499,7 +473,7 @@ function DriverDashboardContent() {
                 )}
 
                 {/* Enhanced Today's Stats */}
-                <div className="grid md:grid-cols-4 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
                   <Card className="border-0 shadow-lg bg-gradient-to-br from-blue-500 to-blue-600 text-white overflow-hidden relative">
                     <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full -mr-10 -mt-10" />
                     <CardContent className="p-6 relative z-10">
@@ -512,7 +486,6 @@ function DriverDashboardContent() {
                       </div>
                     </CardContent>
                   </Card>
-
                   <Card className="border-0 shadow-lg bg-gradient-to-br from-green-500 to-green-600 text-white overflow-hidden relative">
                     <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full -mr-10 -mt-10" />
                     <CardContent className="p-6 relative z-10">
@@ -525,7 +498,6 @@ function DriverDashboardContent() {
                       </div>
                     </CardContent>
                   </Card>
-
                   <Card className="border-0 shadow-lg bg-gradient-to-br from-orange-500 to-orange-600 text-white overflow-hidden relative">
                     <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full -mr-10 -mt-10" />
                     <CardContent className="p-6 relative z-10">
@@ -538,7 +510,6 @@ function DriverDashboardContent() {
                       </div>
                     </CardContent>
                   </Card>
-
                   <Card className="border-0 shadow-lg bg-gradient-to-br from-yellow-500 to-yellow-600 text-white overflow-hidden relative">
                     <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full -mr-10 -mt-10" />
                     <CardContent className="p-6 relative z-10">
@@ -618,7 +589,6 @@ function DriverDashboardContent() {
               </div>
             </div>
           </TabsContent>
-
           <TabsContent value="requests" className="space-y-6">
             <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm">
               <CardHeader className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white">
@@ -634,7 +604,7 @@ function DriverDashboardContent() {
                       <Card key={ride.id} className="border-0 shadow-lg bg-gradient-to-r from-blue-50 to-indigo-50">
                         <CardContent className="p-6">
                           <div className="space-y-6">
-                            <div className="flex items-center justify-between">
+                            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between space-y-4 sm:space-y-0">
                               <div className="flex items-center space-x-4">
                                 <Avatar className="h-16 w-16 ring-2 ring-blue-200">
                                   <AvatarImage src="/placeholder.svg?height=64&width=64" />
@@ -654,7 +624,6 @@ function DriverDashboardContent() {
                                 ${ride.estimated_fare}
                               </Badge>
                             </div>
-
                             <div className="space-y-3 bg-white/60 p-4 rounded-lg">
                               <div className="flex items-center space-x-3">
                                 <div className="p-1 bg-green-500 rounded-full">
@@ -675,8 +644,7 @@ function DriverDashboardContent() {
                                 <span className="text-sm font-medium">{ride.estimated_duration} min</span>
                               </div>
                             </div>
-
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                               <Button
                                 className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 font-semibold py-3"
                                 onClick={() => handleAcceptRide(ride.id)}
@@ -714,7 +682,6 @@ function DriverDashboardContent() {
               </CardContent>
             </Card>
           </TabsContent>
-
           <TabsContent value="trips" className="space-y-6">
             <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm">
               <CardHeader className="bg-gradient-to-r from-purple-600 to-pink-600 text-white">
@@ -731,8 +698,8 @@ function DriverDashboardContent() {
                         key={trip.id}
                         className="border-0 bg-gradient-to-r from-gray-50 to-slate-50 p-6 rounded-xl shadow-md"
                       >
-                        <div className="flex justify-between items-start">
-                          <div className="flex-1">
+                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
+                          <div className="flex-1 w-full">
                             <div className="flex items-center space-x-3 mb-3">
                               <Avatar className="h-12 w-12">
                                 <AvatarFallback className="bg-gradient-to-r from-purple-500 to-pink-500 text-white font-semibold">
@@ -764,7 +731,7 @@ function DriverDashboardContent() {
                               ))}
                             </div>
                           </div>
-                          <Badge className="bg-gradient-to-r from-green-500 to-green-600 text-white px-4 py-2 text-lg font-bold">
+                          <Badge className="bg-gradient-to-r from-green-500 to-green-600 text-white px-4 py-2 text-lg font-bold mt-4 sm:mt-0">
                             ${trip.actual_fare || trip.estimated_fare}
                           </Badge>
                         </div>
@@ -783,9 +750,8 @@ function DriverDashboardContent() {
               </CardContent>
             </Card>
           </TabsContent>
-
           <TabsContent value="earnings" className="space-y-8">
-            <div className="grid md:grid-cols-3 gap-8">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               <Card className="border-0 shadow-xl bg-gradient-to-br from-green-500 to-emerald-600 text-white overflow-hidden relative">
                 <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16" />
                 <CardHeader className="relative z-10">
@@ -799,7 +765,6 @@ function DriverDashboardContent() {
                   <p className="text-green-100 font-medium">{driverStats.todayTrips} viajes completados</p>
                 </CardContent>
               </Card>
-
               <Card className="border-0 shadow-xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white overflow-hidden relative">
                 <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16" />
                 <CardHeader className="relative z-10">
@@ -813,7 +778,6 @@ function DriverDashboardContent() {
                   <p className="text-blue-100 font-medium">Últimos 7 días</p>
                 </CardContent>
               </Card>
-
               <Card className="border-0 shadow-xl bg-gradient-to-br from-purple-500 to-pink-600 text-white overflow-hidden relative">
                 <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16" />
                 <CardHeader className="relative z-10">
@@ -828,13 +792,12 @@ function DriverDashboardContent() {
                 </CardContent>
               </Card>
             </div>
-
             <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm">
               <CardHeader className="bg-gradient-to-r from-slate-600 to-slate-700 text-white">
                 <CardTitle>Estadísticas Generales</CardTitle>
               </CardHeader>
               <CardContent className="p-8">
-                <div className="grid md:grid-cols-2 gap-8">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                   <div className="space-y-6">
                     <div className="flex justify-between items-center p-4 bg-slate-50 rounded-lg">
                       <span className="text-gray-700 font-medium">Total de viajes:</span>
@@ -905,7 +868,7 @@ function DriverDashboardContent() {
       <Dialog open={showRatingDialog} onOpenChange={setShowRatingDialog}>
         <DialogContent className="sm:max-w-md border-0 shadow-2xl">
           <DialogHeader>
-            <DialogTitle className="text-xl font-bold">Califica al pasajero</DialogTitle>
+            <DialogTitle className="text-xl font-bold">⭐ Califica al pasajero</DialogTitle>
             <DialogDescription className="text-base">
               Ayuda a otros conductores compartiendo tu experiencia con este pasajero
             </DialogDescription>
@@ -920,7 +883,6 @@ function DriverDashboardContent() {
               <p className="font-bold text-lg text-gray-800">{completedRide?.passenger_name}</p>
               <p className="text-gray-600">¿Cómo fue tu experiencia con este pasajero?</p>
             </div>
-
             <div className="flex justify-center space-x-2">
               {[1, 2, 3, 4, 5].map((star) => (
                 <button
@@ -934,7 +896,6 @@ function DriverDashboardContent() {
                 </button>
               ))}
             </div>
-
             <div className="space-y-3">
               <Label htmlFor="rating-comment" className="text-base font-medium">
                 Comentario (opcional)
@@ -948,8 +909,7 @@ function DriverDashboardContent() {
                 className="border-gray-200 focus:border-blue-400"
               />
             </div>
-
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Button
                 className="bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 font-semibold"
                 onClick={handleRatePassenger}

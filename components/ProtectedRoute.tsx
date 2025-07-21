@@ -34,15 +34,14 @@ export function ProtectedRoute({ children, requiredUserType }: ProtectedRoutePro
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center">
-        <Card className="w-full max-w-md">
-          <CardContent className="flex flex-col items-center justify-center p-8">
-            <Shield className="h-12 w-12 text-blue-600 mb-4" />
-            <Loader2 className="h-8 w-8 animate-spin text-blue-600 mb-4" />
-            <h2 className="text-xl font-semibold text-gray-900 mb-2">SafeRide</h2>
-            <p className="text-gray-600 text-center">Verificando autenticación...</p>
-          </CardContent>
-        </Card>
+      <div className="min-h-screen flex items-center justify-center -mt-32">
+        <div className="text-center">
+          <div className="flex items-center justify-center space-x-3 mb-6">
+            <Loader2 className="h-10 w-10 animate-spin text-blue-600" />
+          </div>
+          <h2 className="text-3xl font-bold text-blue-600 mb-3">SafeRide</h2>
+          <p className="text-lg text-gray-600 animate-pulse">Verificando autenticación...</p>
+        </div>
       </div>
     )
   }

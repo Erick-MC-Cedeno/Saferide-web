@@ -356,12 +356,12 @@ function DriverDashboardContent() {
       </header>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <Tabs defaultValue="dashboard" className="space-y-12">
+        <Tabs defaultValue="dashboard" className="space-y-16">
           {" "}
-          {/* Increased space-y from 8 to 12 */}
-          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 bg-white/60 backdrop-blur-sm border border-blue-200 rounded-xl p-1 gap-4">
+          {/* Increased space-y from 12 to 16 */}
+          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 bg-white/60 backdrop-blur-sm border border-blue-200 rounded-xl p-1 gap-6">
             {" "}
-            {/* Increased gap from 2 to 4 */}
+            {/* Increased gap from 4 to 6 */}
             <TabsTrigger
               value="dashboard"
               className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-indigo-500 data-[state=active]:text-white rounded-lg font-medium"

@@ -67,25 +67,15 @@ export default function LoginPage() {
   // Show loading state while auth is initializing
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-cyan-50 flex items-center justify-center p-4">
-        <Card className="w-full max-w-md shadow-2xl border-0 bg-white/80 backdrop-blur-sm">
-          <CardContent className="flex flex-col items-center justify-center p-12">
-            <div className="relative mb-6">
-              <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl blur opacity-75 animate-pulse"></div>
-              <div className="relative bg-gradient-to-r from-blue-600 to-purple-600 p-4 rounded-2xl">
-                <Shield className="h-12 w-12 text-white" />
-              </div>
-            </div>
-            <div className="flex items-center space-x-2 mb-4">
-              <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
-              <Sparkles className="h-4 w-4 text-purple-500 animate-pulse" />
-            </div>
-            <h2 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-2">
-              SafeRide
-            </h2>
-            <p className="text-gray-600 text-center animate-pulse">Inicializando servicios...</p>
-          </CardContent>
-        </Card>
+      <div className="min-h-screen flex items-center justify-center -mt-32">
+        <div className="text-center">
+          <div className="flex items-center justify-center space-x-3 mb-6">
+            <Loader2 className="h-10 w-10 animate-spin text-blue-600" />
+            <Sparkles className="h-8 w-8 text-purple-500 animate-pulse" />
+          </div>
+          <h2 className="text-3xl font-bold text-blue-600 mb-3">SafeRide</h2>
+          <p className="text-lg text-gray-600 animate-pulse">Inicializando servicios...</p>
+        </div>
       </div>
     )
   }

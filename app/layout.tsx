@@ -18,7 +18,7 @@ export const metadata: Metadata = {
     description: "La plataforma de transporte más segura. Viajes seguros, conductores verificados, disponible 24/7.",
     type: "website",
   },
-    generator: 'saferide'
+  generator: "saferide",
 }
 
 export default function RootLayout({

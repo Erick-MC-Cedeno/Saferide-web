@@ -74,6 +74,7 @@ function PassengerDashboardContent() {
     coords: { lat: 0, lng: 0 },
     icon: "📍",
   })
+
   const { rides, loading, cancelRide, refreshRides } = useRealTimeRides(undefined, user?.uid)
   const currentRide = rides.find((ride) => ["pending", "accepted", "in-progress"].includes(ride.status))
 
@@ -124,24 +125,69 @@ function PassengerDashboardContent() {
         console.error("Error loading passenger data:", error)
       }
     }
+
     loadPassengerData()
   }, [user?.uid])
 
-  // Load available drivers when coordinates are set
+  // Función driverData integrada
+  const driverData = async () => {
+    console.log("[PassengerDashboard] Ejecutando driverData()...")
+
+    try {
+      const response = await fetch("/api/drivers/all")
+      const result = await response.json()
+
+      if (!result.success) {
+        console.error("Error en driverData:", result.error)
+        throw new Error(result.error || "Error al obtener conductores")
+      }
+
+      console.log(`[PassengerDashboard] driverData completado: ${result.count} conductores obtenidos`)
+      console.log(`[PassengerDashboard] Estadísticas:`, result.stats)
+
+      return result
+    } catch (error) {
+      console.error("Error en driverData:", error)
+      throw error
+    }
+  }
+
+  // Load available drivers when coordinates are set - MODIFICADO para usar driverData
   useEffect(() => {
     const loadAvailableDrivers = async () => {
-      if (!supabase || !pickupCoords) return
+      if (!pickupCoords || !destinationCoords) return
+
+      console.log("[PassengerDashboard] Cargando conductores disponibles...")
+
       try {
-        const { data: drivers } = await supabase
-          .from("drivers")
-          .select("uid, name, rating, vehicle_model, vehicle_plate, is_online")
-          .eq("is_online", true)
-          .eq("is_verified", true)
-        setAvailableDrivers(drivers || [])
+        // Usar la función driverData
+        const driverResult = await driverData()
+
+        // Filtrar conductores verificados o en línea
+        const verifiedDrivers = driverResult.data.filter((driver) => driver.is_verified)
+        const onlineDrivers = driverResult.data.filter((driver) => driver.is_online)
+        const availableDriversToShow = verifiedDrivers.length > 0 ? verifiedDrivers : onlineDrivers
+
+        setAvailableDrivers(availableDriversToShow)
+
+        if (availableDriversToShow.length === 0) {
+          toast({
+            title: "Sin conductores",
+            description: "No hay conductores disponibles en este momento",
+            variant: "destructive",
+          })
+        }
       } catch (error) {
-        console.error("Error loading drivers:", error)
+        console.error("Error de red al cargar conductores:", error)
+        toast({
+          title: "Error de conexión",
+          description: "No se pudo conectar con el servidor",
+          variant: "destructive",
+        })
+        setAvailableDrivers([])
       }
     }
+
     if (pickupCoords && destinationCoords) {
       loadAvailableDrivers()
     }
@@ -158,15 +204,10 @@ function PassengerDashboardContent() {
     }
   }, [rides, user?.uid])
 
-  const handleRequestRide = async () => {
-    if (!pickup || !destination || !pickupCoords || !destinationCoords || !user || !userData) return
+  // Función solicitarViaje
+  const solicitarViaje = async () => {
+    console.log("[PassengerDashboard] Ejecutando solicitarViaje...")
 
-    if (availableDrivers.length > 0 && !selectedDriver) {
-      setShowDriverSelection(true)
-      return
-    }
-
-    setRideStatus("searching")
     try {
       const rideData = {
         passenger_id: user.uid,
@@ -180,19 +221,22 @@ function PassengerDashboardContent() {
         estimated_duration: calculateEstimatedDuration(pickupCoords, destinationCoords),
       }
 
-      // If specific driver selected, assign directly
+      // Si hay conductor específico seleccionado, asignar directamente
       if (selectedDriver) {
         const driver = availableDrivers.find((d) => d.uid === selectedDriver)
-        rideData.driver_id = selectedDriver
-        rideData.driver_name = driver?.name
-        rideData.status = "accepted"
-        rideData.accepted_at = new Date().toISOString()
+        if (driver) {
+          rideData.driver_id = selectedDriver
+          rideData.driver_name = driver.name
+          rideData.status = "accepted"
+          rideData.accepted_at = new Date().toISOString()
+          console.log(`[PassengerDashboard] Conductor asignado: ${driver.name}`)
+        }
       }
 
       const { data, error } = await supabase.from("rides").insert(rideData).select()
 
       if (error) {
-        console.error("Error creating ride:", error)
+        console.error("Error creando viaje:", error)
         setRideStatus("idle")
         toast({
           title: "Error",
@@ -202,22 +246,91 @@ function PassengerDashboardContent() {
         return
       }
 
-      console.log("Ride created:", data)
+      console.log("Viaje creado exitosamente:", data)
       setShowDriverSelection(false)
       setSelectedDriver("")
       setRideStatus("pending")
+
       toast({
         title: "Viaje solicitado",
-        description: "Tu viaje ha sido solicitado. Esperando confirmación del conductor.",
+        description: selectedDriver
+          ? "Tu viaje ha sido asignado al conductor seleccionado"
+          : "Tu viaje ha sido solicitado. Esperando confirmación del conductor.",
       })
-      // Refresh rides to get the latest data
+
       refreshRides()
     } catch (error) {
-      console.error("Error requesting ride:", error)
+      console.error("Error en solicitarViaje:", error)
       setRideStatus("idle")
       toast({
         title: "Error",
         description: "Ocurrió un error al solicitar el viaje.",
+        variant: "destructive",
+      })
+    }
+  }
+
+  // handleRequestRide MODIFICADO según el flujo especificado
+  const handleRequestRide = async () => {
+    if (!pickup || !destination || !pickupCoords || !destinationCoords || !user || !userData) return
+
+    console.log("[PassengerDashboard] Iniciando solicitud de viaje...")
+
+    // Paso 1: Obtener datos de conductores usando driverData
+    setRideStatus("searching")
+
+    try {
+      console.log("[PassengerDashboard] Llamando a await driverData()...")
+      const driverResult = await driverData()
+
+      if (!driverResult.success) {
+        console.error("Error en driverData:", driverResult.error)
+        setRideStatus("idle")
+        toast({
+          title: "Error",
+          description: "No se pudieron obtener los conductores disponibles",
+          variant: "destructive",
+        })
+        return
+      }
+
+      console.log(`[PassengerDashboard] driverData completado: ${driverResult.count} conductores`)
+
+      // Filtrar conductores verificados
+      const verifiedDrivers = driverResult.data.filter((driver) => driver.is_verified)
+      const onlineDrivers = driverResult.data.filter((driver) => driver.is_online)
+
+      // Si no hay conductores verificados, usar conductores en línea
+      const availableDriversToShow = verifiedDrivers.length > 0 ? verifiedDrivers : onlineDrivers
+
+      setAvailableDrivers(availableDriversToShow)
+
+      if (availableDriversToShow.length === 0) {
+        setRideStatus("idle")
+        toast({
+          title: "Sin conductores",
+          description: "No hay conductores disponibles en este momento",
+          variant: "destructive",
+        })
+        return
+      }
+
+      // Paso 2: Mostrar diálogo de selección si no hay conductor preseleccionado
+      if (!selectedDriver) {
+        console.log("[PassengerDashboard] Mostrando diálogo de selección de conductor")
+        setShowDriverSelection(true)
+        setRideStatus("idle") // Reset status while user selects
+        return
+      }
+
+      // Paso 3: Proceder con la solicitud de viaje
+      await solicitarViaje()
+    } catch (error) {
+      console.error("Error en handleRequestRide:", error)
+      setRideStatus("idle")
+      toast({
+        title: "Error",
+        description: "Ocurrió un error al procesar la solicitud",
         variant: "destructive",
       })
     }
@@ -231,7 +344,6 @@ function PassengerDashboardContent() {
         (ride?.status === "in-progress" ? "Cancelado por el pasajero durante el viaje" : "Cancelado por el pasajero")
 
       const result = await cancelRide(rideId, cancellationReason)
-
       if (!result.success) {
         console.error("Error cancelling ride:", result.error)
         toast({
@@ -252,10 +364,12 @@ function PassengerDashboardContent() {
       setSelectedDriver("")
       setShowDriverSelection(false)
       setShowChatDialog(false) // Close chat if open
+
       toast({
         title: "Viaje cancelado",
         description: "Tu viaje ha sido cancelado exitosamente.",
       })
+
       // Refresh rides to get updated data
       refreshRides()
     } catch (error) {
@@ -302,6 +416,7 @@ function PassengerDashboardContent() {
       setRating(0)
       setComment("")
       setCompletedRide(null)
+
       toast({
         title: "Calificación enviada",
         description: "Gracias por calificar tu viaje.",
@@ -418,6 +533,7 @@ function PassengerDashboardContent() {
         description: `${newDestination.name} ha sido agregado a tus destinos rápidos`,
       })
     }
+
     setQuickDestinations(updatedDestinations)
     setShowQuickDestDialog(false)
     setEditingDestIndex(null)
@@ -502,7 +618,6 @@ function PassengerDashboardContent() {
                 />
               </CardContent>
             </Card>
-
             {/* Enhanced Current Ride Status */}
             {currentRide && (
               <div className="space-y-6">
@@ -581,7 +696,6 @@ function PassengerDashboardContent() {
                     </div>
                   </CardContent>
                 </Card>
-
                 {/* Enhanced Chat and Cancel Options for In-Progress Rides */}
                 {currentRide.status === "in-progress" && (
                   <Card className="border-0 shadow-xl bg-gradient-to-r from-orange-50 to-amber-50 border-l-4 border-l-orange-500">
@@ -625,7 +739,6 @@ function PassengerDashboardContent() {
                 )}
               </div>
             )}
-
             {/* Enhanced Recent Trips - Made Larger */}
             <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm">
               <CardHeader className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white">
@@ -671,7 +784,7 @@ function PassengerDashboardContent() {
                                 {[...Array(5)].map((_, i) => (
                                   <Star
                                     key={i}
-                                    className={`h-4 w-4 ${
+                                    className={`${
                                       i < (trip.passenger_rating || 0)
                                         ? "fill-yellow-400 text-yellow-400"
                                         : "text-gray-300"
@@ -706,7 +819,6 @@ function PassengerDashboardContent() {
               </CardContent>
             </Card>
           </div>
-
           {/* Enhanced Sidebar */}
           <div className="space-y-6">
             {/* Enhanced Request Ride Form */}
@@ -750,7 +862,6 @@ function PassengerDashboardContent() {
                       }}
                     />
                   </div>
-
                   {/* Enhanced Trip Summary */}
                   {pickupCoords && destinationCoords && (
                     <div className="p-6 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border-2 border-blue-200">
@@ -808,7 +919,6 @@ function PassengerDashboardContent() {
                 </CardContent>
               </Card>
             )}
-
             {/* Enhanced Quick Destinations with Edit Functionality */}
             {canRequestNewRide && (
               <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm">
@@ -859,7 +969,6 @@ function PassengerDashboardContent() {
                 </CardContent>
               </Card>
             )}
-
             {/* Enhanced User Stats */}
             <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm">
               <CardHeader className="bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-t-lg">
@@ -897,7 +1006,6 @@ function PassengerDashboardContent() {
           </div>
         </div>
       </div>
-
       {/* Quick Destination Edit/Add Dialog */}
       <Dialog open={showQuickDestDialog} onOpenChange={setShowQuickDestDialog}>
         <DialogContent className="sm:max-w-md border-0 shadow-2xl">
@@ -990,7 +1098,6 @@ function PassengerDashboardContent() {
           </div>
         </DialogContent>
       </Dialog>
-
       {/* Enhanced Chat Dialog */}
       <Dialog open={showChatDialog} onOpenChange={setShowChatDialog}>
         <DialogContent className="sm:max-w-lg border-0 shadow-2xl">
@@ -1012,13 +1119,17 @@ function PassengerDashboardContent() {
           )}
         </DialogContent>
       </Dialog>
-
       {/* Enhanced Driver Selection Dialog */}
       <Dialog open={showDriverSelection} onOpenChange={setShowDriverSelection}>
         <DialogContent className="sm:max-w-md border-0 shadow-2xl">
           <DialogHeader>
             <DialogTitle className="text-xl font-bold">Seleccionar Conductor</DialogTitle>
-            <DialogDescription className="text-base">Conductores disponibles en tu área</DialogDescription>
+            <DialogDescription className="text-base">
+              {availableDrivers.length} conductores disponibles
+              {availableDrivers.some((d) => d.is_verified)
+                ? `(${availableDrivers.filter((d) => d.is_verified).length} verificados)`
+                : "(conductores en línea)"}
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-6">
             <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
@@ -1040,7 +1151,18 @@ function PassengerDashboardContent() {
                         </AvatarFallback>
                       </Avatar>
                       <div>
-                        <p className="font-semibold text-gray-800">{driver.name}</p>
+                        <div className="flex items-center space-x-2">
+                          <p className="font-semibold text-gray-800">{driver.name}</p>
+                          {driver.is_verified ? (
+                            <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
+                              ✓ Verificado
+                            </span>
+                          ) : (
+                            <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full">
+                              En línea
+                            </span>
+                          )}
+                        </div>
                         <div className="flex items-center space-x-2 text-xs text-gray-600">
                           <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
                           <span>{driver.rating?.toFixed(1) || "N/A"}</span>
@@ -1056,7 +1178,7 @@ function PassengerDashboardContent() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <Button
                 className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 font-semibold"
-                onClick={handleRequestRide}
+                onClick={solicitarViaje}
                 disabled={!selectedDriver}
               >
                 ✅ Confirmar Selección
@@ -1066,7 +1188,7 @@ function PassengerDashboardContent() {
                 className="font-semibold bg-white/60 hover:bg-blue-50"
                 onClick={() => {
                   setSelectedDriver("")
-                  handleRequestRide()
+                  solicitarViaje()
                 }}
               >
                 🎲 Cualquier Conductor
@@ -1075,7 +1197,6 @@ function PassengerDashboardContent() {
           </div>
         </DialogContent>
       </Dialog>
-
       {/* Enhanced Rating Dialog */}
       <Dialog open={showRatingDialog} onOpenChange={setShowRatingDialog}>
         <DialogContent className="sm:max-w-md border-0 shadow-2xl">

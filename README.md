@@ -98,8 +98,6 @@ This project is licensed under the [MIT](https://opensource.org/licenses/MIT). (
 
 ![Flowchart](./utils/screenshots/DIAGRAMA%20(1).png) 
 
-
-## Screenshots
 # inicio-1
 ![inicio-1](./utils/screenshots/root.png)  
 

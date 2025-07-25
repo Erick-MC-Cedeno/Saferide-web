@@ -109,6 +109,12 @@ This project is licensed under the [MIT](https://opensource.org/licenses/MIT). (
 # root-3
 ![root3](./utils/screenshots/root3.png)  
 
+# root-4
+![root4](./utils/screenshots/login.png)
+
+# root-5
+![root5](./utils/screenshots/register.png)
+
 # Dashboard
 ![Dashboard](./utils/screenshots/dashboard.png)  
 

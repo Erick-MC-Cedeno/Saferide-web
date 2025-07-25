@@ -100,20 +100,20 @@ This project is licensed under the [MIT](https://opensource.org/licenses/MIT). (
 
 
 ## Screenshots
-# root-1
-![root1](./utils/screenshots/root.png)  
+# inicio-1
+![inicio-1](./utils/screenshots/root.png)  
 
-# root-2 
-![root2](/utils//screenshots/root2.png)  
+# inicio-2
+![inicio-2](/utils//screenshots/root2.png)  
 
-# root-3
-![root3](./utils/screenshots/root3.png)  
+# inicio-3
+![inicio-3](./utils/screenshots/root3.png)  
 
-# root-4
-![root4](./utils/screenshots/login.png)
+# login
+![login](./utils/screenshots/login.png)
 
-# root-5
-![root5](./utils/screenshots/register.png)
+# register
+![register](./utils/screenshots/register.png)
 
 # Dashboard
 ![Dashboard](./utils/screenshots/dashboard.png)  

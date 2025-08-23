@@ -1,5 +1,3 @@
-"use client"
-
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -58,6 +56,8 @@ function PassengerDashboardContent() {
     totalSpent: 0,
     averageRating: 0,
   })
+
+
   const [showChatDialog, setShowChatDialog] = useState(false)
   // Quick destinations state
   const [showQuickDestDialog, setShowQuickDestDialog] = useState(false)
@@ -74,10 +74,10 @@ function PassengerDashboardContent() {
     coords: { lat: 0, lng: 0 },
     icon: "📍",
   })
-
   const { rides, loading, cancelRide, refreshRides } = useRealTimeRides(undefined, user?.uid)
   const currentRide = rides.find((ride) => ["pending", "accepted", "in-progress"].includes(ride.status))
 
+  
   // Reset ride status when no current ride
   useEffect(() => {
     if (!currentRide && rideStatus !== "idle") {
@@ -487,7 +487,7 @@ function PassengerDashboardContent() {
   }
 
 
-  
+
   // Quick destinations functions
   const handleQuickDestinationClick = (dest, index) => {
     if (editingDestIndex === index) {

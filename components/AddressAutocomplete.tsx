@@ -80,7 +80,6 @@ export function AddressAutocomplete({ placeholder, onAddressSelect, value, onCha
       autocompleteService.current.getPlacePredictions(
         {
           input: query,
-          componentRestrictions: { country: "ni" },      // Cambiado a NI para Nicaragua
           types: ["establishment", "geocode"],
         },
         (predictions: any, status: any) => {
@@ -149,7 +148,7 @@ export function AddressAutocomplete({ placeholder, onAddressSelect, value, onCha
       const response = await fetch(
         `https://api.geoapify.com/v1/geocode/autocomplete?text=${encodeURIComponent(
           query,
-        )}&apiKey=${apiKey}&limit=5&filter=countrycode:ni`,   // Cambiado a NI
+        )}&apiKey=${apiKey}&limit=5`,
       )
 
       if (!response.ok) throw new Error(`API error: ${response.status}`)

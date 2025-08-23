@@ -85,6 +85,8 @@ function PassengerDashboardContent() {
     }
   }, [currentRide, rideStatus])
 
+
+
   // Load passenger statistics and recent trips
   useEffect(() => {
     const loadPassengerData = async () => {
@@ -125,9 +127,10 @@ function PassengerDashboardContent() {
         console.error("Error loading passenger data:", error)
       }
     }
-
     loadPassengerData()
   }, [user?.uid])
+
+
 
   // Función driverData integrada
   const driverData = async () => {
@@ -151,6 +154,7 @@ function PassengerDashboardContent() {
       throw error
     }
   }
+
 
   // Load available drivers when coordinates are set - MODIFICADO para usar driverData
   useEffect(() => {
@@ -193,6 +197,8 @@ function PassengerDashboardContent() {
     }
   }, [pickupCoords, destinationCoords])
 
+
+
   // Check for completed rides to show rating dialog
   useEffect(() => {
     const completedRide = rides.find(
@@ -203,6 +209,8 @@ function PassengerDashboardContent() {
       setShowRatingDialog(true)
     }
   }, [rides, user?.uid])
+
+
 
   // Función solicitarViaje
   const solicitarViaje = async () => {
@@ -270,6 +278,8 @@ function PassengerDashboardContent() {
     }
   }
 
+
+
   // handleRequestRide MODIFICADO según el flujo especificado
   const handleRequestRide = async () => {
     if (!pickup || !destination || !pickupCoords || !destinationCoords || !user || !userData) return
@@ -336,6 +346,8 @@ function PassengerDashboardContent() {
     }
   }
 
+
+
   const handleCancelRide = async (rideId: string, reason?: string) => {
     try {
       const ride = rides.find((r) => r.id === rideId)
@@ -382,6 +394,8 @@ function PassengerDashboardContent() {
     }
   }
 
+
+
   const handleRateDriver = async () => {
     if (!completedRide || rating === 0) return
 
@@ -411,6 +425,8 @@ function PassengerDashboardContent() {
         await supabase.from("drivers").update({ rating: avgRating }).eq("uid", completedRide.driver_id)
       }
 
+
+
       // 3. Cerrar diálogo y resetear estado
       setShowRatingDialog(false)
       setRating(0)
@@ -430,6 +446,8 @@ function PassengerDashboardContent() {
       })
     }
   }
+
+
 
   const resetRideForm = () => {
     setPickup("")
@@ -468,6 +486,8 @@ function PassengerDashboardContent() {
     return R * c
   }
 
+
+  
   // Quick destinations functions
   const handleQuickDestinationClick = (dest, index) => {
     if (editingDestIndex === index) {
@@ -527,11 +547,15 @@ function PassengerDashboardContent() {
     }
   }
 
+
+
   const handleEditDestination = (index) => {
     setEditingDestIndex(index)
     setNewDestination(quickDestinations[index])
     setShowQuickDestDialog(true)
   }
+
+
 
   const handleAddNewDestination = () => {
     setEditingDestIndex(null)
@@ -544,6 +568,8 @@ function PassengerDashboardContent() {
     setShowQuickDestDialog(true)
   }
 
+
+
   const handleSaveDestination = () => {
     if (!newDestination.name || !newDestination.address) {
       toast({
@@ -553,6 +579,8 @@ function PassengerDashboardContent() {
       })
       return
     }
+
+
 
     const updatedDestinations = [...quickDestinations]
     if (editingDestIndex !== null) {
@@ -583,6 +611,8 @@ function PassengerDashboardContent() {
     setShowQuickDestDialog(false)
     setEditingDestIndex(null)
   }
+
+
 
   const handleDeleteDestination = (index) => {
     const updatedDestinations = quickDestinations.filter((_, i) => i !== index)

@@ -143,6 +143,9 @@ function DriverDashboardContent() {
     loadDriverStats()
   }, [driverId])
 
+
+
+
   // Check for completed rides to show rating dialog
   useEffect(() => {
     const completedRide = rides.find(
@@ -154,6 +157,8 @@ function DriverDashboardContent() {
     }
   }, [rides, driverId])
 
+
+  // Accept a ride
   const handleAcceptRide = async (rideId: string) => {
     try {
       // Get driver name
@@ -182,6 +187,8 @@ function DriverDashboardContent() {
     }
   }
 
+
+  // Reject a ride
   const handleRejectRide = async (rideId: string) => {
     const result = await rejectRide(rideId, "No disponible en este momento")
     if (!result.success) {
@@ -199,6 +206,9 @@ function DriverDashboardContent() {
     console.log("Ride rejected successfully")
   }
 
+
+
+  // Update ride status
   const handleStatusUpdate = async (rideId: string, status: string) => {
     try {
       const result = await updateRideStatus(rideId, status)
@@ -229,6 +239,8 @@ function DriverDashboardContent() {
     }
   }
 
+
+  // Submit passenger rating
   const handleRatePassenger = async () => {
     if (!completedRide || passengerRating === 0) return
     try {
@@ -278,6 +290,9 @@ function DriverDashboardContent() {
     }
   }
 
+
+
+  // Cancel active ride
   const handleCancelActiveRide = async (rideId: string) => {
     try {
       const { error } = await supabase
@@ -320,6 +335,8 @@ function DriverDashboardContent() {
     lng: ride.pickup_coordinates[0],
     name: ride.passenger_name,
   }))
+
+
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">

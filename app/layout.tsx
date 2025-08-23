@@ -28,7 +28,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="es">
-      <body className={inter.className}>
+  <body suppressHydrationWarning className={inter.className}>
         <ErrorBoundary>
           <AuthProvider>
             <Navbar />

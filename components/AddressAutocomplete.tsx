@@ -29,8 +29,9 @@ export function AddressAutocomplete({ placeholder, onAddressSelect, value, onCha
   const [showSuggestions, setShowSuggestions] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const debounceRef = useRef<NodeJS.Timeout>()
-  const autocompleteService = useRef<google.maps.places.AutocompleteService | null>(null)
-  const placesService = useRef<google.maps.places.PlacesService | null>(null)
+  const lastSelectedRef = useRef<string | null>(null)
+  const autocompleteService = useRef<any | null>(null)
+  const placesService = useRef<any | null>(null)
 
   // Initialize Google Places services
   useEffect(() => {
@@ -45,6 +46,19 @@ export function AddressAutocomplete({ placeholder, onAddressSelect, value, onCha
     if (value.length < 3) {
       setSuggestions([])
       setShowSuggestions(false)
+      return
+    }
+
+    // If the current value was just set by clicking a suggestion,
+    // avoid triggering a new search immediately.
+    if (lastSelectedRef.current && lastSelectedRef.current === value) {
+      // Clear suggestions and hide list — selection already handled by parent
+      setSuggestions([])
+      setShowSuggestions(false)
+      // clear the marker after a short delay to allow future searches
+      setTimeout(() => {
+        lastSelectedRef.current = null
+      }, 500)
       return
     }
 
@@ -169,7 +183,9 @@ export function AddressAutocomplete({ placeholder, onAddressSelect, value, onCha
   }
 
   const handleSuggestionClick = (suggestion: Suggestion) => {
-    onChange(suggestion.formatted)
+  // mark the value as just-selected to avoid immediate re-search
+  lastSelectedRef.current = suggestion.formatted
+  onChange(suggestion.formatted)
     onAddressSelect(suggestion.formatted, { lat: suggestion.lat, lng: suggestion.lon })
     setShowSuggestions(false)
   }

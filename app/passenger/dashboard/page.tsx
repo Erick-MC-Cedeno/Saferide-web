@@ -482,6 +482,51 @@ function PassengerDashboardContent() {
     }
   }
 
+  const handleUseMyLocation = async () => {
+    if (typeof window === "undefined" || !navigator.geolocation) {
+      toast({ title: "No disponible", description: "Geolocalización no soportada en este dispositivo", variant: "destructive" })
+      return
+    }
+
+    toast({ title: "Obteniendo ubicación", description: "Esperando permiso del navegador..." })
+
+    const getPosition = () =>
+      new Promise<GeolocationPosition>((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: true, timeout: 10000 })
+      })
+
+    try {
+      const pos = await getPosition()
+      const lat = pos.coords.latitude
+      const lon = pos.coords.longitude
+
+      const apiKey = process.env.NEXT_PUBLIC_GEOAPIFY_API_KEY
+      let address = "Ubicación actual"
+      if (apiKey) {
+        try {
+          const res = await fetch(
+            `https://api.geoapify.com/v1/geocode/reverse?lat=${lat}&lon=${lon}&apiKey=${apiKey}`,
+          )
+          if (res.ok) {
+            const data = await res.json()
+            if (data?.features && data.features.length > 0) {
+              address = data.features[0].properties.formatted || address
+            }
+          }
+        } catch (err) {
+          console.warn("Geoapify reverse geocode failed:", err)
+        }
+      }
+
+      setPickup(address)
+      setPickupCoords({ lat, lng: lon })
+      toast({ title: "Ubicación usada", description: address })
+    } catch (err: any) {
+      console.error("Error obteniendo ubicación:", err)
+      toast({ title: "Error", description: "No fue posible obtener tu ubicación", variant: "destructive" })
+    }
+  }
+
   const handleEditDestination = (index) => {
     setEditingDestIndex(index)
     setNewDestination(quickDestinations[index])
@@ -816,9 +861,20 @@ function PassengerDashboardContent() {
                 </CardHeader>
                 <CardContent className="p-6 space-y-6">
                   <div className="space-y-3">
-                    <Label htmlFor="pickup" className="text-sm font-semibold text-gray-700">
-                      Punto de Recogida
-                    </Label>
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="pickup" className="text-sm font-semibold text-gray-700">
+                        Punto de Recogida
+                      </Label>
+                      <button
+                        type="button"
+                        onClick={handleUseMyLocation}
+                        className="inline-flex items-center space-x-2 text-sm text-blue-600 hover:text-blue-800"
+                        title="Usar mi ubicación"
+                      >
+                        <MapPin className="h-4 w-4" />
+                        <span>Usar mi ubicación</span>
+                      </button>
+                    </div>
                     <AddressAutocomplete
                       placeholder="Tu ubicación actual"
                       value={pickup}

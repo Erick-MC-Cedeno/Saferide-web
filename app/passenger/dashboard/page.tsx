@@ -555,33 +555,14 @@ function PassengerDashboardContent() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
-      {/* Enhanced Header */}
-      <header className="bg-white/80 backdrop-blur-md shadow-lg border-b border-blue-100">
+      {/* Simplified Header */}
+      <header className="bg-white/90 backdrop-blur-md shadow-sm border-b border-blue-100">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col sm:flex-row justify-between items-center py-6 space-y-4 sm:space-y-0">
-            <div className="flex items-center space-x-4">
-              <div className="p-3 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl shadow-lg">
-                <Users className="h-8 w-8 text-white" />
-              </div>
-              <div>
-                <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-                  ¡Hola, {userData?.name?.split(" ")[0] || "Usuario"}! 👋
-                </h1>
-                <p className="text-gray-600 font-medium">
-                  {hasActiveRide ? "Tienes un viaje activo" : "¿A dónde quieres ir hoy?"}
-                </p>
-              </div>
-            </div>
-            {hasActiveRide && (
-              <Button
-                variant="outline"
-                onClick={resetRideForm}
-                className="flex items-center space-x-2 bg-white/60 border-blue-200 hover:bg-blue-50 w-full sm:w-auto"
-              >
-                <X className="h-4 w-4" />
-                <span>Nuevo Viaje</span>
-              </Button>
-            )}
+          <div className="py-4">
+            <h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent text-center">
+              ¡Hola, {userData?.name?.split(" ")[0] || "Erick"}! 👋
+            </h1>
+            <p className="text-gray-600 font-medium text-center mt-1">¿A dónde quieres ir hoy?</p>
           </div>
         </div>
       </header>
@@ -740,78 +721,78 @@ function PassengerDashboardContent() {
               </div>
             )}
             {/* Enhanced Recent Trips - Made Larger */}
-            <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm">
-              <CardHeader className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white">
-                <CardTitle className="flex items-center space-x-2">
-                  <Clock className="h-6 w-6" />
+            <Card className="border-0 shadow-lg bg-white/80 backdrop-blur-sm">
+              <CardHeader className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-3">
+                <CardTitle className="flex items-center space-x-2 text-lg">
+                  <Clock className="h-5 w-5" />
                   <span>Viajes Recientes</span>
                 </CardTitle>
-                <CardDescription className="text-blue-100">Historial de tus últimos viajes completados</CardDescription>
+                <CardDescription className="text-blue-100 text-sm">
+                  Historial de tus últimos viajes completados
+                </CardDescription>
               </CardHeader>
               <CardContent className="p-0">
-                <ScrollArea className="h-96 px-4 py-4 sm:px-6 sm:py-6">
-                  <div className="space-y-6">
+                <ScrollArea className="h-80 px-3 py-3">
+                  <div className="space-y-3">
                     {recentTrips.length > 0 ? (
                       recentTrips.map((trip) => (
                         <div
                           key={trip.id}
-                          className="p-3 sm:p-4 md:p-6 bg-gradient-to-r from-gray-50 to-slate-50 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 border border-gray-100"
+                          className="p-3 bg-gradient-to-r from-gray-50 to-slate-50 rounded-lg shadow-sm hover:shadow-md transition-all duration-300 border border-gray-100"
                         >
-                          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between space-y-4 sm:space-y-0">
-                            <div className="flex-1 w-full">
-                              <div className="flex items-center space-x-4 mb-4">
-                                <Avatar className="h-12 w-12 ring-2 ring-blue-200">
-                                  <AvatarFallback className="bg-gradient-to-r from-blue-500 to-indigo-500 text-white font-bold text-lg">
+                          <div className="flex items-center justify-between">
+                            <div className="flex-1">
+                              <div className="flex items-center space-x-3 mb-2">
+                                <Avatar className="h-8 w-8 ring-1 ring-blue-200">
+                                  <AvatarFallback className="bg-gradient-to-r from-blue-500 to-indigo-500 text-white font-bold text-sm">
                                     {trip.driver_name?.charAt(0) || "D"}
                                   </AvatarFallback>
                                 </Avatar>
                                 <div>
-                                  <p className="font-bold text-lg text-gray-800">{trip.driver_name}</p>
-                                  <p className="text-sm text-gray-600 font-medium">
+                                  <p className="font-semibold text-sm text-gray-800">{trip.driver_name}</p>
+                                  <p className="text-xs text-gray-500">
                                     {new Date(trip.completed_at).toLocaleDateString()} • {trip.estimated_duration} min
                                   </p>
                                 </div>
                               </div>
-                              <div className="bg-white/80 p-3 rounded-lg mb-4 border border-gray-200">
-                                <div className="flex items-center space-x-3 mb-2">
-                                  <Navigation className="h-4 w-4 text-gray-500" />
-                                  <p className="font-semibold text-gray-900 text-sm">
+                              <div className="bg-white/60 p-2 rounded-md mb-2 border border-gray-100">
+                                <div className="flex items-center space-x-2">
+                                  <Navigation className="h-3 w-3 text-gray-500" />
+                                  <p className="font-medium text-gray-900 text-xs truncate">
                                     {trip.pickup_address} → {trip.destination_address}
                                   </p>
                                 </div>
                               </div>
-                              <div className="flex items-center space-x-2">
+                              <div className="flex items-center space-x-1">
                                 {[...Array(5)].map((_, i) => (
                                   <Star
                                     key={i}
-                                    className={`${
+                                    className={`h-3 w-3 ${
                                       i < (trip.passenger_rating || 0)
                                         ? "fill-yellow-400 text-yellow-400"
                                         : "text-gray-300"
                                     }`}
                                   />
                                 ))}
-                                <span className="text-sm text-gray-600 ml-3 font-medium">
-                                  ({trip.passenger_rating || 0}/5)
-                                </span>
+                                <span className="text-xs text-gray-600 ml-2">({trip.passenger_rating || 0}/5)</span>
                               </div>
                             </div>
-                            <div className="text-right w-full sm:w-auto">
-                              <Badge className="bg-gradient-to-r from-green-500 to-emerald-500 text-white px-4 py-2 text-lg font-bold mb-2">
+                            <div className="text-right ml-3">
+                              <Badge className="bg-gradient-to-r from-green-500 to-emerald-500 text-white px-2 py-1 text-sm font-bold mb-1">
                                 ${trip.actual_fare || trip.estimated_fare}
                               </Badge>
-                              <p className="text-sm text-green-600 font-bold">✅ Completado</p>
+                              <p className="text-xs text-green-600 font-medium">✅ Completado</p>
                             </div>
                           </div>
                         </div>
                       ))
                     ) : (
-                      <div className="text-center py-16">
-                        <div className="p-6 bg-gradient-to-r from-blue-100 to-indigo-100 rounded-full w-32 h-32 mx-auto mb-8 flex items-center justify-center">
-                          <Calendar className="h-16 w-16 text-blue-600" />
+                      <div className="text-center py-12">
+                        <div className="p-4 bg-gradient-to-r from-blue-100 to-indigo-100 rounded-full w-20 h-20 mx-auto mb-4 flex items-center justify-center">
+                          <Calendar className="h-10 w-10 text-blue-600" />
                         </div>
-                        <p className="text-2xl font-bold text-gray-700 mb-3">No hay viajes recientes</p>
-                        <p className="text-gray-500 text-lg">Tus viajes aparecerán aquí una vez completados</p>
+                        <p className="text-lg font-bold text-gray-700 mb-2">No hay viajes recientes</p>
+                        <p className="text-gray-500 text-sm">Tus viajes aparecerán aquí una vez completados</p>
                       </div>
                     )}
                   </div>

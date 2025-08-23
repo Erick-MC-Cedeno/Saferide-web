@@ -83,21 +83,28 @@ export function AddressAutocomplete({ placeholder, onAddressSelect, value, onCha
           componentRestrictions: { country: "ni" },      // Cambiado a NI para Nicaragua
           types: ["establishment", "geocode"],
         },
-        (predictions, status) => {
-          if (status === google.maps.places.PlacesServiceStatus.OK && predictions) {
+        (predictions: any, status: any) => {
+          if (status === (window as any).google.maps.places.PlacesServiceStatus.OK && predictions) {
             const newSuggestions: Suggestion[] = []
             let completed = 0
             const limit = Math.min(predictions.length, 5)
 
-            predictions.slice(0, limit).forEach((prediction) => {
+            // safety timeout in case some getDetails callbacks never return
+            const safetyTimer = setTimeout(() => {
+              setSuggestions(newSuggestions)
+              setShowSuggestions(newSuggestions.length > 0)
+              resolve()
+            }, 3000)
+
+            predictions.slice(0, limit).forEach((prediction: any) => {
               placesService.current!.getDetails(
                 {
                   placeId: prediction.place_id,
                   fields: ["formatted_address", "geometry"],
                 },
-                (place, detailStatus) => {
+                (place: any, detailStatus: any) => {
                   completed++
-                  if (detailStatus === google.maps.places.PlacesServiceStatus.OK && place?.geometry?.location) {
+                  if (detailStatus === (window as any).google.maps.places.PlacesServiceStatus.OK && place?.geometry?.location) {
                     newSuggestions.push({
                       formatted: place.formatted_address || prediction.description,
                       lat: place.geometry.location.lat(),
@@ -105,15 +112,26 @@ export function AddressAutocomplete({ placeholder, onAddressSelect, value, onCha
                     })
                   }
                   if (completed === limit) {
+                    clearTimeout(safetyTimer)
                     setSuggestions(newSuggestions)
-                    setShowSuggestions(true)
+                    setShowSuggestions(newSuggestions.length > 0)
                     resolve()
                   }
                 }
               )
             })
+          } else if (status === (window as any).google.maps.places.PlacesServiceStatus.ZERO_RESULTS) {
+            // No results - treat as empty suggestions (not an error)
+            setSuggestions([])
+            setShowSuggestions(false)
+            resolve()
+          } else if (status === (window as any).google.maps.places.PlacesServiceStatus.REQUEST_DENIED) {
+            // Common when API key / billing not configured for Places
+            console.warn("Google Places request denied. Check API key and billing for Places API.", status)
+            reject(new Error("Google Places request denied"))
           } else {
-            reject(new Error("Google Places request failed"))
+            console.warn("Google Places request returned status:", status)
+            reject(new Error(`Google Places request failed: ${status}`))
           }
         }
       )

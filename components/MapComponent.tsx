@@ -6,12 +6,20 @@ import { Crosshair } from "lucide-react"
 import { useGoogleMapsLoader } from "@/hooks/useGoogleMapsLoader"
 import { MapFallback } from "./MapFallback"
 
+// Lightweight declaration to avoid TS errors in editor about global `google` in runtime.
+declare global {
+  interface Window {
+    google?: any
+  }
+}
+
 interface MapComponentProps {
   userType: "passenger" | "driver"
   onLocationSelect?: (location: { lat: number; lng: number; address: string }) => void
   pickupLocation?: { lat: number; lng: number }
   destinationLocation?: { lat: number; lng: number }
   driverLocations?: Array<{ id: string; lat: number; lng: number; name: string }>
+  onMapReady?: (userLocation?: { lat: number; lng: number } | null) => void
 }
 
 export function MapComponent({
@@ -95,6 +103,12 @@ export function MapComponent({
               }
               setUserLocation(userLoc)
               mapInstance.setCenter(userLoc)
+              // notify parent that map is ready with user location
+              try {
+                onMapReady?.(userLoc)
+              } catch (e) {
+                console.debug("onMapReady callback failed:", e)
+              }
             },
             (error) => {
               console.error("Error obteniendo ubicación del usuario:", error)
@@ -110,6 +124,11 @@ export function MapComponent({
                 lng: position.coords.longitude,
               }
               setUserLocation(userLoc)
+              try {
+                onMapReady?.(userLoc)
+              } catch (e) {
+                console.debug("onMapReady callback failed (watch):", e)
+              }
             },
             (error) => {
               console.error("Error en seguimiento de ubicación:", error)
@@ -242,23 +261,47 @@ export function MapComponent({
     }
 
     if (userType === "passenger" && driverLocations.length > 0) {
-      driverLocations.forEach((driver) => {
-        // Crear un pin personalizado para cada conductor
-        const driverPinElement = new google.maps.marker.PinElement({
-          background: "#F59E0B", // Naranja
-          borderColor: "#FFFFFF",
-          glyphColor: "#FFFFFF",
-          glyph: "C",
-          scale: 1.2,
-        });
-        
-        const driverMarker = new google.maps.marker.AdvancedMarkerElement({
-          position: { lat: driver.lat, lng: driver.lng },
-          map,
-          title: `Conductor: ${driver.name}`,
-          content: driverPinElement.element,
-        })
-        markersRef.current.push(driverMarker)
+      // To ensure visibility across browsers/environments use classic google.maps.Marker
+      // Also apply a tiny jitter when multiple drivers are very close so pins don't overlap.
+      const seen: Record<string, number> = {}
+      driverLocations.forEach((driver, idx) => {
+        try {
+          const key = `${driver.lat.toFixed(6)}:${driver.lng.toFixed(6)}`
+          const count = (seen[key] || 0) + 1
+          seen[key] = count
+
+          // small jitter in degrees (~5-10 meters) when multiple markers collide
+          const jitterFactor = 0.00003
+          const jitterLat = (count - 1) * jitterFactor * (idx % 2 === 0 ? 1 : -1)
+          const jitterLng = (count - 1) * jitterFactor * (idx % 3 === 0 ? 1 : -1)
+
+          const markerPos = { lat: driver.lat + jitterLat, lng: driver.lng + jitterLng }
+
+          const svgIcon = {
+            url: 'data:image/svg+xml;charset=UTF-8,' +
+              encodeURIComponent(`
+                <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24">
+                  <circle cx="12" cy="10" r="6" fill="#ef4444" stroke="#fff" stroke-width="1.5" />
+                  <path d="M12 15c-1.5 0-4 2-4 4h8c0-2-2.5-4-4-4z" fill="#ef4444" />
+                </svg>
+              `),
+            scaledSize: new google.maps.Size(48, 48),
+            anchor: new google.maps.Point(16, 48),
+          }
+
+          const marker = new google.maps.Marker({
+            position: markerPos,
+            map,
+            title: `Conductor: ${driver.name}`,
+            icon: svgIcon,
+            zIndex: 500,
+          })
+
+          markersRef.current.push(marker)
+          console.debug("Driver marker created:", driver.uid || driver.id || driver.name, markerPos)
+        } catch (err) {
+          console.warn("Error creando marcador de conductor:", err, driver)
+        }
       })
     }
 

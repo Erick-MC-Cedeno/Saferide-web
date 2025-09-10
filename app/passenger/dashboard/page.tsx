@@ -80,6 +80,9 @@ function PassengerDashboardContent() {
   })
   const { rides, loading, cancelRide, refreshRides } = useRealTimeRides(undefined, user?.uid)
   const currentRide = rides.find((ride) => ["pending", "accepted", "in-progress"].includes(ride.status))
+  const [driversForMap, setDriversForMap] = useState<Array<{ id?: string; uid?: string; name?: string; lat: number; lng: number }>>([])
+  const [driversLoadedCount, setDriversLoadedCount] = useState<number>(0)
+  const [rawDriversForDebug, setRawDriversForDebug] = useState<any[]>([])
 
   
   // Reset ride status when no current ride
@@ -166,6 +169,109 @@ function PassengerDashboardContent() {
       throw error
     }
   }
+
+  // Haversine distance in km
+  const haversineDistance = (lat1: number, lng1: number, lat2: number, lng2: number) => {
+    const toRad = (v: number) => (v * Math.PI) / 180
+    const R = 6371 // km
+    const dLat = toRad(lat2 - lat1)
+    const dLon = toRad(lng2 - lng1)
+    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) * Math.sin(dLon / 2)
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+    return R * c
+  }
+
+  // Show nearby drivers: calls /api/drivers/all, maps coordinates, filters <= 1km
+  const showNearbyDriversInMap = async (userLat?: number | null, userLng?: number | null) => {
+    try {
+      // If we have user coords, prefer server-side filtering for robustness
+      const res = typeof userLat === "number" && typeof userLng === "number" ? await driverData(userLat, userLng, 1) : await driverData()
+      console.debug("showNearbyDriversInMap: api result", res)
+      setRawDriversForDebug(res.data || [])
+
+      const mapped = (res.data || []).map((d) => {
+        // assumption: driver current_location.coordinates = [lng, lat]
+        const coords = d?.current_location?.coordinates || d?.location?.coordinates || d?.coordinates
+        let lat = 0
+        let lng = 0
+        if (Array.isArray(coords) && coords.length >= 2) {
+          lng = Number(coords[0])
+          lat = Number(coords[1])
+        } else if (d?.lat && d?.lng) {
+          lat = Number(d.lat)
+          lng = Number(d.lng)
+        }
+        return { ...d, lat, lng }
+      })
+
+  let nearby = mapped
+      if (typeof userLat === "number" && typeof userLng === "number") {
+        // If server already filtered, this is redundant but harmless. Keep for safety.
+        nearby = mapped.filter((d) => {
+          if (!d || isNaN(d.lat) || isNaN(d.lng)) return false
+          const dist = haversineDistance(userLat, userLng, d.lat, d.lng)
+          return dist <= 1
+        })
+      }
+
+  // Only include drivers that are currently online
+  nearby = nearby.filter((d) => Boolean(d.is_online))
+
+      // normalize for map: id/uid, name, lat, lng
+      const driversForMapNormalized = nearby.map((d) => ({ id: d.id, uid: d.uid, name: d.name || d.full_name || d.driver_name, lat: d.lat, lng: d.lng }))
+      setDriversForMap(driversForMapNormalized)
+      setDriversLoadedCount(driversForMapNormalized.length)
+      if ((driversForMapNormalized || []).length === 0) {
+        toast({ title: "Sin conductores cercanos", description: "No se encontraron conductores a ≤1 km", variant: "warning" })
+      }
+      return driversForMapNormalized
+    } catch (err) {
+      console.error("Error loading nearby drivers:", err)
+      setDriversForMap([])
+      setDriversLoadedCount(0)
+      return []
+    }
+  }
+
+  // Auto-load nearby drivers when user authenticates
+  useEffect(() => {
+    if (!user) return
+
+    const loadOnAuth = async () => {
+      try {
+        let lat: number | null = null
+        let lng: number | null = null
+
+        if (pickupCoords) {
+          lat = pickupCoords.lat
+          lng = pickupCoords.lng
+        } else if (typeof window !== "undefined" && navigator.geolocation) {
+          try {
+            const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
+              navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: true, timeout: 10000 })
+            })
+            lat = pos.coords.latitude
+            lng = pos.coords.longitude
+            setPickupCoords({ lat, lng })
+          } catch (err) {
+            console.warn("No se pudo obtener geolocalización al autenticar:", err)
+          }
+        }
+
+        if (typeof lat === "number" && typeof lng === "number") {
+          await showNearbyDriversInMap(lat, lng)
+        } else {
+          // fallback: fetch all drivers (server-side no coords)
+          await showNearbyDriversInMap()
+        }
+      } catch (err) {
+        console.error("Error cargando conductores al autenticar:", err)
+      }
+    }
+
+    loadOnAuth()
+  }, [user?.uid])
 
 
   // Load available drivers when coordinates are set - MODIFICADO para usar driverData
@@ -693,6 +799,13 @@ function PassengerDashboardContent() {
                       setDestination(address)
                     }
                   }}
+                  driverLocations={driversForMap}
+                  onMapReady={(userLoc) => {
+                    // auto-load nearby drivers when we have a user location
+                    if (userLoc) {
+                      showNearbyDriversInMap(userLoc.lat, userLoc.lng)
+                    }
+                  }}
                 />
               </CardContent>
             </Card>
@@ -1011,6 +1124,74 @@ function PassengerDashboardContent() {
                       </>
                     )}
                   </Button>
+                  <div className="mt-3 flex items-center space-x-2">
+                    <Button
+                      variant="ghost"
+                      onClick={async () => {
+                        try {
+                          let lat: number | null = null
+                          let lng: number | null = null
+                          if (pickupCoords) {
+                            lat = pickupCoords.lat
+                            lng = pickupCoords.lng
+                          } else if (typeof window !== "undefined" && navigator.geolocation) {
+                            // ask for current position
+                            const p = await new Promise<GeolocationPosition>((resolve, reject) => {
+                              navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: true, timeout: 10000 })
+                            })
+                            lat = p.coords.latitude
+                            lng = p.coords.longitude
+                            // also set pickupCoords for subsequent interactions
+                            setPickupCoords({ lat, lng })
+                          }
+
+                          if (lat === null || lng === null) {
+                            toast({ title: "Ubicación requerida", description: "No fue posible obtener tu ubicación", variant: "destructive" })
+                            return
+                          }
+
+                          await showNearbyDriversInMap(lat, lng)
+                        } catch (err) {
+                          console.error("Error obteniendo geolocalización para mostrar conductores:", err)
+                          toast({ title: "Error", description: "No fue posible obtener la ubicación", variant: "destructive" })
+                        }
+                      }}
+                    >
+                      Mostrar conductores
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      onClick={async () => {
+                        // Debug: fetch all drivers from API without coordinates
+                        const all = await showNearbyDriversInMap()
+                        console.debug("Debug: fetched all drivers (no coords)", all)
+                        toast({ title: "Depuración", description: `Conductores crudos recibidos: ${rawDriversForDebug.length || 0}` })
+                      }}
+                    >
+                      Mostrar todos (debug)
+                    </Button>
+                    <Badge className="text-sm">Nearby on map: {driversLoadedCount}</Badge>
+                  </div>
+                  {/* Debug panel visible without DevTools */}
+                  <div className="mt-3 p-3 bg-gray-50 rounded-lg border border-gray-100 text-sm">
+                    <div className="font-medium text-gray-700 mb-2">Diagnóstico conductores</div>
+                    <div className="mb-2">Lista legible:</div>
+                    <div className="space-y-1">
+                      {driversForMap.length > 0 ? (
+                        driversForMap.map((d, i) => (
+                          <div key={i} className="text-xs text-gray-600">
+                            {d.name || "(sin nombre)"} — lat: {d.lat.toFixed(6)}, lng: {d.lng.toFixed(6)}
+                          </div>
+                        ))
+                      ) : (
+                        <div className="text-xs text-gray-400">No hay conductores cargados</div>
+                      )}
+                    </div>
+                    <details className="mt-2">
+                      <summary className="cursor-pointer text-xs text-blue-600">Datos crudos (primeras 10)</summary>
+                      <pre className="text-xs max-h-40 overflow-auto mt-2">{JSON.stringify(rawDriversForDebug.slice(0, 10), null, 2)}</pre>
+                    </details>
+                  </div>
                 </CardContent>
               </Card>
             )}

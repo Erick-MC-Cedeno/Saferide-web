@@ -1180,41 +1180,9 @@ function PassengerDashboardContent() {
                     >
                       Mostrar conductores
                     </Button>
-                    <Button
-                      variant="ghost"
-                      onClick={async () => {
-                        // Debug: fetch all drivers from API without coordinates
-                        const all = await showNearbyDriversInMap()
-                        console.debug("Debug: fetched all drivers (no coords)", all)
-                        toast({ title: "Depuración", description: `Conductores crudos recibidos: ${rawDriversForDebug.length || 0}` })
-                      }}
-                    >
-                      Mostrar todos (debug)
-                    </Button>
-                    <Badge className="text-sm">Nearby on map: {driversLoadedCount}</Badge>
-                  </div>
-                  {/* Debug panel visible without DevTools */}
-                  <div className="mt-3 p-3 bg-gray-50 rounded-lg border border-gray-100 text-sm">
-                    <div className="font-medium text-gray-700 mb-2">Diagnóstico conductores</div>
-                    <div className="mb-2">Lista legible:</div>
-                    <div className="space-y-1">
-                      {driversForMap.length > 0 ? (
-                        driversForMap.map((d, i) => (
-                          <div key={i} className="text-xs text-gray-600">
-                            {d.name || "(sin nombre)"} — lat: {d.lat.toFixed(6)}, lng: {d.lng.toFixed(6)}
-                          </div>
-                        ))
-                      ) : (
-                        <div className="text-xs text-gray-400">No hay conductores cargados</div>
-                      )}
                     </div>
-                    <details className="mt-2">
-                      <summary className="cursor-pointer text-xs text-blue-600">Datos crudos (primeras 10)</summary>
-                      <pre className="text-xs max-h-40 overflow-auto mt-2">{JSON.stringify(rawDriversForDebug.slice(0, 10), null, 2)}</pre>
-                    </details>
-                  </div>
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
             )}
             {/* Enhanced Quick Destinations with Edit Functionality */}
             {canRequestNewRide && (

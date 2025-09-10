@@ -20,6 +20,27 @@ export async function GET(request: NextRequest) {
       )
     }
 
+    // Leer parámetros opcionales de búsqueda (lat, lng, radiusKm)
+    const latParam = request.nextUrl.searchParams.get("lat")
+    const lngParam = request.nextUrl.searchParams.get("lng")
+    const radiusParam = request.nextUrl.searchParams.get("radiusKm")
+    const pickupLat = latParam ? parseFloat(latParam) : null
+    const pickupLng = lngParam ? parseFloat(lngParam) : null
+    const maxDistanceKm = radiusParam ? parseFloat(radiusParam) : 1
+
+    // Helper: Haversine para calcular distancia en km entre dos puntos {lat, lon}
+    const haversineDistance = (loc1: { lat: number; lon: number }, loc2: { lat: number; lon: number }) => {
+      const R = 6371 // km
+      const toRad = (deg: number) => (deg * Math.PI) / 180
+      const dLat = toRad(loc2.lat - loc1.lat)
+      const dLon = toRad(loc2.lon - loc1.lon)
+      const lat1 = toRad(loc1.lat)
+      const lat2 = toRad(loc2.lat)
+      const a = Math.sin(dLat / 2) ** 2 + Math.sin(dLon / 2) ** 2 * Math.cos(lat1) * Math.cos(lat2)
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+      return R * c
+    }
+
     // Consulta todos los conductores con las columnas exactas de tu esquema
     const { data: rawDrivers, error } = await supabase
       .from("drivers")
@@ -60,14 +81,16 @@ export async function GET(request: NextRequest) {
 
     // Validación y limpieza de datos
     const processStartTime = Date.now()
-    const validDrivers = []
+    const validDrivers: any[] = []
     let duplicatesRemoved = 0
     let nullsRemoved = 0
     let malformedRemoved = 0
     const seenUids = new Set()
+    // Trabajar con los datos como any para simplificar validaciones de propiedad
+    const driversArray = (rawDrivers as any[]) || []
 
-    if (rawDrivers && Array.isArray(rawDrivers)) {
-      for (const driver of rawDrivers) {
+    if (driversArray && Array.isArray(driversArray)) {
+      for (const driver of driversArray) {
         // Eliminar nulos o sin datos esenciales
         if (!driver || !driver.uid || !driver.name) {
           nullsRemoved++
@@ -87,6 +110,29 @@ export async function GET(request: NextRequest) {
           continue
         }
 
+        // Si se enviaron coordenadas de búsqueda, filtrar por distancia (si el driver tiene current_location válido)
+        if (pickupLat !== null && pickupLng !== null) {
+          const coords = driver && driver.current_location && driver.current_location.coordinates
+          if (!coords || !Array.isArray(coords) || coords.length < 2) {
+            // no location -> no incluir cuando se pide filtro por distancia
+            nullsRemoved++
+            continue
+          }
+
+          const driverLng = Number(coords[0])
+          const driverLat = Number(coords[1])
+          if (Number.isNaN(driverLng) || Number.isNaN(driverLat)) {
+            malformedRemoved++
+            continue
+          }
+
+          const distanceKm = haversineDistance({ lat: pickupLat, lon: pickupLng }, { lat: driverLat, lon: driverLng })
+          // Si está fuera del radio solicitado, omitir
+          if (distanceKm > maxDistanceKm) {
+            continue
+          }
+        }
+
         // Limpiar y normalizar datos según tu esquema de base de datos
         const cleanDriver = {
           id: driver.id,
@@ -103,6 +149,20 @@ export async function GET(request: NextRequest) {
           total_trips: typeof driver.total_trips === "number" ? driver.total_trips : 0,
           is_online: Boolean(driver.is_online),
           current_location: driver.current_location || null,
+          // opcional: incluir distancia si se solicitó búsqueda por ubicación
+          distance_km:
+            pickupLat !== null && pickupLng !== null && driver && driver.current_location && driver.current_location.coordinates
+              ? (function () {
+                  try {
+                    const c = driver.current_location.coordinates
+                    const dLat = Number(c[1])
+                    const dLng = Number(c[0])
+                    return haversineDistance({ lat: pickupLat, lon: pickupLng }, { lat: dLat, lon: dLng })
+                  } catch (e) {
+                    return null
+                  }
+                })()
+              : null,
           created_at: driver.created_at,
           updated_at: driver.updated_at,
         }
@@ -124,6 +184,21 @@ export async function GET(request: NextRequest) {
         validDrivers.length > 0
           ? (validDrivers.reduce((sum, d) => sum + d.rating, 0) / validDrivers.length).toFixed(2)
           : "0.00",
+    }
+
+    // Si se buscó por ubicación, ordenar por distancia (si está disponible) y redondear
+    if (pickupLat !== null && pickupLng !== null) {
+      validDrivers.forEach((d) => {
+        if (typeof d.distance_km === "number") {
+          d.distance_km = Math.round(d.distance_km * 100) / 100
+        }
+      })
+
+      validDrivers.sort((a, b) => {
+        const da = typeof a.distance_km === "number" ? a.distance_km : Infinity
+        const db = typeof b.distance_km === "number" ? b.distance_km : Infinity
+        return da - db
+      })
     }
 
     // Logs detallados para auditoría

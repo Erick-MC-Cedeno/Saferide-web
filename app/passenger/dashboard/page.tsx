@@ -47,6 +47,8 @@ function PassengerDashboardContent() {
   const [rideStatus, setRideStatus] = useState("idle")
   const [availableDrivers, setAvailableDrivers] = useState([])
   const [selectedDriver, setSelectedDriver] = useState("")
+  // Mensaje visible cuando no hay conductores en el área
+  const [noDriversNearby, setNoDriversNearby] = useState("")
   const [showDriverSelection, setShowDriverSelection] = useState(false)
   const [showRatingDialog, setShowRatingDialog] = useState(false)
   const [completedRide, setCompletedRide] = useState(null)
@@ -135,11 +137,19 @@ function PassengerDashboardContent() {
 
 
   // Función driverData integrada
-  const driverData = async () => {
-    console.log("[PassengerDashboard] Ejecutando driverData()...")
+  const driverData = async (lat?: number | null, lng?: number | null, radiusKm = 1) => {
+    console.log("[PassengerDashboard] Ejecutando driverData() con filtro de ubicación...")
 
     try {
-      const response = await fetch("/api/drivers/all")
+      const params = new URLSearchParams()
+      if (typeof lat === "number" && typeof lng === "number") {
+        params.set("lat", String(lat))
+        params.set("lng", String(lng))
+        params.set("radiusKm", String(radiusKm))
+      }
+
+      const url = "/api/drivers/all" + (params.toString() ? `?${params.toString()}` : "")
+      const response = await fetch(url)
       const result = await response.json()
 
       if (!result.success) {
@@ -166,8 +176,8 @@ function PassengerDashboardContent() {
       console.log("[PassengerDashboard] Cargando conductores disponibles...")
 
       try {
-        // Usar la función driverData
-        const driverResult = await driverData()
+  // Usar la función driverData pasando coordenadas para filtrar por 1km
+  const driverResult = await driverData(pickupCoords?.lat, pickupCoords?.lng, 1)
 
         // Filtrar conductores verificados o en línea
         const verifiedDrivers = driverResult.data.filter((driver) => driver.is_verified)
@@ -177,11 +187,16 @@ function PassengerDashboardContent() {
         setAvailableDrivers(availableDriversToShow)
 
         if (availableDriversToShow.length === 0) {
+          // Mostrar mensaje persistente en la UI además del toast
+          setNoDriversNearby("No hay conductores disponibles en tu área")
           toast({
             title: "Sin conductores",
             description: "No hay conductores disponibles en este momento",
             variant: "destructive",
           })
+        } else {
+          // Limpiar mensaje si ahora hay conductores
+          setNoDriversNearby("")
         }
       } catch (error) {
         console.error("Error de red al cargar conductores:", error)
@@ -259,6 +274,8 @@ function PassengerDashboardContent() {
       console.log("Viaje creado exitosamente:", data)
       setShowDriverSelection(false)
       setSelectedDriver("")
+  // Limpiar mensaje de ausencia de conductores al crear viaje
+  setNoDriversNearby("")
       setRideStatus("pending")
 
       toast({
@@ -293,7 +310,7 @@ function PassengerDashboardContent() {
 
     try {
       console.log("[PassengerDashboard] Llamando a await driverData()...")
-      const driverResult = await driverData()
+  const driverResult = await driverData(pickupCoords?.lat, pickupCoords?.lng, 1)
 
       if (!driverResult.success) {
         console.error("Error en driverData:", driverResult.error)
@@ -319,6 +336,8 @@ function PassengerDashboardContent() {
 
       if (availableDriversToShow.length === 0) {
         setRideStatus("idle")
+        // Mostrar mensaje persistente en la UI además del toast
+        setNoDriversNearby("No hay conductores disponibles en tu área")
         toast({
           title: "Sin conductores",
           description: "No hay conductores disponibles en este momento",
@@ -378,6 +397,7 @@ function PassengerDashboardContent() {
       setSelectedDriver("")
       setShowDriverSelection(false)
       setShowChatDialog(false) // Close chat if open
+  setNoDriversNearby("")
 
       toast({
         title: "Viaje cancelado",
@@ -644,12 +664,12 @@ function PassengerDashboardContent() {
         </div>
       </header>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="grid lg:grid-cols-3 gap-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Main Content */}
-          <div className="lg:col-span-2 space-y-8">
+          <div className="lg:col-span-2 space-y-6">
             {/* Enhanced Map Component */}
-            <Card className="overflow-hidden border-0 shadow-xl bg-white/80 backdrop-blur-sm">
+            <Card className="overflow-hidden border-0 shadow-xl bg-white/80 backdrop-blur-sm max-w-full">
               <CardHeader className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white">
                 <CardTitle className="flex items-center space-x-2">
                   <MapPin className="h-6 w-6" />
@@ -798,7 +818,7 @@ function PassengerDashboardContent() {
               </div>
             )}
             {/* Enhanced Recent Trips - Made Larger */}
-            <Card className="border-0 shadow-lg bg-white/80 backdrop-blur-sm">
+            <Card className="border-0 shadow-lg bg-white/80 backdrop-blur-sm max-w-full">
               <CardHeader className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-3">
                 <CardTitle className="flex items-center space-x-2 text-lg">
                   <Clock className="h-5 w-5" />
@@ -878,10 +898,10 @@ function PassengerDashboardContent() {
             </Card>
           </div>
           {/* Enhanced Sidebar */}
-          <div className="space-y-6">
+          <div className="space-y-4">
             {/* Enhanced Request Ride Form */}
             {canRequestNewRide && (
-              <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm">
+              <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm max-w-full">
                 <CardHeader className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-t-lg">
                   <CardTitle className="flex items-center space-x-2">
                     <Car className="h-6 w-6" />
@@ -891,7 +911,7 @@ function PassengerDashboardContent() {
                     Ingresa tu destino y encuentra un conductor
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="p-6 space-y-6">
+                <CardContent className="p-4 sm:p-6 space-y-4">
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
                       <Label htmlFor="pickup" className="text-sm font-semibold text-gray-700">
@@ -966,6 +986,12 @@ function PassengerDashboardContent() {
                       </div>
                     </div>
                   )}
+                  {/* Banner visible cuando no hay conductores en el área */}
+                  {noDriversNearby && (
+                    <div className="p-3 mb-3 rounded-lg bg-red-50 border border-red-200 text-red-800 font-medium">
+                      {noDriversNearby}
+                    </div>
+                  )}
                   <Button
                     className="w-full h-14 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-xl font-bold text-lg"
                     onClick={handleRequestRide}
@@ -990,7 +1016,7 @@ function PassengerDashboardContent() {
             )}
             {/* Enhanced Quick Destinations with Edit Functionality */}
             {canRequestNewRide && (
-              <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm">
+              <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm max-w-full">
                 <CardHeader className="bg-gradient-to-r from-indigo-600 to-blue-600 text-white rounded-t-lg">
                   <CardTitle className="flex items-center justify-between">
                     <div className="flex items-center space-x-2">
@@ -1007,7 +1033,7 @@ function PassengerDashboardContent() {
                     </Button>
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="p-6 space-y-3">
+                <CardContent className="p-4 sm:p-6 space-y-3">
                   {quickDestinations.map((dest, index) => (
                     <div key={index} className="relative group">
                       <Button
@@ -1039,7 +1065,7 @@ function PassengerDashboardContent() {
               </Card>
             )}
             {/* Enhanced User Stats */}
-            <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm">
+            <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm max-w-full">
               <CardHeader className="bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-t-lg">
                 <CardTitle className="flex items-center space-x-2">
                   <Activity className="h-5 w-5" />

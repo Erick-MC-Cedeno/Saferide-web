@@ -26,7 +26,16 @@ export async function GET(request: NextRequest) {
     const radiusParam = request.nextUrl.searchParams.get("radiusKm")
     const pickupLat = latParam ? parseFloat(latParam) : null
     const pickupLng = lngParam ? parseFloat(lngParam) : null
-    const maxDistanceKm = radiusParam ? parseFloat(radiusParam) : 1
+
+    // Leer valor por defecto del radio desde variables de entorno (server primero, luego public)
+    const defaultRadiusKm = (() => {
+      const serverVal = process.env.RADIO
+      const publicVal = process.env.NEXT_PUBLIC_RADIO
+      const parsed = serverVal ? parseFloat(serverVal) : publicVal ? parseFloat(publicVal) : 1
+      return isNaN(parsed) ? 1 : parsed
+    })()
+
+    const maxDistanceKm = radiusParam ? parseFloat(radiusParam) : defaultRadiusKm
 
     // Helper: Haversine para calcular distancia en km entre dos puntos {lat, lon}
     const haversineDistance = (loc1: { lat: number; lon: number }, loc2: { lat: number; lon: number }) => {

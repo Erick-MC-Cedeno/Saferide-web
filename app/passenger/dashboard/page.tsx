@@ -139,8 +139,19 @@ function PassengerDashboardContent() {
 
 
 
+  // Default radius (km) read from env for client side
+  const DEFAULT_RADIUS_KM = (() => {
+    try {
+      const v = typeof process !== "undefined" ? process.env.NEXT_PUBLIC_RADIO : undefined
+      const parsed = v ? parseFloat(v) : 1
+      return isNaN(parsed) ? 1 : parsed
+    } catch (e) {
+      return 1
+    }
+  })()
+
   // Función driverData integrada
-  const driverData = async (lat?: number | null, lng?: number | null, radiusKm = 1) => {
+  const driverData = async (lat?: number | null, lng?: number | null, radiusKm = DEFAULT_RADIUS_KM) => {
     console.log("[PassengerDashboard] Ejecutando driverData() con filtro de ubicación...")
 
     try {
@@ -186,7 +197,7 @@ function PassengerDashboardContent() {
   const showNearbyDriversInMap = async (userLat?: number | null, userLng?: number | null) => {
     try {
       // If we have user coords, prefer server-side filtering for robustness
-      const res = typeof userLat === "number" && typeof userLng === "number" ? await driverData(userLat, userLng, 1) : await driverData()
+  const res = typeof userLat === "number" && typeof userLng === "number" ? await driverData(userLat, userLng, DEFAULT_RADIUS_KM) : await driverData()
       console.debug("showNearbyDriversInMap: api result", res)
       setRawDriversForDebug(res.data || [])
 
@@ -211,7 +222,7 @@ function PassengerDashboardContent() {
         nearby = mapped.filter((d) => {
           if (!d || isNaN(d.lat) || isNaN(d.lng)) return false
           const dist = haversineDistance(userLat, userLng, d.lat, d.lng)
-          return dist <= 1
+          return dist <= DEFAULT_RADIUS_KM
         })
       }
 
@@ -219,11 +230,21 @@ function PassengerDashboardContent() {
   nearby = nearby.filter((d) => Boolean(d.is_online))
 
       // normalize for map: id/uid, name, lat, lng
-      const driversForMapNormalized = nearby.map((d) => ({ id: d.id, uid: d.uid, name: d.name || d.full_name || d.driver_name, lat: d.lat, lng: d.lng }))
+      const driversForMapNormalized = nearby.map((d) => ({
+        id: d.id,
+        uid: d.uid,
+        name: d.name || d.full_name || d.driver_name,
+        lat: d.lat,
+        lng: d.lng,
+      }))
       setDriversForMap(driversForMapNormalized)
       setDriversLoadedCount(driversForMapNormalized.length)
       if ((driversForMapNormalized || []).length === 0) {
-        toast({ title: "Sin conductores cercanos", description: "No se encontraron conductores a ≤1 km", variant: "warning" })
+        toast({
+          title: "Sin conductores cercanos",
+          description: `No se encontraron conductores a ≤ ${DEFAULT_RADIUS_KM} km`,
+          variant: "default",
+        })
       }
       return driversForMapNormalized
     } catch (err) {

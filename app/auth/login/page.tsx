@@ -14,6 +14,7 @@ import { Shield, Car, Users, Eye, EyeOff, Loader2, AlertCircle, Wifi, WifiOff, S
 import Link from "next/link"
 import { loginUser } from "@/lib/auth"
 import { useAuth } from "@/lib/auth-context"
+import { setAuthInProgressCookie } from "@/lib/cookie-utils"
 
 export default function LoginPage() {
   const [email, setEmail] = useState("")
@@ -51,9 +52,24 @@ export default function LoginPage() {
       const result = await loginUser(email, password)
 
       if (result.success) {
-        // Redirect and refresh the page after successful login
-        const redirectPath = userType === "driver" ? "/driver/dashboard" : "/passenger/dashboard"
-        window.location.href = redirectPath // Usar window.location.href para forzar un refresh completo
+        // Establecer una cookie temporal para indicar que hay un proceso de autenticación en curso
+        setAuthInProgressCookie()
+        
+        // Obtener el parámetro de redirección de la URL si existe
+        const urlParams = new URLSearchParams(window.location.search)
+        const redirectParam = urlParams.get('redirect')
+        
+        // Usar el parámetro de redirección si existe, de lo contrario usar la ruta predeterminada
+        const defaultPath = userType === "driver" ? "/driver/dashboard" : "/passenger/dashboard"
+        const redirectPath = redirectParam || defaultPath
+        
+        console.log("Redirigiendo a:", redirectPath)
+        
+        // Usar window.location.href para forzar una redirección completa en lugar de router.push
+        // Esto asegura que el middleware procese correctamente la redirección
+        setTimeout(() => {
+          window.location.href = redirectPath
+        }, 1000)
       } else {
         setError(result.error || "Error al iniciar sesión")
       }

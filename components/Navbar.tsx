@@ -43,10 +43,21 @@ export function Navbar() {
   }, [user?.uid, userData, refreshUserData])
 
   const handleSignOut = async () => {
-    hasInitialLoad.current = false // Reset flag on logout
-    await signOut()
-    router.push("/")
-    setMobileMenuOpen(false); // Close mobile menu on sign out
+    try {
+      hasInitialLoad.current = false // Reset flag on logout
+      await signOut()
+      
+      // Pequeña pausa para asegurar que la operación de cierre de sesión se complete
+      await new Promise(resolve => setTimeout(resolve, 100))
+      
+      // Usar window.location.href en lugar de router.push para forzar una recarga completa
+      window.location.href = "/"
+      setMobileMenuOpen(false); // Close mobile menu on sign out
+    } catch (error) {
+      console.error("Error al cerrar sesión:", error)
+      // En caso de error, forzar recarga de la página
+      window.location.reload()
+    }
   }
 
   const getUserInitials = () => {

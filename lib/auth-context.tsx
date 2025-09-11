@@ -132,20 +132,42 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signOut = async () => {
     try {
       if (supabase) {
-        await supabase.auth.signOut()
-        // Clear local auth state immediately so UI updates without a full page refresh
+        // Primero limpiar el estado local para una respuesta inmediata en la UI
         setUser(null)
         setUserData(null)
         setUserType(null)
         isLoadingUserData.current = false
 
+        // Limpiar cookies
         if (typeof document !== "undefined") {
           document.cookie = "auth-token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT"
           document.cookie = "user-type=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT"
+          // Limpiar cualquier otra cookie relacionada con la sesión
+          document.cookie = "sb-access-token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT"
+          document.cookie = "sb-refresh-token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT"
+        }
+
+        // Luego realizar el cierre de sesión en Supabase
+        const { error } = await supabase.auth.signOut()
+        if (error) {
+          throw error
+        }
+
+        // Limpiar cualquier dato en localStorage que pueda estar relacionado con la sesión
+        if (typeof window !== "undefined") {
+          localStorage.removeItem("supabase.auth.token")
+          // Buscar y eliminar cualquier otro item de localStorage relacionado con supabase
+          Object.keys(localStorage).forEach(key => {
+            if (key.includes("supabase") || key.includes("auth")) {
+              localStorage.removeItem(key)
+            }
+          })
         }
       }
     } catch (error) {
       console.error("Error signing out:", error)
+      // Propagar el error para que pueda ser manejado por el componente que llama a esta función
+      throw error
     }
   }
 

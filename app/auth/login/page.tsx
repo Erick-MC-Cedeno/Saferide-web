@@ -91,41 +91,11 @@ export default function LoginPage() {
       <div className="w-full max-w-md relative z-10">
         {/* Header */}
         <div className="text-center mb-8">
-          <div className="flex items-center justify-center space-x-4 mb-8">
-            <div className="relative">
-              <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl blur opacity-75 animate-pulse"></div>
-              <div className="relative bg-gradient-to-r from-blue-600 to-purple-600 p-4 rounded-2xl shadow-2xl">
-                <Shield className="h-10 w-10 text-white" />
-              </div>
-            </div>
-            <div className="text-left">
-              <span className="text-4xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-cyan-600 bg-clip-text text-transparent">
-                SafeRide
-              </span>
-              <div className="text-sm text-gray-500 font-medium">Transporte Seguro</div>
-            </div>
-          </div>
           <h1 className="text-3xl font-bold text-gray-900 mb-3">¡Bienvenido de vuelta!</h1>
           <p className="text-gray-600 text-lg">Inicia sesión en tu cuenta de SafeRide</p>
         </div>
 
-  {/* Auth Status Indicator */}
-        <div className="mb-6">
-          <div
-            className={`flex items-center justify-center space-x-2 p-3 rounded-xl transition-all duration-300 ${
-              isSupabaseReady
-                ? "bg-gradient-to-r from-green-50 to-emerald-50 text-green-700 border border-green-200"
-                : "bg-gradient-to-r from-yellow-50 to-orange-50 text-yellow-700 border border-yellow-200"
-            }`}
-          >
-            {isSupabaseReady ? (
-              <Wifi className="h-4 w-4 animate-pulse" />
-            ) : (
-              <WifiOff className="h-4 w-4 animate-bounce" />
-            )}
-            <span className="text-sm font-medium">{isSupabaseReady ? "Servicios conectados" : "Conectando servicios..."}</span>
-          </div>
-        </div>
+        
 
         <Card className="shadow-2xl border-0 bg-white/80 backdrop-blur-sm">
           <CardHeader className="space-y-6 pb-6">

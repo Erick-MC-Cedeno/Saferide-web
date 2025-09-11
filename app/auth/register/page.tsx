@@ -78,20 +78,6 @@ export default function RegisterPage() {
 
       <div className="w-full max-w-lg relative z-10">
         <div className="text-center mb-8">
-          <div className="flex items-center justify-center space-x-4 mb-8">
-            <div className="relative">
-              <div className="absolute inset-0 bg-gradient-to-r from-purple-600 to-pink-600 rounded-2xl blur opacity-75 animate-pulse"></div>
-              <div className="relative bg-gradient-to-r from-purple-600 to-pink-600 p-4 rounded-2xl shadow-2xl">
-                <Shield className="h-10 w-10 text-white" />
-              </div>
-            </div>
-            <div className="text-left">
-              <span className="text-4xl font-bold bg-gradient-to-r from-purple-600 via-pink-600 to-blue-600 bg-clip-text text-transparent">
-                SafeRide
-              </span>
-              <div className="text-sm text-gray-500 font-medium">Transporte Seguro</div>
-            </div>
-          </div>
           <h1 className="text-3xl font-bold text-gray-900 mb-3">¡Únete a SafeRide!</h1>
           <p className="text-gray-600 text-lg">Crea tu cuenta y comienza tu viaje seguro</p>
         </div>

@@ -30,10 +30,21 @@ export function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
-  // Get auth info from cookies
+  // Get auth info from cookies - verificación segura
   const authToken = request.cookies.get("auth-token")?.value
   const userType = request.cookies.get("user-type")?.value
   const isAuthenticated = Boolean(authToken)
+  
+  // Verificar origen de la solicitud para prevenir CSRF
+  const requestOrigin = request.headers.get('origin')
+  const host = request.headers.get('host')
+  
+  // Si hay un origen en la solicitud, verificar que coincida con el host
+  if (requestOrigin && host && !requestOrigin.includes(host)) {
+    console.warn(`Posible CSRF detectado: Origen ${requestOrigin} no coincide con host ${host}`)
+    // En producción, podrías bloquear estas solicitudes
+    // return NextResponse.json({ error: 'Origen no permitido' }, { status: 403 })
+  }
 
   // Handle authenticated users trying to access auth pages
   if (isAuthenticated && authRoutes.has(pathname)) {

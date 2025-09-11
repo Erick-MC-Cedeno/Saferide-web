@@ -54,6 +54,7 @@ export const removeSecureCookie = (name: string) => {
 
 /**
  * Elimina todas las cookies relacionadas con la autenticación
+ * excepto la cookie auth-in-progress que se mantiene para permitir el acceso a la página de login
  */
 export const clearAuthCookies = () => {
   const authCookies = [
@@ -65,22 +66,26 @@ export const clearAuthCookies = () => {
   ];
   
   authCookies.forEach(cookieName => removeSecureCookie(cookieName));
+  // No eliminamos la cookie auth-in-progress para permitir el acceso a la página de login
 };
 
 /**
  * Establece una cookie temporal para indicar que hay un proceso de autenticación en curso
  * Esto ayuda al middleware a evitar redirecciones en bucle durante el proceso de login
+ * y permite el acceso a la página de login después de cerrar sesión
  */
 export const setAuthInProgressCookie = () => {
   if (typeof document === 'undefined') return;
   
-  // Establecer una cookie de duración suficiente (30 segundos) para el proceso de autenticación
+  // Establecer una cookie de duración suficiente (60 segundos) para el proceso de autenticación
   // Esto da tiempo suficiente para completar el proceso de login o para acceder a la página de login después de cerrar sesión
-  document.cookie = "auth-in-progress=true; path=/; max-age=30; SameSite=Lax";
+  // y para manejar correctamente las redirecciones en los dashboards de conductor y pasajero
+  document.cookie = "auth-in-progress=true; path=/; max-age=60; SameSite=Lax";
 };
 
 /**
  * Limpia todos los datos de autenticación (cookies y localStorage)
+ * Mantiene la cookie auth-in-progress para permitir el acceso a la página de login
  */
 export const clearAuthData = () => {
   // Limpiar cookies

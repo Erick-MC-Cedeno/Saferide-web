@@ -40,27 +40,52 @@ export default function RegisterPage() {
     setLoading(true)
     setError("")
 
+    // Basic client-side validation and sanitization to avoid platform-specific issues (mobile)
+    const email = formData.email?.trim()
+    const password = (formData.password || "").trim()
+    const name = formData.name?.trim()
+    // Allow leading + for international numbers, keep digits and + only
+    const sanitizedPhone = (formData.phone || "").replace(/[^\d+]/g, "").trim()
+
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setError("Por favor ingresa un correo electrónico válido.")
+      setLoading(false)
+      return
+    }
+
+    if (!password || password.length < 6) {
+      setError("La contraseña debe tener al menos 6 caracteres.")
+      setLoading(false)
+      return
+    }
+
     try {
       // Importar la función registerUser desde auth.ts
       const { registerUser } = await import("@/lib/auth")
 
-      // Preparar los datos del usuario según el tipo
+      // Preparar los datos del usuario según el tipo (usar teléfono sanitizado)
       const userData = {
         ...formData,
+        name,
+        email,
+        phone: sanitizedPhone,
         userType: userType as "passenger" | "driver",
       }
 
       // Registrar el usuario
-      const result = await registerUser(userData, formData.password)
+      const result = await registerUser(userData, password)
 
       if (result.success) {
         // Redirigir al login después de un registro exitoso
         window.location.href = "/auth/login"
       } else {
+        // Mostrar error amigable y registrar el detalle en consola para depuración en móviles
+        console.error("Registro fallido (server):", result.error)
         setError(result.error || "Error al registrar usuario")
       }
     } catch (error: any) {
-      console.error("Error de registro:", error)
+      // Registrar detalle completo para diagnóstico en móvil
+      console.error("Error de registro (excepción):", error)
       setError("Error inesperado. Por favor intenta de nuevo.")
     } finally {
       setLoading(false)
@@ -69,8 +94,8 @@ export default function RegisterPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-pink-50 flex items-center justify-center p-4 relative overflow-hidden">
-      {/* Animated background elements */}
-      <div className="absolute inset-0 overflow-hidden">
+      {/* Animated background elements (pointer-events-none so touches reach the form on mobile) */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-purple-400/20 to-pink-400/20 rounded-full blur-3xl animate-pulse"></div>
         <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-gradient-to-tr from-blue-400/20 to-purple-400/20 rounded-full blur-3xl animate-pulse delay-1000"></div>
         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-gradient-to-r from-cyan-400/10 to-blue-400/10 rounded-full blur-3xl animate-pulse delay-500"></div>

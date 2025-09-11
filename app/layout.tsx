@@ -21,6 +21,12 @@ export const metadata: Metadata = {
   generator: "saferide",
 }
 
+// Use the dedicated viewport export (Next.js expects a viewport export instead of placing it inside metadata)
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+}
+
 export default function RootLayout({
   children,
 }: {

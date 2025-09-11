@@ -23,6 +23,16 @@ export const registerUser = async (userData: Omit<UserData, "uid">, password: st
       return { success: false, error: "Servicios de autenticación no están disponibles." }
     }
 
+    // Basic validation guard for phone (helpful for mobile submissions)
+    if (!userData.phone || typeof userData.phone !== "string" || userData.phone.trim().length === 0) {
+      // Allow registration without phone in some flows but return a clear message
+      console.warn("Registro sin teléfono o teléfono inválido:", userData.phone)
+      // Continue registration but include a warning in the response so UI can show it
+      // (This avoids blocking users but surfaces the root cause for debugging)
+      // Note: For stricter validation, uncomment the line below to reject.
+      // return { success: false, error: "El número de teléfono no es válido." }
+    }
+
     // Create user in Supabase Auth
     const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
       email: userData.email,

@@ -48,12 +48,33 @@ export function middleware(request: NextRequest) {
 
   // Handle authenticated users trying to access auth pages
   if (isAuthenticated && authRoutes.has(pathname)) {
+    // Verificar si hay una cookie de autenticación en proceso
+    const authInProgress = request.cookies.get('auth-in-progress')?.value
+    
+    // Si hay un proceso de autenticación en curso, permitir el acceso a la página de login
+    if (authInProgress && pathname === "/auth/login") {
+      return NextResponse.next()
+    }
+    
     const dashboardPath = userType === "driver" ? "/driver/dashboard" : "/passenger/dashboard"
     return NextResponse.redirect(new URL(dashboardPath, request.url))
   }
 
   // Handle unauthenticated users trying to access protected routes
+// Handle authentication redirects
   if (!isAuthenticated && !publicRoutes.has(pathname)) {
+    // Verificar si hay una cookie de autenticación en proceso
+    const authInProgress = request.cookies.get('auth-in-progress')?.value
+    
+    if (authInProgress) {
+      // Si hay un proceso de autenticación en curso, permitir la navegación
+      // Esto evita redirecciones en bucle durante el proceso de login
+      const response = NextResponse.next()
+      // Limpiar la cookie de autenticación en proceso
+      response.cookies.delete('auth-in-progress')
+      return response
+    }
+    
     const loginUrl = new URL("/auth/login", request.url)
     if (pathname !== "/") {
       loginUrl.searchParams.set("redirect", pathname)

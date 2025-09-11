@@ -19,12 +19,34 @@ export const getSupabase = () => {
         auth: {
           persistSession: true,
           autoRefreshToken: true,
+          detectSessionInUrl: true, // Asegurar que detecte la sesión en la URL
           // Configuración de cookies seguras
           storageKey: 'supabase-auth-token',
           storage: {
             getItem: (key) => {
               if (typeof window === 'undefined') return null
-              return window.localStorage.getItem(key)
+              // Intentar obtener primero desde localStorage
+              const localValue = window.localStorage.getItem(key)
+              if (localValue) return localValue
+              
+              // Si no está en localStorage, intentar obtener de cookies
+              if (typeof document !== 'undefined' && key === 'supabase-auth-token') {
+                const cookies = document.cookie.split(';')
+                const tokenCookie = cookies.find(c => c.trim().startsWith('sb-access-token='))
+                if (tokenCookie) {
+                  // Si encontramos la cookie, reconstruir el objeto de sesión
+                  const token = tokenCookie.split('=')[1]
+                  if (token) {
+                    try {
+                      // Crear un objeto de sesión básico con el token
+                      return JSON.stringify({ access_token: token })
+                    } catch (e) {
+                      console.error('Error al procesar cookie de token:', e)
+                    }
+                  }
+                }
+              }
+              return null
             },
             setItem: (key, value) => {
               if (typeof window === 'undefined') return
@@ -36,7 +58,7 @@ export const getSupabase = () => {
                   if (data?.access_token) {
                     // Configurar cookie segura (HttpOnly se maneja en el servidor)
                     const isProduction = process.env.NODE_ENV === 'production'
-                    document.cookie = `sb-access-token=${data.access_token}; Path=/; Max-Age=3600; ${isProduction ? 'Secure; ' : ''}SameSite=Lax`
+                    document.cookie = `sb-access-token=${data.access_token}; Path=/; Max-Age=86400; ${isProduction ? 'Secure; ' : ''}SameSite=Lax`
                   }
                 } catch (e) {
                   console.error('Error al procesar token para cookie:', e)

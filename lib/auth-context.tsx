@@ -133,11 +133,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       if (supabase) {
         await supabase.auth.signOut()
+        // Clear local auth state immediately so UI updates without a full page refresh
+        setUser(null)
+        setUserData(null)
+        setUserType(null)
+        isLoadingUserData.current = false
+
+        if (typeof document !== "undefined") {
+          document.cookie = "auth-token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT"
+          document.cookie = "user-type=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT"
+        }
       }
     } catch (error) {
       console.error("Error signing out:", error)
     }
   }
+
 
   const value = {
     user,

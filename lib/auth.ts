@@ -1,5 +1,6 @@
 // Authentication utilities using Supabase for auth and Supabase DB for user profiles
 import { supabase } from "./supabase"
+import { clearAuthData } from "./cookie-utils"
 
 export interface UserData {
   uid: string
@@ -157,23 +158,8 @@ export const logoutUser = async () => {
   try {
     if (!supabase) return { success: false, error: "Servicios de autenticación no están disponibles." }
 
-    // Limpiar cualquier dato en localStorage que pueda estar relacionado con la sesión
-    if (typeof window !== "undefined") {
-      // Buscar y eliminar cualquier item de localStorage relacionado con supabase
-      Object.keys(localStorage).forEach(key => {
-        if (key.includes("supabase") || key.includes("auth")) {
-          localStorage.removeItem(key)
-        }
-      })
-    }
-
-    // Limpiar cookies relacionadas con la autenticación
-    if (typeof document !== "undefined") {
-      document.cookie = "auth-token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT"
-      document.cookie = "user-type=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT"
-      document.cookie = "sb-access-token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT"
-      document.cookie = "sb-refresh-token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT"
-    }
+    // Limpiar todas las cookies y localStorage relacionados con autenticación
+    clearAuthData()
 
     // Realizar el cierre de sesión en Supabase
     const { error } = await supabase.auth.signOut()

@@ -8,15 +8,16 @@ const isProduction = process.env.NODE_ENV === 'production';
 // Opciones de seguridad para las cookies
 const secureCookieOptions = {
   // HttpOnly evita acceso desde JavaScript del lado del cliente
-  httpOnly: true,
+  // Establecido a false para permitir que el middleware acceda a las cookies
+  httpOnly: false,
   // Secure asegura que las cookies solo se envíen por HTTPS
   secure: isProduction,
   // SameSite ayuda a prevenir ataques CSRF
   sameSite: 'lax' as 'lax' | 'strict' | 'none',
   // Path establece la ruta para la cual la cookie es válida
   path: '/',
-  // Tiempo de expiración estándar (24 horas)
-  maxAge: 86400
+  // Tiempo de expiración estándar (7 días para mayor persistencia)
+  maxAge: 7 * 24 * 60 * 60
 };
 
 /**
@@ -64,6 +65,18 @@ export const clearAuthCookies = () => {
   ];
   
   authCookies.forEach(cookieName => removeSecureCookie(cookieName));
+};
+
+/**
+ * Establece una cookie temporal para indicar que hay un proceso de autenticación en curso
+ * Esto ayuda al middleware a evitar redirecciones en bucle durante el proceso de login
+ */
+export const setAuthInProgressCookie = () => {
+  if (typeof document === 'undefined') return;
+  
+  // Establecer una cookie de duración suficiente (30 segundos) para el proceso de autenticación
+  // Esto da tiempo suficiente para completar el proceso de login o para acceder a la página de login después de cerrar sesión
+  document.cookie = "auth-in-progress=true; path=/; max-age=30; SameSite=Lax";
 };
 
 /**

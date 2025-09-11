@@ -48,6 +48,7 @@ export const registerUser = async (userData: Omit<UserData, "uid">, password: st
       }
       return { success: false, error: message }
     }
+    
 
     const user = signUpData.user
     if (!user) {
@@ -154,12 +155,34 @@ export const loginUser = async (email: string, password: string) => {
 
 export const logoutUser = async () => {
   try {
-  if (!supabase) return { success: false, error: "Servicios de autenticación no están disponibles." }
+    if (!supabase) return { success: false, error: "Servicios de autenticación no están disponibles." }
 
-  const { error } = await supabase.auth.signOut()
-  if (error) return { success: false, error: error.message }
+    // Limpiar cualquier dato en localStorage que pueda estar relacionado con la sesión
+    if (typeof window !== "undefined") {
+      // Buscar y eliminar cualquier item de localStorage relacionado con supabase
+      Object.keys(localStorage).forEach(key => {
+        if (key.includes("supabase") || key.includes("auth")) {
+          localStorage.removeItem(key)
+        }
+      })
+    }
 
-  return { success: true }
+    // Limpiar cookies relacionadas con la autenticación
+    if (typeof document !== "undefined") {
+      document.cookie = "auth-token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT"
+      document.cookie = "user-type=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT"
+      document.cookie = "sb-access-token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT"
+      document.cookie = "sb-refresh-token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT"
+    }
+
+    // Realizar el cierre de sesión en Supabase
+    const { error } = await supabase.auth.signOut()
+    if (error) {
+      console.error("Error en Supabase signOut:", error)
+      return { success: false, error: error.message }
+    }
+
+    return { success: true }
   } catch (error: any) {
     console.error("Logout error:", error)
     return { success: false, error: error.message }

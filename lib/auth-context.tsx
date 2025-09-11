@@ -4,7 +4,7 @@ import React from "react"
 import { createContext, useContext, useEffect, useState, useRef } from "react"
 import { getUserData } from "./auth"
 import { supabase } from "./supabase"
-import { setSecureCookie, removeSecureCookie, clearAuthData } from "./cookie-utils"
+import { setSecureCookie, removeSecureCookie, clearAuthData, setAuthInProgressCookie } from "./cookie-utils"
 
 interface AuthContextType {
   user: any | null
@@ -65,14 +65,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     let unsubscribe: (() => void) | null = null
     let mounted = true
 
-    const initializeAuth = () => {
+    const initializeAuth = async () => {
       try {
         // Supabase readiness
         setSupabaseReady(!!(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY))
 
+        // Verificar si hay una sesión activa primero
+        const { data: { session } } = await supabase.auth.getSession()
+        if (session?.user) {
+          const sbUser = session.user
+          const userWithUid = { uid: sbUser.id, ...sbUser }
+          setUser(userWithUid)
+          await loadUserData(sbUser.id, "session-init")
+          
+          // Establecer cookie de autenticación con configuración segura y mayor duración
+          // Usar httpOnly: false para que el middleware pueda acceder a la cookie
+          setSecureCookie('auth-token', sbUser.id, { maxAge: 7 * 24 * 60 * 60, httpOnly: false })
+          
+          if (mounted) setLoading(false)
+        }
+
         // Set up supabase auth state listener
         const { data: listener } = supabase.auth.onAuthStateChange(async (event, session) => {
           try {
+            console.log("Auth state change event:", event)
             const sbUser = session?.user ?? null
             if (sbUser) {
               // For compatibility with existing code that expects `user.uid`, expose uid mapping
@@ -81,8 +97,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               setUser(userWithUid)
               await loadUserData(sbUser.id, "auth-state-change")
 
-              // Establecer cookie de autenticación con configuración segura
-              setSecureCookie('auth-token', sbUser.id)
+              // Establecer cookie de autenticación con configuración segura y mayor duración
+              // Usar httpOnly: false para que el middleware pueda acceder a la cookie
+              setSecureCookie('auth-token', sbUser.id, { maxAge: 7 * 24 * 60 * 60, httpOnly: false })
             } else {
               setUser(null)
               setUserData(null)
@@ -124,7 +141,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Update cookies when userType changes
   useEffect(() => {
     if (userType) {
-      setSecureCookie('user-type', userType)
+      // Usar httpOnly: false para que el middleware pueda acceder a la cookie
+      setSecureCookie('user-type', userType, { maxAge: 7 * 24 * 60 * 60, httpOnly: false })
     }
   }, [userType])
 
@@ -136,6 +154,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUserData(null)
         setUserType(null)
         isLoadingUserData.current = false
+
+        // Establecer cookie de autenticación en proceso para permitir acceso a la página de login
+        setAuthInProgressCookie()
 
         // Limpiar todas las cookies y localStorage relacionados con autenticación
         clearAuthData()

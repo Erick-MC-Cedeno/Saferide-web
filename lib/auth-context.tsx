@@ -4,6 +4,7 @@ import React from "react"
 import { createContext, useContext, useEffect, useState, useRef } from "react"
 import { getUserData } from "./auth"
 import { supabase } from "./supabase"
+import { setSecureCookie, removeSecureCookie, clearAuthData } from "./cookie-utils"
 
 interface AuthContextType {
   user: any | null
@@ -80,19 +81,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               setUser(userWithUid)
               await loadUserData(sbUser.id, "auth-state-change")
 
-              if (typeof document !== "undefined") {
-                document.cookie = `auth-token=${sbUser.id}; path=/; max-age=86400`
-              }
+              // Establecer cookie de autenticación con configuración segura
+              setSecureCookie('auth-token', sbUser.id)
             } else {
               setUser(null)
               setUserData(null)
               setUserType(null)
               isLoadingUserData.current = false
 
-              if (typeof document !== "undefined") {
-                document.cookie = "auth-token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT"
-                document.cookie = "user-type=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT"
-              }
+              // Eliminar cookies de autenticación de forma segura
+              removeSecureCookie('auth-token')
+              removeSecureCookie('user-type')
             }
           } catch (error) {
             console.error("Error handling supabase auth state change:", error)
@@ -124,8 +123,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Update cookies when userType changes
   useEffect(() => {
-    if (userType && typeof document !== "undefined") {
-      document.cookie = `user-type=${userType}; path=/; max-age=86400`
+    if (userType) {
+      setSecureCookie('user-type', userType)
     }
   }, [userType])
 
@@ -138,30 +137,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUserType(null)
         isLoadingUserData.current = false
 
-        // Limpiar cookies
-        if (typeof document !== "undefined") {
-          document.cookie = "auth-token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT"
-          document.cookie = "user-type=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT"
-          // Limpiar cualquier otra cookie relacionada con la sesión
-          document.cookie = "sb-access-token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT"
-          document.cookie = "sb-refresh-token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT"
-        }
+        // Limpiar todas las cookies y localStorage relacionados con autenticación
+        clearAuthData()
 
         // Luego realizar el cierre de sesión en Supabase
         const { error } = await supabase.auth.signOut()
         if (error) {
           throw error
-        }
-
-        // Limpiar cualquier dato en localStorage que pueda estar relacionado con la sesión
-        if (typeof window !== "undefined") {
-          localStorage.removeItem("supabase.auth.token")
-          // Buscar y eliminar cualquier otro item de localStorage relacionado con supabase
-          Object.keys(localStorage).forEach(key => {
-            if (key.includes("supabase") || key.includes("auth")) {
-              localStorage.removeItem(key)
-            }
-          })
         }
       }
     } catch (error) {

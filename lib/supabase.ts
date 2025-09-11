@@ -19,6 +19,39 @@ export const getSupabase = () => {
         auth: {
           persistSession: true,
           autoRefreshToken: true,
+          // Configuración de cookies seguras
+          storageKey: 'supabase-auth-token',
+          storage: {
+            getItem: (key) => {
+              if (typeof window === 'undefined') return null
+              return window.localStorage.getItem(key)
+            },
+            setItem: (key, value) => {
+              if (typeof window === 'undefined') return
+              window.localStorage.setItem(key, value)
+              // Establecer una cookie segura para el token
+              if (key === 'supabase-auth-token' && typeof document !== 'undefined') {
+                try {
+                  const data = JSON.parse(value)
+                  if (data?.access_token) {
+                    // Configurar cookie segura (HttpOnly se maneja en el servidor)
+                    const isProduction = process.env.NODE_ENV === 'production'
+                    document.cookie = `sb-access-token=${data.access_token}; Path=/; Max-Age=3600; ${isProduction ? 'Secure; ' : ''}SameSite=Lax`
+                  }
+                } catch (e) {
+                  console.error('Error al procesar token para cookie:', e)
+                }
+              }
+            },
+            removeItem: (key) => {
+              if (typeof window === 'undefined') return
+              window.localStorage.removeItem(key)
+              // Eliminar cookie si existe
+              if (key === 'supabase-auth-token' && typeof document !== 'undefined') {
+                document.cookie = `sb-access-token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT; ${process.env.NODE_ENV === 'production' ? 'Secure; ' : ''}SameSite=Lax`
+              }
+            }
+          }
         },
         global: {
           headers: {

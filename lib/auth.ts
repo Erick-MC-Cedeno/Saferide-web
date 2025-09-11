@@ -1,6 +1,4 @@
-// Authentication utilities with robust Firebase handling
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "firebase/auth"
-import { getFirebaseAuth, isFirebaseReady } from "./firebase"
+// Authentication utilities using Supabase for auth and Supabase DB for user profiles
 import { supabase } from "./supabase"
 
 export interface UserData {
@@ -21,60 +19,60 @@ export interface UserData {
 
 export const registerUser = async (userData: Omit<UserData, "uid">, password: string) => {
   try {
-    // Check if Firebase is ready
-    if (!isFirebaseReady()) {
-      return {
-        success: false,
-        error: "Los servicios de autenticación no están disponibles. Por favor, intenta más tarde.",
-      }
+    if (!supabase) {
+      return { success: false, error: "Servicios de autenticación no están disponibles." }
     }
 
-    const auth = getFirebaseAuth()
+    // Create user in Supabase Auth
+    const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+      email: userData.email,
+      password,
+      options: { data: { name: userData.name, phone: userData.phone, userType: userData.userType } },
+    })
 
-    if (!auth) {
-      return {
-        success: false,
-        error: "Firebase Auth no está disponible. Por favor, verifica tu configuración.",
+    if (signUpError) {
+      // Map common Supabase errors to friendly messages
+      let message = "Error al crear la cuenta. " + signUpError.message
+      if (signUpError.message?.includes("duplicate")) {
+        message = "Este correo electrónico ya está registrado."
       }
+      return { success: false, error: message }
     }
 
-    // Create user in Firebase Auth
-    const userCredential = await createUserWithEmailAndPassword(auth, userData.email, password)
-    const user = userCredential.user
+    const user = signUpData.user
+    if (!user) {
+      return { success: false, error: "No se pudo crear el usuario. Revisa la configuración de Supabase." }
+    }
 
-    // Save additional user data to Supabase (only if Supabase is available)
-    if (supabase) {
-      if (userData.userType === "driver") {
-        const { error } = await supabase.from("drivers").insert({
-          uid: user.uid,
-          email: userData.email,
-          name: userData.name,
-          phone: userData.phone,
-          license_number: userData.licenseNumber!,
-          vehicle_plate: userData.vehiclePlate!,
-          vehicle_model: userData.vehicleModel!,
-          vehicle_year: userData.vehicleYear!,
-          is_verified: false,
-          rating: 0,
-          total_trips: 0,
-          is_online: false,
-        })
+    // Save additional user data to Supabase database tables
+    if (userData.userType === "driver") {
+      const { error } = await supabase.from("drivers").insert({
+        uid: user.id,
+        email: userData.email,
+        name: userData.name,
+        phone: userData.phone,
+        license_number: userData.licenseNumber || null,
+        vehicle_plate: userData.vehiclePlate || null,
+        vehicle_model: userData.vehicleModel || null,
+        vehicle_year: userData.vehicleYear || null,
+        is_verified: false,
+        rating: 0,
+        total_trips: 0,
+        is_online: false,
+      })
 
-        if (error) throw error
-      } else {
-        const { error } = await supabase.from("passengers").insert({
-          uid: user.uid,
-          email: userData.email,
-          name: userData.name,
-          phone: userData.phone,
-          rating: 0,
-          total_trips: 0,
-        })
-
-        if (error) throw error
-      }
+      if (error) throw error
     } else {
-      console.warn("Supabase not available, user data not saved to database")
+      const { error } = await supabase.from("passengers").insert({
+        uid: user.id,
+        email: userData.email,
+        name: userData.name,
+        phone: userData.phone,
+        rating: 0,
+        total_trips: 0,
+      })
+
+      if (error) throw error
     }
 
     return { success: true, user }
@@ -84,11 +82,12 @@ export const registerUser = async (userData: Omit<UserData, "uid">, password: st
     // Provide more specific error messages
     let errorMessage = "Error al crear la cuenta. "
 
-    if (error.code === "auth/email-already-in-use") {
+    // Map Firebase-specific codes where possible, otherwise fall back to error.message
+    if (error?.code === "auth/email-already-in-use" || error?.message?.includes("duplicate")) {
       errorMessage = "Este correo electrónico ya está registrado."
-    } else if (error.code === "auth/weak-password") {
+    } else if (error?.code === "auth/weak-password") {
       errorMessage = "La contraseña debe tener al menos 6 caracteres."
-    } else if (error.code === "auth/invalid-email") {
+    } else if (error?.code === "auth/invalid-email") {
       errorMessage = "El correo electrónico no es válido."
     } else {
       errorMessage += error.message
@@ -100,40 +99,40 @@ export const registerUser = async (userData: Omit<UserData, "uid">, password: st
 
 export const loginUser = async (email: string, password: string) => {
   try {
-    // Check if Firebase is ready
-    if (!isFirebaseReady()) {
-      return {
-        success: false,
-        error: "Los servicios de autenticación no están disponibles. Por favor, intenta más tarde.",
-      }
+    if (!supabase) {
+      return { success: false, error: "Servicios de autenticación no están disponibles." }
     }
 
-    const auth = getFirebaseAuth()
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+    if (error) {
+      // Handle common Supabase auth errors with friendly Spanish messages
+      let message = "Error al iniciar sesión. " + error.message
 
-    if (!auth) {
-      return {
-        success: false,
-        error: "Firebase Auth no está disponible. Por favor, verifica tu configuración.",
+      if (error.message?.toLowerCase().includes("email not confirmed") || error.message?.toLowerCase().includes("not confirmed")) {
+        message = "Tu correo electrónico no ha sido confirmado. Revisa tu bandeja de entrada (y la carpeta de spam) y confirma tu cuenta."
+      } else if (error.message?.toLowerCase().includes("invalid")) {
+        message = "Credenciales inválidas. Verifica tu correo y contraseña."
       }
+
+      return { success: false, error: message }
     }
 
-    const userCredential = await signInWithEmailAndPassword(auth, email, password)
-    return { success: true, user: userCredential.user }
+    return { success: true, user: data.user }
   } catch (error: any) {
     console.error("Login error:", error)
 
     // Provide more specific error messages
     let errorMessage = "Error al iniciar sesión. "
 
-    if (error.code === "auth/user-not-found") {
+    if (error?.code === "auth/user-not-found" || error?.message?.toLowerCase().includes("not found")) {
       errorMessage = "No existe una cuenta con este correo electrónico."
-    } else if (error.code === "auth/wrong-password") {
+    } else if (error?.code === "auth/wrong-password" || error?.message?.toLowerCase().includes("invalid password")) {
       errorMessage = "Contraseña incorrecta."
-    } else if (error.code === "auth/invalid-email") {
+    } else if (error?.code === "auth/invalid-email") {
       errorMessage = "El correo electrónico no es válido."
-    } else if (error.code === "auth/too-many-requests") {
+    } else if (error?.code === "auth/too-many-requests") {
       errorMessage = "Demasiados intentos fallidos. Intenta más tarde."
-    } else if (error.code === "auth/invalid-credential") {
+    } else if (error?.code === "auth/invalid-credential") {
       errorMessage = "Credenciales inválidas. Verifica tu correo y contraseña."
     } else {
       errorMessage += error.message
@@ -145,14 +144,12 @@ export const loginUser = async (email: string, password: string) => {
 
 export const logoutUser = async () => {
   try {
-    const auth = getFirebaseAuth()
+  if (!supabase) return { success: false, error: "Servicios de autenticación no están disponibles." }
 
-    if (!auth) {
-      return { success: false, error: "Firebase Auth no está disponible." }
-    }
+  const { error } = await supabase.auth.signOut()
+  if (error) return { success: false, error: error.message }
 
-    await signOut(auth)
-    return { success: true }
+  return { success: true }
   } catch (error: any) {
     console.error("Logout error:", error)
     return { success: false, error: error.message }
@@ -167,16 +164,15 @@ export const getUserData = async (uid: string, userType: "passenger" | "driver")
     }
 
     const table = userType === "driver" ? "drivers" : "passengers"
-    const { data, error } = await supabase.from(table).select("*").eq("uid", uid).single()
+    const { data, error } = await supabase.from(table).select("*").eq("uid", uid).maybeSingle()
 
     if (error) {
-      // Don't throw error if user not found, just return null
-      if (error.code === "PGRST116") {
-        return null
-      }
-      throw error
+      console.warn("Error fetching user data:", error)
+      return null
     }
-    return data
+
+    // data may be null when no record exists
+    return data || null
   } catch (error) {
     console.error("Get user data error:", error)
     return null

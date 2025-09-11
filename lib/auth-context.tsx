@@ -1,29 +1,28 @@
 "use client"
 
-import type React from "react"
+import React from "react"
 import { createContext, useContext, useEffect, useState, useRef } from "react"
-import { type User, onAuthStateChanged } from "firebase/auth"
-import { getFirebaseAuth, isFirebaseReady } from "./firebase"
 import { getUserData } from "./auth"
+import { supabase } from "./supabase"
 
 interface AuthContextType {
-  user: User | null
+  user: any | null
   userData: any | null
   userType: "passenger" | "driver" | null
   loading: boolean
   signOut: () => Promise<void>
-  isFirebaseReady: boolean
+  isSupabaseReady: boolean
   refreshUserData: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null)
+  const [user, setUser] = useState<any | null>(null)
   const [userData, setUserData] = useState<any | null>(null)
   const [userType, setUserType] = useState<"passenger" | "driver" | null>(null)
   const [loading, setLoading] = useState(true)
-  const [firebaseReady, setFirebaseReady] = useState(false)
+  const [supabaseReady, setSupabaseReady] = useState(!!(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY))
   const isLoadingUserData = useRef(false)
 
   const loadUserData = async (userId: string, source = "unknown") => {
@@ -67,67 +66,48 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const initializeAuth = () => {
       try {
-        // Check if Firebase is ready
-        const ready = isFirebaseReady()
-        setFirebaseReady(ready)
+        // Supabase readiness
+        setSupabaseReady(!!(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY))
 
-        if (!ready) {
-          setTimeout(() => {
-            if (mounted) {
-              initializeAuth()
-            }
-          }, 1000)
-          return
-        }
-
-        // Get Firebase Auth instance
-        const auth = getFirebaseAuth()
-
-        if (!auth) {
-          console.warn("Firebase Auth not available")
-          setLoading(false)
-          return
-        }
-
-        // Set up auth state listener
-        unsubscribe = onAuthStateChanged(auth, async (user) => {
+        // Set up supabase auth state listener
+        const { data: listener } = supabase.auth.onAuthStateChange(async (event, session) => {
           try {
-            if (user) {
-              setUser(user)
+            const sbUser = session?.user ?? null
+            if (sbUser) {
+              // For compatibility with existing code that expects `user.uid`, expose uid mapping
+              // while still keeping the original Supabase user fields.
+              const userWithUid = { uid: sbUser.id, ...sbUser }
+              setUser(userWithUid)
+              await loadUserData(sbUser.id, "auth-state-change")
 
-              // Load user data
-              await loadUserData(user.uid, "auth-state-change")
-
-              // Set cookies for middleware
               if (typeof document !== "undefined") {
-                document.cookie = `auth-token=${user.uid}; path=/; max-age=86400`
+                document.cookie = `auth-token=${sbUser.id}; path=/; max-age=86400`
               }
             } else {
               setUser(null)
               setUserData(null)
               setUserType(null)
-              isLoadingUserData.current = false // Reset loading flag
+              isLoadingUserData.current = false
 
-              // Clear cookies
               if (typeof document !== "undefined") {
                 document.cookie = "auth-token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT"
                 document.cookie = "user-type=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT"
               }
             }
           } catch (error) {
-            console.error("Error handling auth state change:", error)
+            console.error("Error handling supabase auth state change:", error)
           } finally {
-            if (mounted) {
-              setLoading(false)
-            }
+            if (mounted) setLoading(false)
           }
         })
+
+        // Store unsubscribe
+        unsubscribe = () => {
+          listener?.subscription.unsubscribe()
+        }
       } catch (error) {
         console.error("Error initializing auth:", error)
-        setFirebaseReady(false)
-        if (mounted) {
-          setLoading(false)
-        }
+        if (mounted) setLoading(false)
       }
     }
 
@@ -151,9 +131,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = async () => {
     try {
-      const auth = getFirebaseAuth()
-      if (auth) {
-        await auth.signOut()
+      if (supabase) {
+        await supabase.auth.signOut()
       }
     } catch (error) {
       console.error("Error signing out:", error)
@@ -166,7 +145,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     userType,
     loading,
     signOut,
-    isFirebaseReady: firebaseReady,
+    isSupabaseReady: supabaseReady,
     refreshUserData,
   }
 

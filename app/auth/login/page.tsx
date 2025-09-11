@@ -23,7 +23,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
   const router = useRouter()
-  const { isFirebaseReady } = useAuth()
+    const { isSupabaseReady } = useAuth()
 
   // Check if user is already logged in
   const { user, loading: authLoading } = useAuth()
@@ -39,7 +39,7 @@ export default function LoginPage() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (!isFirebaseReady) {
+      if (!isSupabaseReady) {
       setError("Los servicios de autenticación no están disponibles. Por favor, intenta más tarde.")
       return
     }
@@ -109,23 +109,21 @@ export default function LoginPage() {
           <p className="text-gray-600 text-lg">Inicia sesión en tu cuenta de SafeRide</p>
         </div>
 
-        {/* Firebase Status Indicator */}
+  {/* Auth Status Indicator */}
         <div className="mb-6">
           <div
             className={`flex items-center justify-center space-x-2 p-3 rounded-xl transition-all duration-300 ${
-              isFirebaseReady
+              isSupabaseReady
                 ? "bg-gradient-to-r from-green-50 to-emerald-50 text-green-700 border border-green-200"
                 : "bg-gradient-to-r from-yellow-50 to-orange-50 text-yellow-700 border border-yellow-200"
             }`}
           >
-            {isFirebaseReady ? (
+            {isSupabaseReady ? (
               <Wifi className="h-4 w-4 animate-pulse" />
             ) : (
               <WifiOff className="h-4 w-4 animate-bounce" />
             )}
-            <span className="text-sm font-medium">
-              {isFirebaseReady ? "Servicios conectados" : "Conectando servicios..."}
-            </span>
+            <span className="text-sm font-medium">{isSupabaseReady ? "Servicios conectados" : "Conectando servicios..."}</span>
           </div>
         </div>
 
@@ -172,7 +170,7 @@ export default function LoginPage() {
                   onChange={(e) => setEmail(e.target.value)}
                   required
                   className="h-12 border-2 border-gray-200 focus:border-blue-500 focus:ring-blue-500/20 transition-all duration-300 rounded-xl bg-white/50 backdrop-blur-sm"
-                  disabled={loading || !isFirebaseReady}
+                  disabled={loading || !isSupabaseReady}
                 />
               </div>
 
@@ -188,7 +186,7 @@ export default function LoginPage() {
                     onChange={(e) => setPassword(e.target.value)}
                     required
                     className="h-12 pr-12 border-2 border-gray-200 focus:border-blue-500 focus:ring-blue-500/20 transition-all duration-300 rounded-xl bg-white/50 backdrop-blur-sm"
-                    disabled={loading || !isFirebaseReady}
+                    disabled={loading || !isSupabaseReady}
                   />
                   <Button
                     type="button"
@@ -196,7 +194,7 @@ export default function LoginPage() {
                     size="sm"
                     className="absolute right-0 top-0 h-full px-4 hover:bg-transparent transition-all duration-300"
                     onClick={() => setShowPassword(!showPassword)}
-                    disabled={loading || !isFirebaseReady}
+                    disabled={loading || !isSupabaseReady}
                   >
                     {showPassword ? (
                       <EyeOff className="h-5 w-5 text-gray-400 hover:text-gray-600 transition-colors" />
@@ -219,7 +217,7 @@ export default function LoginPage() {
               <Button
                 type="submit"
                 className="w-full h-12 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-[1.02]"
-                disabled={loading || !isFirebaseReady}
+                disabled={loading || !isSupabaseReady}
               >
                 {loading ? (
                   <>

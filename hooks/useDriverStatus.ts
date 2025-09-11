@@ -3,7 +3,10 @@
 import { useEffect, useState, useRef } from "react"
 import { supabase } from "@/lib/supabase"
 
-export function useDriverStatus(driverId: string) {
+// Keep track of driverIds we've already warned about to avoid spamming the console
+const warnedInvalidDriverIds = new Set<string>()
+
+export function useDriverStatus(driverId?: string) {
   const [isOnline, setIsOnline] = useState(false)
   const [loading, setLoading] = useState(true)
   const locationUpdateIntervalRef = useRef<NodeJS.Timeout | null>(null)
@@ -77,18 +80,61 @@ export function useDriverStatus(driverId: string) {
     // Cargar estado inicial
     const loadDriverStatus = async () => {
       try {
-        const { data, error } = await supabase.from("drivers").select("is_online").eq("uid", driverId).single()
+        // Validate driverId - skip when placeholder or empty
+        if (!driverId || typeof driverId !== "string" || driverId.trim().length === 0 || driverId === "current-driver-id") {
+          // De-duplicate warnings so we don't spam the console repeatedly
+          const warnKey = driverId ?? "__undefined__"
+          if (!warnedInvalidDriverIds.has(warnKey)) {
+            console.warn("Invalid driverId provided to useDriverStatus; skipping load")
+            warnedInvalidDriverIds.add(warnKey)
+          }
+          setLoading(false)
+          return
+        }
 
-        if (error) throw error
-        setIsOnline(data.is_online)
+        // Use maybeSingle to avoid errors when 0 rows
+        const { data, error } = await supabase.from("drivers").select("is_online").eq("uid", driverId).maybeSingle()
+
+        // Handle PostgREST 'no rows' as offline (some clients may still return PGRST116)
+        if (error) {
+          // If PostgREST returns PGRST116 (no rows) treat as not found -> offline
+          if ((error as any)?.code === "PGRST116") {
+            setIsOnline(false)
+            setLoading(false)
+            return
+          }
+
+          // For 406 Not Acceptable or other REST issues, log and set offline
+          if ((error as any)?.status === 406 || (error as any)?.message?.toLowerCase?.().includes("not acceptable")) {
+            console.warn("Supabase returned 406 Not Acceptable for driver status request; driverId=", driverId)
+            setIsOnline(false)
+            setLoading(false)
+            return
+          }
+
+          throw error
+        }
+
+        if (!data) {
+          // No driver found -> offline
+          setIsOnline(false)
+          setLoading(false)
+          return
+        }
+
+        // data comes from PostgREST and may be typed as unknown; guard and coerce safely
+        const isOnlineValue = (data as any)?.is_online ?? false
+        setIsOnline(!!isOnlineValue)
 
         // Si el conductor está online, iniciar actualización periódica de ubicación
-        if (data.is_online) {
+        if (isOnlineValue) {
           updateDriverLocation()
           startLocationUpdates()
         }
       } catch (error) {
         console.error("Error loading driver status:", error)
+        // Ensure we set loading false even on unexpected errors
+        setIsOnline(false)
       } finally {
         setLoading(false)
       }

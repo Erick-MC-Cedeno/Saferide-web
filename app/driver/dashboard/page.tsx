@@ -40,7 +40,8 @@ import { RideChat } from "@/components/RideChat"
 function DriverDashboardContent() {
   const { user } = useAuth()
   const { toast } = useToast()
-  const driverId = user?.uid || "current-driver-id"
+  // Pass undefined when user is not available to avoid sending placeholder IDs to the API
+  const driverId = user?.uid
   const { isOnline, loading: statusLoading, updateOnlineStatus } = useDriverStatus(driverId)
   const {
     rides,

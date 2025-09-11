@@ -70,8 +70,6 @@ export function middleware(request: NextRequest) {
       // Si hay un proceso de autenticación en curso, permitir la navegación
       // Esto evita redirecciones en bucle durante el proceso de login
       const response = NextResponse.next()
-      // Limpiar la cookie de autenticación en proceso
-      response.cookies.delete('auth-in-progress')
       return response
     }
     
@@ -92,6 +90,17 @@ export function middleware(request: NextRequest) {
     // Passenger trying to access driver routes
     if (pathname.startsWith("/driver/") && userType !== "driver") {
       return NextResponse.redirect(new URL("/passenger/dashboard", request.url))
+    }
+  } else {
+    // Si no está autenticado y está intentando acceder a rutas de dashboard
+    // verificar si hay una cookie de autenticación en proceso
+    const authInProgress = request.cookies.get('auth-in-progress')?.value
+    
+    if (authInProgress && (pathname.startsWith("/driver/") || pathname.startsWith("/passenger/"))) {
+      // Si hay un proceso de autenticación en curso, redirigir a la página de login
+      const loginUrl = new URL("/auth/login", request.url)
+      loginUrl.searchParams.set("redirect", pathname)
+      return NextResponse.redirect(loginUrl)
     }
   }
 

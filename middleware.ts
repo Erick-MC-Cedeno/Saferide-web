@@ -15,7 +15,7 @@ const publicRoutes = new Set([
 ])
 
 // Auth routes that authenticated users shouldn't access
-const authRoutes = new Set(["/auth/login", "/auth/register"])
+const authRoutes = new Set(["/auth/login", "/auth/register"]) 
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
@@ -30,10 +30,10 @@ export function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
-  // Get auth info from cookies - verificación segura
-  const authToken = request.cookies.get("auth-token")?.value
+  // Get auth info from cookies - verificación segura usando token real de Supabase
+  const supabaseToken = request.cookies.get('sb-access-token')?.value
   const userType = request.cookies.get("user-type")?.value
-  const isAuthenticated = Boolean(authToken)
+  const isAuthenticated = Boolean(supabaseToken)
   
   // Verificar origen de la solicitud para prevenir CSRF
   const requestOrigin = request.headers.get('origin')
@@ -67,10 +67,13 @@ export function middleware(request: NextRequest) {
     const authInProgress = request.cookies.get('auth-in-progress')?.value
     
     if (authInProgress) {
-      // Si hay un proceso de autenticación en curso, permitir la navegación
-      // Esto evita redirecciones en bucle durante el proceso de login
-      const response = NextResponse.next()
-      return response
+      // Si hay un proceso de autenticación en curso, redirigir SIEMPRE a la página de login
+      // para evitar que rutas protegidas se carguen sin sesión
+      const loginUrl = new URL("/auth/login", request.url)
+      if (pathname !== "/") {
+        loginUrl.searchParams.set("redirect", pathname)
+      }
+      return NextResponse.redirect(loginUrl)
     }
     
     const loginUrl = new URL("/auth/login", request.url)

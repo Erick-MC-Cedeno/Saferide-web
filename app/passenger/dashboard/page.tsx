@@ -1054,11 +1054,11 @@ function PassengerDashboardContent() {
                       <button
                         type="button"
                         onClick={handleUseMyLocation}
-                        className="inline-flex items-center space-x-2 text-sm text-blue-600 hover:text-blue-800"
-                        title="Usar mi ubicación"
+                        className="inline-flex items-center space-x-2 text-xs px-2 py-1 rounded-md border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 hover:border-blue-400 transition-all shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
+                        title="Ubicación actual"
                       >
                         <MapPin className="h-4 w-4" />
-                        <span>Usar mi ubicación</span>
+                        <span>Mi ubicación</span>
                       </button>
                     </div>
                     <AddressAutocomplete

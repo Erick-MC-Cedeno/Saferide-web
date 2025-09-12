@@ -4,7 +4,7 @@ import React from "react"
 import { createContext, useContext, useEffect, useState, useRef } from "react"
 import { getUserData } from "./auth"
 import { supabase } from "./supabase"
-import { setSecureCookie, removeSecureCookie, clearAuthData, setAuthInProgressCookie } from "./cookie-utils"
+import { setSecureCookie, clearAuthData } from "./cookie-utils"
 
 interface AuthContextType {
   user: any | null
@@ -106,9 +106,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               setUserType(null)
               isLoadingUserData.current = false
 
-              // Eliminar cookies de autenticación de forma segura
-              removeSecureCookie('auth-token')
-              removeSecureCookie('user-type')
+              // Eliminar TODOS los datos de autenticación (cookies + storage) de forma robusta
+              clearAuthData()
             }
           } catch (error) {
             console.error("Error handling supabase auth state change:", error)
@@ -155,9 +154,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUserType(null)
         isLoadingUserData.current = false
 
-        // Establecer cookie de autenticación en proceso para permitir acceso a la página de login
-        setAuthInProgressCookie()
-
+        // Cierre de sesión: no establecemos la cookie 'auth-in-progress' para evitar estados temporales
+        
         // Limpiar todas las cookies y localStorage relacionados con autenticación
         clearAuthData()
 

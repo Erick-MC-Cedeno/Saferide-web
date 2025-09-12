@@ -27,15 +27,17 @@ export default function LoginPage() {
     const { isSupabaseReady } = useAuth()
 
   // Check if user is already logged in
-  const { user, loading: authLoading } = useAuth()
+  const { user, userData, userType: ctxUserType, loading: authLoading } = useAuth()
 
   useEffect(() => {
-    if (!authLoading && user) {
-      // Redirect if already logged in
-      const redirectPath = userType === "driver" ? "/driver/dashboard" : "/passenger/dashboard"
-      router.push(redirectPath)
-    }
-  }, [user, authLoading, userType])
+  if (authLoading) return
+  // Verificar explícitamente cookie de sesión real de Supabase para evitar falsos positivos tras logout
+  const hasAuthCookie = typeof document !== 'undefined' && document.cookie.includes('sb-access-token=')
+  if (hasAuthCookie && user && (ctxUserType === 'driver' || ctxUserType === 'passenger')) {
+  const redirectPath = ctxUserType === 'driver' ? '/driver/dashboard' : '/passenger/dashboard'
+  router.replace(redirectPath)
+  }
+  }, [authLoading, user, ctxUserType, router])
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()

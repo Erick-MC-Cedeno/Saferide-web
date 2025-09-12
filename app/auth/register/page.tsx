@@ -1,3 +1,5 @@
+// Expresión regular para validar contraseñas fuertes
+const strongPasswordRegex = /^(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]).{8,}$/;
 "use client"
 
 import type React from "react"
@@ -53,8 +55,8 @@ export default function RegisterPage() {
       return
     }
 
-    if (!password || password.length < 6) {
-      setError("La contraseña debe tener al menos 6 caracteres.")
+    if (!password || !strongPasswordRegex.test(password)) {
+      setError("La contraseña debe tener al menos 8 caracteres, una mayúscula, un número y un carácter especial.")
       setLoading(false)
       return
     }

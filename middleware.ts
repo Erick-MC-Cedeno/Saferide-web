@@ -38,12 +38,13 @@ export function middleware(request: NextRequest) {
   // Verificar origen de la solicitud para prevenir CSRF
   const requestOrigin = request.headers.get('origin')
   const host = request.headers.get('host')
-  
+  const isProd = process.env.NODE_ENV === 'production'
   // Si hay un origen en la solicitud, verificar que coincida con el host
   if (requestOrigin && host && !requestOrigin.includes(host)) {
     console.warn(`Posible CSRF detectado: Origen ${requestOrigin} no coincide con host ${host}`)
-    // En producción, podrías bloquear estas solicitudes
-    // return NextResponse.json({ error: 'Origen no permitido' }, { status: 403 })
+    if (isProd) {
+      return NextResponse.json({ error: 'Origen no permitido' }, { status: 403 })
+    }
   }
 
   // Handle authenticated users trying to access auth pages

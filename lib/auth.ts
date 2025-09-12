@@ -1,3 +1,6 @@
+// Expresión regular para validar contraseñas fuertes
+const strongPasswordRegex = /^(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]).{8,}$/;
+
 // Authentication utilities using Supabase for auth and Supabase DB for user profiles
 import { supabase } from "./supabase"
 import { clearAuthData } from "./cookie-utils"
@@ -24,6 +27,15 @@ export const registerUser = async (userData: Omit<UserData, "uid">, password: st
       return { success: false, error: "Servicios de autenticación no están disponibles." }
     }
 
+      // Validación estricta de contraseña
+      if (!strongPasswordRegex.test(password)) {
+        return {
+          success: false,
+          error:
+            "La contraseña debe tener al menos 8 caracteres, una mayúscula, un número y un carácter especial."
+        }
+      }
+
     // Basic validation guard for phone (helpful for mobile submissions)
     if (!userData.phone || typeof userData.phone !== "string" || userData.phone.trim().length === 0) {
       // Allow registration without phone in some flows but return a clear message
@@ -33,6 +45,16 @@ export const registerUser = async (userData: Omit<UserData, "uid">, password: st
       // Note: For stricter validation, uncomment the line below to reject.
       // return { success: false, error: "El número de teléfono no es válido." }
     }
+
+      // Validación básica de email
+      if (!userData.email || typeof userData.email !== "string" || !userData.email.includes("@")) {
+        return { success: false, error: "El correo electrónico no es válido." }
+      }
+
+      // Validación básica de nombre
+      if (!userData.name || typeof userData.name !== "string" || userData.name.trim().length < 2) {
+        return { success: false, error: "El nombre es obligatorio y debe tener al menos 2 caracteres." }
+      }
 
     // Create user in Supabase Auth
     const { data: signUpData, error: signUpError } = await supabase.auth.signUp({

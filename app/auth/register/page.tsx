@@ -1,6 +1,6 @@
+"use client"
 // Expresión regular para validar contraseñas fuertes
 const strongPasswordRegex = /^(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]).{8,}$/;
-"use client"
 
 import type React from "react"
 

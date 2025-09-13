@@ -58,8 +58,8 @@ export function useGoogleMaps() {
 // Extender el tipo Window para incluir nuestras propiedades
 declare global {
   interface Window {
-    google: any
-    googleMapsLoaded: boolean
-    initGoogleMaps: () => void
+    google?: any
+    googleMapsLoaded?: boolean
+    initGoogleMaps?: () => void
   }
 }

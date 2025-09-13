@@ -19,10 +19,12 @@ export function MapDiagnostics() {
       const googleMapsScript = !!(typeof window !== "undefined" && window.google && window.google.maps)
 
       // Verificar API de Google Maps
+      const hasAdvancedMarkers = !!(window.google?.maps?.marker?.AdvancedMarkerElement)
+      const hasClassicMarker = !!(window.google?.maps?.Marker)
       const googleMapsApi = !!(
         googleMapsScript &&
         window.google.maps.Map &&
-        window.google.maps.Marker &&
+        (hasAdvancedMarkers || hasClassicMarker) &&
         window.google.maps.DirectionsService
       )
 
@@ -81,6 +83,9 @@ export function MapDiagnostics() {
       <CardContent className="space-y-2">
         <DiagnosticItem label="Google Maps Script" status={diagnostics.googleMapsScript} />
         <DiagnosticItem label="Google Maps API" status={diagnostics.googleMapsApi} />
+          <div className="text-xs text-gray-700">
+            Advanced markers: {window.google?.maps?.marker?.AdvancedMarkerElement ? "supported" : "not supported"}
+          </div>
         <DiagnosticItem label="Geoapify Key" status={diagnostics.geoapifyKey} />
         <DiagnosticItem label="Geolocalización" status={diagnostics.geolocation} />
 

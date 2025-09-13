@@ -88,7 +88,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // Set up supabase auth state listener
         const { data: listener } = supabase.auth.onAuthStateChange(async (event, session) => {
           try {
-            console.log("Auth state change event:", event)
+            // debug: auth state change event removed
             const sbUser = session?.user ?? null
             if (sbUser) {
               // For compatibility with existing code that expects `user.uid`, expose uid mapping

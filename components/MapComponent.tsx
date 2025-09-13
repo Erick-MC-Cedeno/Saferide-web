@@ -9,6 +9,8 @@ import { MapFallback } from "./MapFallback"
 declare global {
   interface Window {
     google?: any
+    googleMapsLoaded?: boolean
+    initGoogleMaps?: () => void
   }
 }
 
@@ -27,14 +29,15 @@ export function MapComponent({
   pickupLocation,
   destinationLocation,
   driverLocations = [],
+  onMapReady,
 }: MapComponentProps) {
   const mapRef = useRef<HTMLDivElement>(null)
-  const [map, setMap] = useState<google.maps.Map | null>(null)
+  const [map, setMap] = useState<any | null>(null)
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null)
   const { isLoaded, isLoading, error, retry } = useGoogleMapsLoader()
   const [isInitialized, setIsInitialized] = useState(false)
-  const markersRef = useRef<Array<google.maps.marker.AdvancedMarkerElement | google.maps.Marker>>([])
-  const directionsRendererRef = useRef<google.maps.DirectionsRenderer | null>(null)
+  const markersRef = useRef<Array<any>>([])
+  const directionsRendererRef = useRef<any | null>(null)
 
   // Espera activa hasta que google.maps.Map esté disponible
   const waitForGoogleMapsReady = (): Promise<void> => {
@@ -154,8 +157,8 @@ export function MapComponent({
 
   const reverseGeocode = async (lat: number, lng: number): Promise<string> => {
     try {
-      const geocoder = new google.maps.Geocoder()
-      const response = await geocoder.geocode({ location: { lat, lng } })
+      const geocoder = new (window as any).google.maps.Geocoder()
+        const response = await geocoder.geocode({ location: { lat, lng } })
       if (response.results?.length > 0) {
         return response.results[0].formatted_address
       }
@@ -178,10 +181,16 @@ export function MapComponent({
 
   const clearMarkers = () => {
     markersRef.current.forEach((marker) => {
-      if (marker instanceof google.maps.Marker) {
+      if (marker instanceof (window as any).google?.maps?.Marker) {
         marker.setMap(null)
-      } else if (marker instanceof google.maps.marker.AdvancedMarkerElement) {
+      } else if (marker instanceof (window as any).google?.maps?.marker?.AdvancedMarkerElement) {
         marker.map = null
+      } else if (marker && typeof marker.setMap === "function") {
+        try {
+          marker.setMap(null)
+        } catch (e) {
+          // ignore
+        }
       }
     })
     markersRef.current = []
@@ -192,7 +201,7 @@ export function MapComponent({
   }
 
   // Referencia para el marcador de ubicación del usuario
-  const userLocationMarkerRef = useRef<google.maps.marker.AdvancedMarkerElement | null>(null)
+  const userLocationMarkerRef = useRef<any | null>(null)
 
   useEffect(() => {
     if (!map || !isLoaded) return
@@ -205,14 +214,14 @@ export function MapComponent({
         userLocationMarkerRef.current.position = userLocation
       } else {
         // Crear un pin personalizado para la ubicación del usuario
-        const pinElement = new google.maps.marker.PinElement({
+        const pinElement = new (window as any).google.maps.marker.PinElement({
           background: "#3B82F6", // Azul
           borderColor: "#FFFFFF",
           glyphColor: "#FFFFFF",
           scale: 1.2,
         });
         
-        userLocationMarkerRef.current = new google.maps.marker.AdvancedMarkerElement({
+        userLocationMarkerRef.current = new (window as any).google.maps.marker.AdvancedMarkerElement({
           position: userLocation,
           map,
           title: "Tu ubicación",
@@ -224,7 +233,7 @@ export function MapComponent({
 
     if (pickupLocation) {
       // Crear un pin personalizado para el punto de recogida
-      const pickupPinElement = new google.maps.marker.PinElement({
+      const pickupPinElement = new (window as any).google.maps.marker.PinElement({
         background: "#10B981", // Verde
         borderColor: "#FFFFFF",
         glyphColor: "#FFFFFF",
@@ -232,7 +241,7 @@ export function MapComponent({
         scale: 1.2,
       });
       
-      const pickupMarker = new google.maps.marker.AdvancedMarkerElement({
+      const pickupMarker = new (window as any).google.maps.marker.AdvancedMarkerElement({
         position: pickupLocation,
         map,
         title: "Punto de recogida",
@@ -243,7 +252,7 @@ export function MapComponent({
 
     if (destinationLocation) {
       // Crear un pin personalizado para el destino
-      const destinationPinElement = new google.maps.marker.PinElement({
+      const destinationPinElement = new (window as any).google.maps.marker.PinElement({
         background: "#EF4444", // Rojo
         borderColor: "#FFFFFF",
         glyphColor: "#FFFFFF",
@@ -251,7 +260,7 @@ export function MapComponent({
         scale: 1.2,
       });
       
-      const destinationMarker = new google.maps.marker.AdvancedMarkerElement({
+      const destinationMarker = new (window as any).google.maps.marker.AdvancedMarkerElement({
         position: destinationLocation,
         map,
         title: "Destino",
@@ -285,20 +294,43 @@ export function MapComponent({
                   <path d="M12 15c-1.5 0-4 2-4 4h8c0-2-2.5-4-4-4z" fill="#ef4444" />
                 </svg>
               `),
-            scaledSize: new google.maps.Size(48, 48),
-            anchor: new google.maps.Point(16, 48),
+            scaledSize: new (window as any).google.maps.Size(48, 48),
+            anchor: new (window as any).google.maps.Point(16, 48),
           }
 
-          const marker = new google.maps.Marker({
-            position: markerPos,
-            map,
-            title: `Conductor: ${driver.name}`,
-            icon: svgIcon,
-            zIndex: 500,
-          })
+          // Prefer AdvancedMarkerElement if available; fallback to classic Marker for environments
+          // that don't support advanced markers yet.
+          if (window.google?.maps?.marker?.AdvancedMarkerElement) {
+            const el = document.createElement("div")
+            // inline the same SVG used previously so appearance stays consistent
+            el.innerHTML = `
+              <svg xmlns='http://www.w3.org/2000/svg' width='48' height='48' viewBox='0 0 24 24'>
+                <circle cx='12' cy='10' r='6' fill='#ef4444' stroke='#fff' stroke-width='1.5' />
+                <path d='M12 15c-1.5 0-4 2-4 4h8c0-2-2.5-4-4-4z' fill='#ef4444' />
+              </svg>
+            `
+            const advMarker = new (window as any).google.maps.marker.AdvancedMarkerElement({
+              position: markerPos,
+              map,
+              title: `Conductor: ${driver.name}`,
+              content: el,
+              zIndex: 500,
+            })
 
-          markersRef.current.push(marker)
-          console.debug("Driver marker created:", driver.uid || driver.id || driver.name, markerPos)
+            markersRef.current.push(advMarker)
+            console.debug("Driver advanced marker created:", driver.id || driver.name, markerPos)
+          } else {
+            const marker = new (window as any).google.maps.Marker({
+              position: markerPos,
+              map,
+              title: `Conductor: ${driver.name}`,
+              icon: svgIcon,
+              zIndex: 500,
+            })
+
+            markersRef.current.push(marker)
+            console.debug("Driver marker created (fallback):", driver.id || driver.name, markerPos)
+          }
         } catch (err) {
           console.warn("Error creando marcador de conductor:", err, driver)
         }
@@ -306,8 +338,8 @@ export function MapComponent({
     }
 
     if (pickupLocation && destinationLocation) {
-      const directionsService = new google.maps.DirectionsService()
-      const directionsRenderer = new google.maps.DirectionsRenderer({
+      const directionsService = new (window as any).google.maps.DirectionsService()
+      const directionsRenderer = new (window as any).google.maps.DirectionsRenderer({
         suppressMarkers: true,
         polylineOptions: {
           strokeColor: "#3B82F6",
@@ -323,12 +355,12 @@ export function MapComponent({
         {
           origin: pickupLocation,
           destination: destinationLocation,
-          travelMode: google.maps.TravelMode.DRIVING,
+    travelMode: (window as any).google.maps.TravelMode.DRIVING,
         },
         (result, status) => {
-          if (status === google.maps.DirectionsStatus.OK && result) {
+          if (status === (window as any).google.maps.DirectionsStatus.OK && result) {
             directionsRenderer.setDirections(result)
-            const bounds = new google.maps.LatLngBounds()
+            const bounds = new (window as any).google.maps.LatLngBounds()
             bounds.extend(pickupLocation)
             bounds.extend(destinationLocation)
             map.fitBounds(bounds, { padding: 50 })

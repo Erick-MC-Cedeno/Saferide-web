@@ -21,7 +21,9 @@ interface Suggestion {
 
 declare global {
   interface Window {
-    google: any
+    google?: any
+    googleMapsLoaded?: boolean
+    initGoogleMaps?: () => void
   }
 }
 
@@ -44,9 +46,31 @@ export function AddressAutocomplete({ placeholder, onAddressSelect, value, onCha
   // Initialize Google Places services
   useEffect(() => {
     if (typeof window !== "undefined" && window.google && window.google.maps && window.google.maps.places) {
-      autocompleteService.current = new google.maps.places.AutocompleteService()
-      const dummyDiv = document.createElement("div")
-      placesService.current = new google.maps.places.PlacesService(dummyDiv)
+      // If the newer AutocompleteSuggestion/Place APIs are present, prefer server-side Geoapify
+      // or newer SDK usage. Many accounts no longer have AutocompleteService/PlacesService
+      // available; detect that and avoid calling them to prevent deprecation log spam.
+      const places = (window as any).google.maps.places
+      const hasAutocompleteSuggestion = !!places.AutocompleteSuggestion
+      const hasPlace = !!places.Place
+
+      if (!hasAutocompleteSuggestion && !hasPlace) {
+        // older APIs appear available for use
+        try {
+          autocompleteService.current = new (window as any).google.maps.places.AutocompleteService()
+          const dummyDiv = document.createElement("div")
+          placesService.current = new (window as any).google.maps.places.PlacesService(dummyDiv)
+        } catch (e) {
+          // If creation fails, fall back to Geoapify
+          console.debug("Google Places services unavailable, falling back to Geoapify:", e)
+          autocompleteService.current = null
+          placesService.current = null
+        }
+      } else {
+        // Newer Places APIs are present (or this account cannot use legacy services).
+        // Prefer Geoapify-based autocomplete for now to avoid deprecation issues.
+        autocompleteService.current = null
+        placesService.current = null
+      }
     }
   }, [])
 

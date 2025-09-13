@@ -4,7 +4,7 @@ import { supabase } from "@/lib/supabase"
 export async function GET(request: NextRequest) {
   const startTime = Date.now()
 
-  console.log(`[driverData] ${new Date().toISOString()} - Iniciando consulta de conductores`)
+  // debug log removed
 
   try {
     // Verificar que supabase esté disponible
@@ -28,14 +28,33 @@ export async function GET(request: NextRequest) {
     const pickupLng = lngParam ? parseFloat(lngParam) : null
 
     // Leer valor por defecto del radio desde variables de entorno (server primero, luego public)
-    const defaultRadiusKm = (() => {
-      const serverVal = process.env.RADIO
-      const publicVal = process.env.NEXT_PUBLIC_RADIO
-      const parsed = serverVal ? parseFloat(serverVal) : publicVal ? parseFloat(publicVal) : 1
-      return isNaN(parsed) ? 1 : parsed
-    })()
+    const serverVal = process.env.RADIO
+    const publicVal = process.env.NEXT_PUBLIC_RADIO
 
-    const maxDistanceKm = radiusParam ? parseFloat(radiusParam) : defaultRadiusKm
+    // Determinar maxDistanceKm: si se pasa radiusKm validar; si no, usar RADIO o NEXT_PUBLIC_RADIO.
+    // Si ninguna fuente válida está presente, responder con un error indicando que no hay rangos configurados.
+    let maxDistanceKm: number | null = null
+    if (radiusParam) {
+      const parsed = parseFloat(radiusParam)
+      if (isNaN(parsed)) {
+        return NextResponse.json(
+          { success: false, error: "Parámetro radiusKm inválido" },
+          { status: 400 },
+        )
+      }
+      maxDistanceKm = parsed
+    } else {
+      const serverParsed = serverVal ? parseFloat(serverVal) : NaN
+      const publicParsed = publicVal ? parseFloat(publicVal) : NaN
+      const chosen = !isNaN(serverParsed) ? serverParsed : !isNaN(publicParsed) ? publicParsed : NaN
+      if (isNaN(chosen)) {
+        return NextResponse.json(
+          { success: false, error: "Aún no hay rangos configurados" },
+          { status: 400 },
+        )
+      }
+      maxDistanceKm = chosen
+    }
 
     // Helper: Haversine para calcular distancia en km entre dos puntos {lat, lon}
     const haversineDistance = (loc1: { lat: number; lon: number }, loc2: { lat: number; lon: number }) => {
@@ -85,8 +104,8 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    const queryTime = Date.now() - startTime
-    console.log(`[driverData] Consulta completada en ${queryTime}ms - ${rawDrivers?.length || 0} registros obtenidos`)
+  const queryTime = Date.now() - startTime
+  // debug log removed
 
     // Validación y limpieza de datos
     const processStartTime = Date.now()
@@ -210,20 +229,7 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    // Logs detallados para auditoría
-    console.log(`[driverData] Procesamiento completado en ${processTime}ms`)
-    console.log(`[driverData] Registros procesados:`)
-    console.log(`  - Válidos: ${validDrivers.length}`)
-    console.log(`  - Duplicados eliminados: ${duplicatesRemoved}`)
-    console.log(`  - Nulos eliminados: ${nullsRemoved}`)
-    console.log(`  - Malformados eliminados: ${malformedRemoved}`)
-    console.log(`[driverData] Estadísticas:`)
-    console.log(`  - Total: ${stats.total}`)
-    console.log(`  - Verificados: ${stats.verificados}`)
-    console.log(`  - En línea: ${stats.enLinea}`)
-    console.log(`  - Con vehículo: ${stats.conVehiculo}`)
-    console.log(`  - Rating promedio: ${stats.ratingPromedio}`)
-    console.log(`[driverData] Tiempo total de procesamiento: ${totalTime}ms`)
+  // verbose debug logs removed
 
     return NextResponse.json({
       success: true,

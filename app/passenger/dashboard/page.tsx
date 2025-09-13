@@ -44,7 +44,8 @@ function PassengerDashboardContent() {
   const [destination, setDestination] = useState("")
   const [pickupCoords, setPickupCoords] = useState<{ lat: number; lng: number } | null>(null)
   const [destinationCoords, setDestinationCoords] = useState<{ lat: number; lng: number } | null>(null)
-  const [rideStatus, setRideStatus] = useState("idle")
+  type RideStatus = "idle" | "searching" | "pending" | "accepted" | "in-progress"
+  const [rideStatus, setRideStatus] = useState<RideStatus>("idle")
   const [availableDrivers, setAvailableDrivers] = useState([])
   const [selectedDriver, setSelectedDriver] = useState("")
   // Mensaje visible cuando no hay conductores en el área
@@ -67,7 +68,7 @@ function PassengerDashboardContent() {
   // Quick destinations removed
   const { rides, loading, cancelRide, refreshRides } = useRealTimeRides(undefined, user?.uid)
   const currentRide = rides.find((ride) => ["pending", "accepted", "in-progress"].includes(ride.status))
-  const [driversForMap, setDriversForMap] = useState<Array<{ id?: string; uid?: string; name?: string; lat: number; lng: number }>>([])
+  const [driversForMap, setDriversForMap] = useState<Array<{ id: string; uid?: string; name: string; lat: number; lng: number }>>([])
   const [driversLoadedCount, setDriversLoadedCount] = useState<number>(0)
   const [rawDriversForDebug, setRawDriversForDebug] = useState<any[]>([])
 
@@ -102,12 +103,12 @@ function PassengerDashboardContent() {
           .order("completed_at", { ascending: false })
 
         if (completedRides) {
-          const totalSpent = completedRides.reduce((sum, ride) => sum + (ride.actual_fare || ride.estimated_fare), 0)
+          const totalSpent = (completedRides as any[]).reduce((sum, ride) => sum + Number(ride.actual_fare ?? ride.estimated_fare ?? 0), 0)
           // Calculate average rating from driver ratings
-          const ratedRides = completedRides.filter((ride) => ride.driver_rating !== null)
+          const ratedRides = (completedRides as any[]).filter((ride) => ride.driver_rating != null)
           const averageRating =
             ratedRides.length > 0
-              ? ratedRides.reduce((sum, ride) => sum + (ride.driver_rating || 0), 0) / ratedRides.length
+              ? (ratedRides as any[]).reduce((sum, ride) => sum + Number(ride.driver_rating ?? 0), 0) / ratedRides.length
               : 0
 
           setPassengerStats({
@@ -141,7 +142,7 @@ function PassengerDashboardContent() {
 
   // Función driverData integrada
   const driverData = async (lat?: number | null, lng?: number | null, radiusKm = DEFAULT_RADIUS_KM) => {
-    console.log("[PassengerDashboard] Ejecutando driverData() con filtro de ubicación...")
+    // debug log removed
 
     try {
       const params = new URLSearchParams()
@@ -155,15 +156,17 @@ function PassengerDashboardContent() {
       const response = await fetch(url)
       const result = await response.json()
 
+      // Manejo especial: si el servidor responde que no hay rangos configurados,
+      // devolver un objeto con flag para que el UI lo maneje sin lanzar excepción.
       if (!result.success) {
         console.error("Error en driverData:", result.error)
+        if (result.error === "Aún no hay rangos configurados") {
+          return { success: false, noRangesConfigured: true, error: result.error }
+        }
         throw new Error(result.error || "Error al obtener conductores")
       }
 
-      console.log(`[PassengerDashboard] driverData completado: ${result.count} conductores obtenidos`)
-      console.log(`[PassengerDashboard] Estadísticas:`, result.stats)
-
-      return result
+      return { success: true, ...result }
     } catch (error) {
       console.error("Error en driverData:", error)
       throw error
@@ -190,7 +193,16 @@ function PassengerDashboardContent() {
     try {
       // If we have user coords, prefer server-side filtering for robustness
   const res = typeof userLat === "number" && typeof userLng === "number" ? await driverData(userLat, userLng, DEFAULT_RADIUS_KM) : await driverData()
-      console.debug("showNearbyDriversInMap: api result", res)
+      // Manejo cuando el servidor indica que no hay rangos configurados
+      if (res && res.noRangesConfigured) {
+        toast({ title: "Rangos no configurados", description: "Aún no hay rangos configurados en el servidor", variant: "destructive" })
+        setRawDriversForDebug([])
+        setDriversForMap([])
+        setDriversLoadedCount(0)
+        setNoDriversNearby("Aún no hay rangos configurados")
+        return []
+      }
+
       setRawDriversForDebug(res.data || [])
 
       const mapped = (res.data || []).map((d) => {
@@ -219,17 +231,18 @@ function PassengerDashboardContent() {
       }
 
   // Only include drivers that are currently online
-  nearby = nearby.filter((d) => Boolean(d.is_online))
+      nearby = nearby.filter((d) => Boolean(d.is_online))
 
       // normalize for map: id/uid, name, lat, lng
-      const driversForMapNormalized = nearby.map((d) => ({
-        id: d.id,
+      const driversForMapNormalized = nearby.map((d, idx) => ({
+        id: String(d.id ?? d.uid ?? idx),
         uid: d.uid,
-        name: d.name || d.full_name || d.driver_name,
+        name: String(d.name || d.full_name || d.driver_name || ""),
         lat: d.lat,
         lng: d.lng,
       }))
-      setDriversForMap(driversForMapNormalized)
+      // Cast to the expected driversForMap shape
+      setDriversForMap(driversForMapNormalized as Array<{ id: string; uid?: string; name: string; lat: number; lng: number }>)
       setDriversLoadedCount(driversForMapNormalized.length)
       if ((driversForMapNormalized || []).length === 0) {
         toast({
@@ -297,11 +310,19 @@ function PassengerDashboardContent() {
     const loadAvailableDrivers = async () => {
       if (!pickupCoords || !destinationCoords) return
 
-      console.log("[PassengerDashboard] Cargando conductores disponibles...")
+      // debug log removed
 
       try {
   // Usar la función driverData pasando coordenadas para filtrar por 1km
   const driverResult = await driverData(pickupCoords?.lat, pickupCoords?.lng, DEFAULT_RADIUS_KM)
+
+        if (driverResult && driverResult.noRangesConfigured) {
+          // Mostrar mensaje persistente en la UI además del toast
+          setNoDriversNearby("Aún no hay rangos configurados")
+          toast({ title: "Rangos no configurados", description: "Aún no hay rangos configurados en el servidor", variant: "destructive" })
+          setAvailableDrivers([])
+          return
+        }
 
         // Filtrar conductores verificados o en línea
         const verifiedDrivers = driverResult.data.filter((driver) => driver.is_verified)
@@ -365,10 +386,10 @@ function PassengerDashboardContent() {
 
   // Función solicitarViaje
   const solicitarViaje = async () => {
-    console.log("[PassengerDashboard] Ejecutando solicitarViaje...")
+  // debug log removed
 
     try {
-      const rideData = {
+      const rideData: Record<string, any> = {
         passenger_id: user.uid,
         passenger_name: userData.name,
         pickup_address: pickup,
@@ -388,7 +409,7 @@ function PassengerDashboardContent() {
           rideData.driver_name = driver.name
           rideData.status = "accepted"
           rideData.accepted_at = new Date().toISOString()
-          console.log(`[PassengerDashboard] Conductor asignado: ${driver.name}`)
+          // debug log removed
         }
       }
 
@@ -405,11 +426,21 @@ function PassengerDashboardContent() {
         return
       }
 
-      console.log("Viaje creado exitosamente:", data)
+      // log removed
+      // Remove focus from any element inside the dialog before closing it so
+      // assistive technology doesn't get a focused element hidden by aria-hidden.
+      try {
+        if (typeof document !== "undefined" && document.activeElement instanceof HTMLElement) {
+          document.activeElement.blur()
+        }
+      } catch (e) {
+        // suppressed debug
+      }
+
       setShowDriverSelection(false)
       setSelectedDriver("")
-  // Limpiar mensaje de ausencia de conductores al crear viaje
-  setNoDriversNearby("")
+      // Limpiar mensaje de ausencia de conductores al crear viaje
+      setNoDriversNearby("")
       setRideStatus("pending")
 
       toast({
@@ -437,13 +468,13 @@ function PassengerDashboardContent() {
   const handleRequestRide = async () => {
     if (!pickup || !destination || !pickupCoords || !destinationCoords || !user || !userData) return
 
-    console.log("[PassengerDashboard] Iniciando solicitud de viaje...")
+    // debug log removed
 
     // Paso 1: Obtener datos de conductores usando driverData
     setRideStatus("searching")
 
     try {
-      console.log("[PassengerDashboard] Llamando a await driverData()...")
+      // debug log removed
   const driverResult = await driverData(pickupCoords?.lat, pickupCoords?.lng, DEFAULT_RADIUS_KM)
 
       if (!driverResult.success) {
@@ -457,7 +488,7 @@ function PassengerDashboardContent() {
         return
       }
 
-      console.log(`[PassengerDashboard] driverData completado: ${driverResult.count} conductores`)
+      // debug log removed
 
       // Filtrar conductores verificados
       const verifiedDrivers = driverResult.data.filter((driver) => driver.is_verified)
@@ -482,7 +513,6 @@ function PassengerDashboardContent() {
 
       // Paso 2: Mostrar diálogo de selección si no hay conductor preseleccionado
       if (!selectedDriver) {
-        console.log("[PassengerDashboard] Mostrando diálogo de selección de conductor")
         setShowDriverSelection(true)
         setRideStatus("idle") // Reset status while user selects
         return
@@ -584,7 +614,7 @@ function PassengerDashboardContent() {
           .not("passenger_rating", "is", null)
 
         if (driverRides && driverRides.length > 0) {
-          const avgRating = driverRides.reduce((sum, ride) => sum + (ride.passenger_rating ?? 0), 0) / driverRides.length
+          const avgRating = (driverRides as any[]).reduce((sum, ride) => sum + Number(ride.passenger_rating ?? 0), 0) / driverRides.length
           await supabase.from("drivers").update({ rating: avgRating }).eq("uid", completedRide.driver_id)
         }
       }
@@ -988,10 +1018,10 @@ function PassengerDashboardContent() {
                       className="w-full h-14 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-xl font-bold text-lg"
                       onClick={handleRequestRide}
                       disabled={
-                        !pickup || !destination || !pickupCoords || !destinationCoords || rideStatus === "searching"
+                        !pickup || !destination || !pickupCoords || !destinationCoords || (rideStatus as any) === "searching"
                       }
                     >
-                      {rideStatus === "searching" ? (
+                      {(rideStatus as any) === "searching" ? (
                         <>
                           <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-3"></div>
                           Buscando conductor...
@@ -1216,10 +1246,10 @@ function PassengerDashboardContent() {
                     className="w-full h-14 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-xl font-bold text-lg"
                     onClick={handleRequestRide}
                     disabled={
-                      !pickup || !destination || !pickupCoords || !destinationCoords || rideStatus === "searching"
+                      !pickup || !destination || !pickupCoords || !destinationCoords || (rideStatus as any) === "searching"
                     }
                   >
-                    {rideStatus === "searching" ? (
+                      {(rideStatus as any) === "searching" ? (
                       <>
                         <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-3"></div>
                         Buscando conductor...

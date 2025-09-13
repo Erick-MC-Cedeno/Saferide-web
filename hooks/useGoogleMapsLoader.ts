@@ -50,7 +50,8 @@ export function useGoogleMapsLoader() {
               const checkComponents = () => {
                 if (
                   window.google?.maps?.Map &&
-                  window.google?.maps?.marker?.AdvancedMarkerElement &&
+                  // Accept either AdvancedMarkerElement (preferred) or the classic Marker
+                  (window.google?.maps?.marker?.AdvancedMarkerElement || window.google?.maps?.Marker) &&
                   window.google?.maps?.places
                 ) {
                   resolve()
@@ -97,7 +98,9 @@ export function useGoogleMapsLoader() {
 // Extend Window interface for TypeScript
 declare global {
   interface Window {
-    google: any
+    google?: any
+    googleMapsLoaded?: boolean
+    initGoogleMaps?: () => void
   }
 }
 
@@ -111,7 +114,7 @@ async function loadGoogleMaps() {
   const loader = new Loader({
     apiKey,
     version: "weekly",
-    libraries: ["places", "geometry"],
+    libraries: ["places", "geometry", "marker"],
   })
 
   await loader.load()

@@ -58,6 +58,7 @@ interface DriverRide {
   passenger_rating: number | null
   driver_rating: number | null
   passenger_comment: string | null
+  driver_comment: string | null
   estimated_duration: number
   cancellation_reason: string | null
 }
@@ -564,6 +565,7 @@ function DriverHistoryContent() {
                       </Button>
                     </div>
                   </div>
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -791,6 +793,15 @@ function DriverHistoryContent() {
                                       <h4 className="font-semibold text-gray-900">Comentario del Pasajero</h4>
                                       <p className="text-sm text-gray-600 bg-gray-50 p-3 rounded-lg">
                                         {selectedRide.passenger_comment}
+                                      </p>
+                                    </div>
+                                  )}
+
+                                  {(selectedRide as any).driver_comment && (
+                                    <div className="space-y-3">
+                                      <h4 className="font-semibold text-gray-900">Comentario del Conductor</h4>
+                                      <p className="text-sm text-gray-600 bg-gray-50 p-3 rounded-lg">
+                                        {(selectedRide as any).driver_comment}
                                       </p>
                                     </div>
                                   )}

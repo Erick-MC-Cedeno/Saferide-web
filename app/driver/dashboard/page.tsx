@@ -149,9 +149,15 @@ function DriverDashboardContent() {
 
   // Check for completed rides to show rating dialog
   useEffect(() => {
-    const completedRide = rides.find(
-      (ride) => ride.status === "completed" && ride.driver_id === driverId && !ride.driver_rating,
-    )
+    const completedRide = rides.find((ride) => {
+      return (
+        ride.status === "completed" &&
+        ride.driver_id === driverId &&
+        (ride.driver_rating == null) &&
+        // Also ensure driver hasn't already left a comment or skipped
+        !ride.driver_comment
+      )
+    })
     if (completedRide) {
       setCompletedRide(completedRide)
       setShowRatingDialog(true)
@@ -241,53 +247,68 @@ function DriverDashboardContent() {
   }
 
 
-  // Submit passenger rating
+  // Submit passenger rating (optional) and optional comment
   const handleRatePassenger = async () => {
-    if (!completedRide || passengerRating === 0) return
-    try {
-      // 1. Guardar la calificación del conductor al pasajero
-      const { error } = await supabase
-        .from("rides")
-        .update({
-          driver_rating: passengerRating,
-        })
-        .eq("id", completedRide.id)
+    if (!completedRide) return
+    if (passengerRating === 0 && ratingComment.trim() === "") return
 
+    try {
+      const payload: any = {
+        driver_comment: ratingComment.trim() || null,
+      }
+
+      if (passengerRating > 0) payload.driver_rating = passengerRating
+
+      const { error } = await supabase.from("rides").update(payload).eq("id", completedRide.id)
       if (error) {
         console.error("Error rating passenger:", error)
         return
       }
 
-      // 2. Recalcular rating promedio del pasajero
-      const { data: passengerRides } = await supabase
-        .from("rides")
-        .select("driver_rating")
-        .eq("passenger_id", completedRide.passenger_id)
-        .not("driver_rating", "is", null)
+      if (passengerRating > 0) {
+        const { data: passengerRides } = await supabase
+          .from("rides")
+          .select("driver_rating")
+          .eq("passenger_id", completedRide.passenger_id)
+          .not("driver_rating", "is", null)
 
-      if (passengerRides && passengerRides.length > 0) {
-        const avgRating =
-          passengerRides.reduce((sum, ride) => sum + (ride.driver_rating ?? 0), 0) / passengerRides.length
-        await supabase.from("passengers").update({ rating: avgRating }).eq("uid", completedRide.passenger_id)
+        if (passengerRides && passengerRides.length > 0) {
+          const avgRating = passengerRides.reduce((sum, ride) => sum + (ride.driver_rating ?? 0), 0) / passengerRides.length
+          await supabase.from("passengers").update({ rating: avgRating }).eq("uid", completedRide.passenger_id)
+        }
       }
 
-      // 3. Cerrar diálogo y resetear estado
       setShowRatingDialog(false)
       setPassengerRating(0)
       setRatingComment("")
       setCompletedRide(null)
-      toast({
-        title: "Calificación Enviada",
-        description: "Has calificado al pasajero exitosamente",
-      })
+      toast({ title: "Calificación Enviada", description: "Gracias por compartir tu experiencia." })
       console.log("Passenger rated successfully")
     } catch (err) {
       console.error("Error submitting passenger rating:", err)
-      toast({
-        title: "Error",
-        description: "No se pudo enviar la calificación",
-        variant: "destructive",
-      })
+      toast({ title: "Error", description: "No se pudo enviar la calificación", variant: "destructive" })
+    }
+  }
+
+  const handleSkipPassengerRating = async () => {
+    if (!completedRide) return
+    try {
+      const payload = { driver_comment: ratingComment.trim() || "Omitido por el conductor" }
+      const { error } = await supabase.from("rides").update(payload).eq("id", completedRide.id)
+      if (error) {
+        console.error("Error skipping passenger rating:", error)
+        toast({ title: "Error", description: "No se pudo omitir la calificación.", variant: "destructive" })
+        return
+      }
+
+      setShowRatingDialog(false)
+      setPassengerRating(0)
+      setRatingComment("")
+      setCompletedRide(null)
+      toast({ title: "Omitido", description: "Gracias por tu respuesta." })
+    } catch (err) {
+      console.error("Error in handleSkipPassengerRating:", err)
+      toast({ title: "Error", description: "Ocurrió un error.", variant: "destructive" })
     }
   }
 
@@ -931,14 +952,14 @@ function DriverDashboardContent() {
               <Button
                 className="bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 font-semibold"
                 onClick={handleRatePassenger}
-                disabled={passengerRating === 0}
+                disabled={passengerRating === 0 && ratingComment.trim() === ""}
               >
                 Enviar Calificación
               </Button>
               <Button
                 variant="outline"
                 className="font-semibold bg-transparent"
-                onClick={() => setShowRatingDialog(false)}
+                onClick={handleSkipPassengerRating}
               >
                 Omitir
               </Button>

@@ -212,6 +212,7 @@ export interface Database {
           accepted_at: string | null
           completed_at: string | null
           passenger_rating: number | null
+          driver_comment: string | null
           driver_rating: number | null
           passenger_comment: string | null
           created_at: string
@@ -235,6 +236,7 @@ export interface Database {
           accepted_at?: string | null
           completed_at?: string | null
           passenger_rating?: number | null
+          driver_comment?: string | null
           driver_rating?: number | null
           passenger_comment?: string | null
           created_at?: string
@@ -258,6 +260,7 @@ export interface Database {
           accepted_at?: string | null
           completed_at?: string | null
           passenger_rating?: number | null
+          driver_comment?: string | null
           driver_rating?: number | null
           passenger_comment?: string | null
           created_at?: string

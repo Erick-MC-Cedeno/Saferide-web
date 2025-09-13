@@ -53,6 +53,7 @@ interface Ride {
   passenger_rating: number | null
   driver_rating: number | null
   passenger_comment: string | null
+  driver_comment: string | null
   estimated_duration: number
 }
 
@@ -627,9 +628,26 @@ function HistoryContent() {
 
                               {selectedRide.passenger_comment && (
                                 <div className="space-y-3">
-                                  <h4 className="font-semibold text-gray-900">Comentario</h4>
+                                  <h4 className="font-semibold text-gray-900">Comentario del pasajero</h4>
                                   <p className="text-sm text-gray-600 bg-gray-50 p-3 rounded-lg">
                                     {selectedRide.passenger_comment}
+                                  </p>
+                                </div>
+                              )}
+                              {selectedRide.driver_comment && (
+                                <div className="space-y-3">
+                                  <h4 className="font-semibold text-gray-900">Comentario del conductor</h4>
+                                  <p className="text-sm text-gray-600 bg-gray-50 p-3 rounded-lg">
+                                      { // show driver_comment if present (new column)
+                                        (selectedRide as any).driver_comment && (
+                                          <div className="space-y-3">
+                                            <h4 className="font-semibold text-gray-900">Comentario del conductor</h4>
+                                            <p className="text-sm text-gray-600 bg-gray-50 p-3 rounded-lg">
+                                              {(selectedRide as any).driver_comment}
+                                            </p>
+                                          </div>
+                                        )}
+                                    {selectedRide.driver_comment}
                                   </p>
                                 </div>
                               )}

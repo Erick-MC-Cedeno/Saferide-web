@@ -1,6 +1,8 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { updateDriverLocation } from "@/lib/rides"
 
+
+// HANDLER PARA LA SOLICITUD POST - ACTUALIZAR LA UBICACIÓN DEL CONDUCTOR
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()

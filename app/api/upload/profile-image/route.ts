@@ -1,17 +1,20 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { supabase } from "@/lib/supabase"
 
-// Allowed image formats
+// ALLOWED_FORMATS = ["image/png", "image/jpeg", "image/jpg"]
+
 const ALLOWED_FORMATS = ["image/png", "image/jpeg", "image/jpg"]
 const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB in bytes
 const MAX_BASE64_SIZE = 7 * 1024 * 1024 // ~5MB image becomes ~7MB in base64
 
-// Utility function to validate image format
+
+// UTILITY FUNCTION TO VALIDATE IMAGE FORMAT
 function isValidImageFormat(mimeType: string): boolean {
   return ALLOWED_FORMATS.includes(mimeType.toLowerCase())
 }
 
-// Utility function to convert file to base64 using arrayBuffer (more reliable)
+
+// UTILITY FUNCTION TO CONVERT FILE TO BASE64 USING ARRAYBUFFER (MORE RELIABLE)
 async function fileToBase64(file: File): Promise<string> {
   try {
     console.log("🔄 Converting file to base64, size:", file.size, "type:", file.type)
@@ -38,7 +41,8 @@ async function fileToBase64(file: File): Promise<string> {
   }
 }
 
-// Utility function to validate base64 image
+
+// UTILITY FUNCTION TO VALIDATE BASE64 IMAGE
 function validateBase64Image(base64String: string): { isValid: boolean; format?: string; size?: number } {
   try {
     // Check if it's a valid base64 data URL
@@ -83,6 +87,8 @@ function validateBase64Image(base64String: string): { isValid: boolean; format?:
   }
 }
 
+
+// HANDLER PARA LA SOLICITUD POST - SUBIR IMAGEN DE PERFIL
 export async function POST(request: NextRequest) {
   console.log("🚀 Profile image upload API called")
 

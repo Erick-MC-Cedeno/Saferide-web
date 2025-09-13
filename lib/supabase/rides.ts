@@ -1,5 +1,5 @@
 // Ride management utilities with Supabase
-import { supabase } from "./supabase"
+import { supabase } from "../../lib/supabase"
 
 export interface RideRequest {
   id?: string
@@ -67,6 +67,97 @@ export const acceptRideRequest = async (rideId: string, driverId: string, driver
     return { success: true }
   } catch (error: any) {
     console.error("Accept ride request error:", error)
+    return { success: false, error: error.message }
+  }
+}
+
+export const updateRideStatus = async (rideId: string, status: RideRequest["status"]) => {
+  try {
+    const updateData: any = { status }
+    if (status === "completed") {
+      updateData.completed_at = new Date().toISOString()
+    }
+
+    const { error } = await supabase.from("rides").update(updateData).eq("id", rideId)
+
+    if (error) throw error
+
+    return { success: true }
+  } catch (error: any) {
+    console.error("Update ride status error:", error)
+    return { success: false, error: error.message }
+  }
+}
+
+export const getRideHistory = async (userId: string, userType: "passenger" | "driver") => {
+  try {
+    const column = userType === "passenger" ? "passenger_id" : "driver_id"
+
+    const { data, error } = await supabase
+      .from("rides")
+      .select("*")
+      .eq(column, userId)
+      .order("requested_at", { ascending: false })
+      .limit(20)
+
+    if (error) throw error
+
+    return data || []
+  } catch (error) {
+    console.error("Get ride history error:", error)
+    return []
+  }
+}
+
+export const getPendingRides = async (driverLocation?: [number, number]) => {
+  try {
+    // In a real app, you would use PostGIS functions for geospatial queries
+    const { data, error } = await supabase
+      .from("rides")
+      .select("*")
+      .eq("status", "pending")
+      .order("requested_at", { ascending: true })
+      .limit(10)
+
+    if (error) throw error
+
+    return data || []
+  } catch (error) {
+    console.error("Get pending rides error:", error)
+    return []
+  }
+}
+
+export const updateDriverLocation = async (driverId: string, location: [number, number]) => {
+  try {
+    const { error } = await supabase
+      .from("drivers")
+      .update({
+        current_location: {
+          type: "Point",
+          coordinates: location,
+        },
+      })
+      .eq("uid", driverId)
+
+    if (error) throw error
+
+    return { success: true }
+  } catch (error: any) {
+    console.error("Update driver location error:", error)
+    return { success: false, error: error.message }
+  }
+}
+
+export const updateDriverOnlineStatus = async (driverId: string, isOnline: boolean) => {
+  try {
+    const { error } = await supabase.from("drivers").update({ is_online: isOnline }).eq("uid", driverId)
+
+    if (error) throw error
+
+    return { success: true }
+  } catch (error: any) {
+    console.error("Update driver online status error:", error)
     return { success: false, error: error.message }
   }
 }

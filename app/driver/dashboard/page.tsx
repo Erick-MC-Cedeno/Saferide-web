@@ -37,6 +37,9 @@ import { RideTracker } from "@/components/RideTracker"
 import { useToast } from "@/hooks/use-toast"
 import { RideChat } from "@/components/RideChat"
 
+
+
+// DRIVER DASHBOARD CONTENT AND STATE MANAGEMENT
 function DriverDashboardContent() {
   const { user } = useAuth()
   const { toast } = useToast()
@@ -73,7 +76,7 @@ function DriverDashboardContent() {
     (ride) => ride.driver_id === driverId && ["accepted", "in-progress"].includes(ride.status),
   )
 
-  // Load driver statistics
+  // LOAD DRIVER STATISTICS AND RECENT TRIPS
   useEffect(() => {
     const loadDriverStats = async () => {
       if (!supabase || !driverId) return
@@ -146,8 +149,7 @@ function DriverDashboardContent() {
 
 
 
-
-  // Check for completed rides to show rating dialog
+  // CHECK FOR COMPLETED RIDES TO SHOW RATING DIALOG
   useEffect(() => {
     const completedRide = rides.find((ride) => {
       return (
@@ -165,7 +167,8 @@ function DriverDashboardContent() {
   }, [rides, driverId])
 
 
-  // Accept a ride
+
+  // ACCEPT A RIDE
   const handleAcceptRide = async (rideId: string) => {
     try {
       // Get driver name
@@ -195,7 +198,8 @@ function DriverDashboardContent() {
   }
 
 
-  // Reject a ride
+
+  // REJECT A RIDE 
   const handleRejectRide = async (rideId: string) => {
     const result = await rejectRide(rideId, "No disponible en este momento")
     if (!result.success) {
@@ -215,7 +219,7 @@ function DriverDashboardContent() {
 
 
 
-  // Update ride status
+  // UPDATE RIDE STATUS
   const handleStatusUpdate = async (rideId: string, status: string) => {
     try {
       const result = await updateRideStatus(rideId, status)
@@ -247,7 +251,7 @@ function DriverDashboardContent() {
   }
 
 
-  // Submit passenger rating (optional) and optional comment
+  // SUBMIT PASSENGER RATING (OPTIONAL) AND OPTIONAL COMMENT
   const handleRatePassenger = async () => {
     if (!completedRide) return
     if (passengerRating === 0 && ratingComment.trim() === "") return
@@ -290,6 +294,8 @@ function DriverDashboardContent() {
     }
   }
 
+
+  // HANDLE SKIP PASSENGER RATING
   const handleSkipPassengerRating = async () => {
     if (!completedRide) return
     try {
@@ -314,7 +320,7 @@ function DriverDashboardContent() {
 
 
 
-  // Cancel active ride
+  // CANCEL ACTIVE RIDE
   const handleCancelActiveRide = async (rideId: string) => {
     try {
       const { error } = await supabase
@@ -359,7 +365,7 @@ function DriverDashboardContent() {
   }))
 
 
-
+  // RENDERING LOGIC
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
       {/* Enhanced Header */}

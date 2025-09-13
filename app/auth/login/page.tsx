@@ -26,7 +26,9 @@ export default function LoginPage() {
   const router = useRouter()
     const { isSupabaseReady } = useAuth()
 
-  // Check if user is already logged in
+
+
+  // CHECK IF USER IS LOGGED IN AND REDIRECT TO APPROUTE
   const { user, userData, userType: ctxUserType, loading: authLoading } = useAuth()
 
   useEffect(() => {
@@ -82,7 +84,8 @@ export default function LoginPage() {
     }
   }
 
-  // Show loading state while auth is initializing
+
+  // SHOW LOADING STATE WHILE AUTH IS INITIALIZING
   if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center -mt-32">

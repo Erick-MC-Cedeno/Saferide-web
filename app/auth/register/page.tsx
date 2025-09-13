@@ -13,6 +13,8 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Shield, Car, Users, Sparkles, UserPlus, Loader2 } from "lucide-react"
 import Link from "next/link"
 
+
+// HANDLER PARA LA SOLICITUD GET - REGISTRARSE COMO PASAJERO
 export default function RegisterPage() {
   const [formData, setFormData] = useState({
     name: "",

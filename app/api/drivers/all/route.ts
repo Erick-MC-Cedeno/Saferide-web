@@ -1,13 +1,15 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { supabase } from "@/lib/supabase"
 
+
+// HANDLER PARA LA SOLICITUD GET - OBTENER TODOS LOS CONDUCTORES EN UN RADIO
 export async function GET(request: NextRequest) {
-  const startTime = Date.now()
+  const startTime = Date.now() // TIEMPO DE INICIO PARA MEDIR EL TIEMPO DE RESPUESTA
 
   // debug log removed
 
   try {
-    // Verificar que supabase esté disponible
+    // VERIFICAR QUE EL CLIENTE SUPABASE ESTE DISPONIBLE
     if (!supabase) {
       console.error(`[driverData] Supabase client no está disponible`)
       return NextResponse.json(
@@ -20,19 +22,20 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Leer parámetros opcionales de búsqueda (lat, lng, radiusKm)
+    // LEER PARAMETROS DE BUSQUEDA OPCIONALES PARA LA URL: LATITUD, LONGITUD Y RADIO EN KM (lat, lng, radiusKm)
     const latParam = request.nextUrl.searchParams.get("lat")
     const lngParam = request.nextUrl.searchParams.get("lng")
     const radiusParam = request.nextUrl.searchParams.get("radiusKm")
     const pickupLat = latParam ? parseFloat(latParam) : null
     const pickupLng = lngParam ? parseFloat(lngParam) : null
 
-    // Leer valor por defecto del radio desde variables de entorno (server primero, luego public)
+
+    // LEER EL VALOR POR DEFECTO DEL RADIO DESDE VARIABLES DE ENTORNO (server primero, luego public)
     const serverVal = process.env.RADIO
     const publicVal = process.env.NEXT_PUBLIC_RADIO
 
-    // Determinar maxDistanceKm: si se pasa radiusKm validar; si no, usar RADIO o NEXT_PUBLIC_RADIO.
-    // Si ninguna fuente válida está presente, responder con un error indicando que no hay rangos configurados.
+
+    // LEER PARAMETROS DE BUSQUEDA OPCIONALES PARA LA URL: RADIO EN KM (radiusKm)
     let maxDistanceKm: number | null = null
     if (radiusParam) {
       const parsed = parseFloat(radiusParam)
@@ -56,7 +59,9 @@ export async function GET(request: NextRequest) {
       maxDistanceKm = chosen
     }
 
-    // Helper: Haversine para calcular distancia en km entre dos puntos {lat, lon}
+
+
+    // HELPER: FUNCIÓN HAVERSINE PARA CALCULAR LA DISTANCIA EN KM ENTRE DOS PUNTOS {lat, lon}
     const haversineDistance = (loc1: { lat: number; lon: number }, loc2: { lat: number; lon: number }) => {
       const R = 6371 // km
       const toRad = (deg: number) => (deg * Math.PI) / 180
@@ -69,7 +74,7 @@ export async function GET(request: NextRequest) {
       return R * c
     }
 
-    // Consulta todos los conductores con las columnas exactas de tu esquema
+    // CONSULTAR TODOS LOS CONDUCTORES DESDE LA BASE DE DATOS
     const { data: rawDrivers, error } = await supabase
       .from("drivers")
       .select(`
@@ -105,16 +110,15 @@ export async function GET(request: NextRequest) {
     }
 
   const queryTime = Date.now() - startTime
-  // debug log removed
 
-    // Validación y limpieza de datos
+    // PROCESAR Y LIMPIAR LOS DATOS OBTENIDOS
     const processStartTime = Date.now()
     const validDrivers: any[] = []
     let duplicatesRemoved = 0
     let nullsRemoved = 0
     let malformedRemoved = 0
     const seenUids = new Set()
-    // Trabajar con los datos como any para simplificar validaciones de propiedad
+    // TRABAJAR CON LOS DATOS COMO ANY PARA SIMPLIFICAR LAS VALIDACIONES DE PROPIEDADES
     const driversArray = (rawDrivers as any[]) || []
 
     if (driversArray && Array.isArray(driversArray)) {
@@ -125,7 +129,7 @@ export async function GET(request: NextRequest) {
           continue
         }
 
-        // Eliminar duplicados por UID
+        // ELIMINAR DUPLICADOS POR UID
         if (seenUids.has(driver.uid)) {
           duplicatesRemoved++
           continue
@@ -138,7 +142,7 @@ export async function GET(request: NextRequest) {
           continue
         }
 
-        // Si se enviaron coordenadas de búsqueda, filtrar por distancia (si el driver tiene current_location válido)
+        // SI SE ENVIARON COORDENADAS DE BUSQUEDA, FILTRAR POR DISTANCIA (SI EL DRIVER TIENE current_location VALIDO)
         if (pickupLat !== null && pickupLng !== null) {
           const coords = driver && driver.current_location && driver.current_location.coordinates
           if (!coords || !Array.isArray(coords) || coords.length < 2) {
@@ -161,7 +165,7 @@ export async function GET(request: NextRequest) {
           }
         }
 
-        // Limpiar y normalizar datos según tu esquema de base de datos
+        // LIMPIAR Y NORMALIZAR LOS DATOS SEGÚN EL ESQUEMA DE LA BASE DE DATOS
         const cleanDriver = {
           id: driver.id,
           uid: driver.uid,

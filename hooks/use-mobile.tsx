@@ -1,5 +1,7 @@
 import * as React from "react"
 
+
+// UTILITY FUNCTION TO DETECT MOBILE DEVICES
 const MOBILE_BREAKPOINT = 768
 
 export function useIsMobile() {

@@ -1,6 +1,8 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { supabase } from "@/lib/supabase"
 
+
+// HANDLER PARA LA SOLICITUD GET - OBTENER TODOS LOS VIAJES EN UN RADIO
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
@@ -13,8 +15,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Driver ID is required" }, { status: 400 })
     }
 
-    // Get pending rides
-    // In a real app, you would use PostGIS functions for geospatial queries
+    // IMPLEMENT THE RADIUS SEARCH HERE FOR NOW THIS METHOD ES BEING IMPLEMNENTED IN API/DRIVERS/ALL
+    
     const { data, error } = await supabase
       .from("rides")
       .select("*")

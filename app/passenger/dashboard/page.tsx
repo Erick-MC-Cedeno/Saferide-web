@@ -37,6 +37,8 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { useToast } from "@/hooks/use-toast"
 import { RideChat } from "@/components/RideChat"
 
+
+// DASHBOARD PASSENGER CONTENT
 function PassengerDashboardContent() {
   const { user, userData } = useAuth()
   const { toast } = useToast()
@@ -63,9 +65,8 @@ function PassengerDashboardContent() {
   })
 
 
+// QUIK DESTINATIONS REMOVED
   const [showChatDialog, setShowChatDialog] = useState(false)
-  // Quick destinations state
-  // Quick destinations removed
   const { rides, loading, cancelRide, refreshRides } = useRealTimeRides(undefined, user?.uid)
   const currentRide = rides.find((ride) => ["pending", "accepted", "in-progress"].includes(ride.status))
   const [driversForMap, setDriversForMap] = useState<Array<{ id: string; uid?: string; name: string; lat: number; lng: number }>>([])
@@ -73,7 +74,7 @@ function PassengerDashboardContent() {
   const [rawDriversForDebug, setRawDriversForDebug] = useState<any[]>([])
 
   
-  // Reset ride status when no current ride
+  // RESET RIDE STATUS WHEN NO CURRENT RIDE
   useEffect(() => {
     if (!currentRide && rideStatus !== "idle") {
       setRideStatus("idle")
@@ -82,7 +83,7 @@ function PassengerDashboardContent() {
 
 
 
-  // Load passenger statistics and recent trips
+  // LOAD PASSENGER STATISTICS AND RECENT TRIPS
   useEffect(() => {
     const loadPassengerData = async () => {
       if (!supabase || !user?.uid) return
@@ -94,7 +95,7 @@ function PassengerDashboardContent() {
           .eq("uid", user.uid)
           .single()
 
-        // Get completed rides for spending calculation
+        // GET COMPLETED RIDES FOR SPENDING CALCULATION
         const { data: completedRides } = await supabase
           .from("rides")
           .select("*")
@@ -127,7 +128,7 @@ function PassengerDashboardContent() {
 
 
 
-  // Default radius (km) read from env for client side
+  // DEFAULT RADIUS (KM) READ FROM ENV FOR CLIENT SIDE
   const DEFAULT_RADIUS_KM = (() => {
     try {
       const v = typeof process !== "undefined" ? process.env.NEXT_PUBLIC_RADIO : undefined
@@ -140,9 +141,8 @@ function PassengerDashboardContent() {
 
 
 
-  // Función driverData integrada
+  // FUNCION PARA OPTENER LOS DATOS DE EL DRIVER
   const driverData = async (lat?: number | null, lng?: number | null, radiusKm = DEFAULT_RADIUS_KM) => {
-    // debug log removed
 
     try {
       const params = new URLSearchParams()
@@ -175,8 +175,7 @@ function PassengerDashboardContent() {
 
 
 
-
-  // Haversine distance in km
+  // HAVERSINE DISTANCE FUNCTION
   const haversineDistance = (lat1: number, lng1: number, lat2: number, lng2: number) => {
     const toRad = (v: number) => (v * Math.PI) / 180
     const R = 6371 // km
@@ -186,9 +185,10 @@ function PassengerDashboardContent() {
       Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) * Math.sin(dLon / 2)
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
     return R * c
-  }
 
-  // Show nearby drivers: calls /api/drivers/all, maps coordinates, filters by configured radius
+
+  }
+// SHOW NEARBY DRIVERS CALLS  /api/drivers/all, maps coordinates, filters by configured radius
   const showNearbyDriversInMap = async (userLat?: number | null, userLng?: number | null) => {
     try {
       // If we have user coords, prefer server-side filtering for robustness
@@ -262,7 +262,7 @@ function PassengerDashboardContent() {
 
 
 
-  // Auto-load nearby drivers when user authenticates
+  // AUTO LOAD NEARBY DRIVERS WHEN USER AUTHENTICATES
   useEffect(() => {
     if (!user) return
 
@@ -305,7 +305,7 @@ function PassengerDashboardContent() {
 
 
 
-  // Load available drivers when coordinates are set - MODIFICADO para usar driverData
+  // LOAD AVAILABLE DRIVERS WHEN COORDINATES ARE SET - MODIFICADO PARA USAR DRIVERDATA
   useEffect(() => {
     const loadAvailableDrivers = async () => {
       if (!pickupCoords || !destinationCoords) return
@@ -360,9 +360,8 @@ function PassengerDashboardContent() {
   }, [pickupCoords, destinationCoords])
 
 
-
-  // Check for completed rides to show rating dialog.
-  // Show dialog only when the ride has no passenger rating AND no comment (both empty/null).
+  // CHECK FOR COMPLETED RIDES TO SHOW RATING DIALOG
+  // SHOW DIALOG ONLY WHEN THE RIDE HAS NO PASSENGER RATING AND NO COMMENT (BOTH EMPTY/NULL)
   useEffect(() => {
     const completedRide = rides.find((ride) => {
       return (
@@ -384,7 +383,7 @@ function PassengerDashboardContent() {
 
 
 
-  // Función solicitarViaje
+  // FUNCTION SOLICITARVIAJE
   const solicitarViaje = async () => {
   // debug log removed
 
@@ -426,7 +425,6 @@ function PassengerDashboardContent() {
         return
       }
 
-      // log removed
       // Remove focus from any element inside the dialog before closing it so
       // assistive technology doesn't get a focused element hidden by aria-hidden.
       try {
@@ -464,7 +462,7 @@ function PassengerDashboardContent() {
 
 
 
-  // handleRequestRide MODIFICADO según el flujo especificado
+  // HANDLE REQUEST RIDE MODIFICADO SEGÚN EL FLUJO ESPECIFICADO
   const handleRequestRide = async () => {
     if (!pickup || !destination || !pickupCoords || !destinationCoords || !user || !userData) return
 
@@ -487,8 +485,6 @@ function PassengerDashboardContent() {
         })
         return
       }
-
-      // debug log removed
 
       // Filtrar conductores verificados
       const verifiedDrivers = driverResult.data.filter((driver) => driver.is_verified)
@@ -533,6 +529,7 @@ function PassengerDashboardContent() {
 
 
 
+  // HANDLE CANCEL RIDE MODIFICADO SEGÚN EL FLUJO ESPECIFICADO
   const handleCancelRide = async (rideId: string, reason?: string) => {
     try {
       const ride = rides.find((r) => r.id === rideId)
@@ -582,6 +579,7 @@ function PassengerDashboardContent() {
 
 
 
+  // HANDLE RATE DRIVER MODIFICADO SEGÚN EL FLUJO ESPECIFICADO
   const handleRateDriver = async () => {
     if (!completedRide) return
 
@@ -639,7 +637,7 @@ function PassengerDashboardContent() {
     }
   }
 
-  // Allow skipping the rating; if a comment exists, save it. If not, mark handled by saving an empty string
+  // ALLOW SKIPPING THE RATING; IF A COMMENT EXISTS, SAVE IT. IF NOT, MARK HANDLED BY SAVING AN EMPTY STRING
   const handleSkipRating = async () => {
     if (!completedRide) return
     try {
@@ -667,7 +665,7 @@ function PassengerDashboardContent() {
   }
 
 
-
+  // RESET RIDE FORM TO INITIAL STATE
   const resetRideForm = () => {
     setPickup("")
     setDestination("")
@@ -678,6 +676,8 @@ function PassengerDashboardContent() {
     setRideStatus("idle")
   }
 
+
+  // CALCULATE ESTIMATED FARE
   const calculateEstimatedFare = (pickup: { lat: number; lng: number }, destination: { lat: number; lng: number }) => {
     const distance = calculateDistance(pickup.lat, pickup.lng, destination.lat, destination.lng)
     const baseFare = 50
@@ -685,6 +685,8 @@ function PassengerDashboardContent() {
     return Math.round(baseFare + distance * perKmRate)
   }
 
+
+  // CALCULATE ESTIMATED DURATION
   const calculateEstimatedDuration = (
     pickup: { lat: number; lng: number },
     destination: { lat: number; lng: number },
@@ -694,6 +696,8 @@ function PassengerDashboardContent() {
     return Math.round((distance / avgSpeed) * 60)
   }
 
+
+  // CALCULATE DISTANCE
   const calculateDistance = (lat1: number, lng1: number, lat2: number, lng2: number) => {
     const R = 6371
     const dLat = ((lat2 - lat1) * Math.PI) / 180
@@ -706,9 +710,7 @@ function PassengerDashboardContent() {
   }
 
 
-
-  // Quick destinations removed
-
+  // HANDLE USE MY LOCATION
   const handleUseMyLocation = async () => {
     if (typeof window === "undefined" || !navigator.geolocation) {
       toast({ title: "No disponible", description: "Geolocalización no soportada en este dispositivo", variant: "destructive" })
@@ -756,8 +758,7 @@ function PassengerDashboardContent() {
 
 
 
-  // Quick destinations functions removed
-
+  // RENDERING LOGIC
   const canRequestNewRide = !currentRide && rideStatus === "idle"
   const hasActiveRide = currentRide && ["pending", "accepted", "in-progress"].includes(currentRide.status)
 

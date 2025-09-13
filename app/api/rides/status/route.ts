@@ -1,6 +1,8 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { updateRideStatus } from "@/lib/rides"
 
+
+// HANDLER PARA LA SOLICITUD POST - ACTUALIZAR EL ESTADO DE UN VIAJE
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()

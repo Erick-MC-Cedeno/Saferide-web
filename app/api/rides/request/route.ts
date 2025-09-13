@@ -1,6 +1,8 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { createRideRequest } from "@/lib/rides"
 
+
+// HANDLER PARA LA SOLICITUD POST - CREAR UNA NUEVA SOLICITUD DE VIAJE
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
@@ -16,7 +18,7 @@ export async function POST(request: NextRequest) {
       estimated_duration,
     } = body
 
-    // Validate required fields
+    // VERIFICAR QUE SEAN TODOS LOS CAMPOS PRESENTES
     if (!passenger_id || !passenger_name || !pickup_address || !destination_address) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
     }

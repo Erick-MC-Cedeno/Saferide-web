@@ -693,7 +693,7 @@ function PassengerDashboardContent() {
                     <MapPin className="h-4 w-4" />
                   </div>
                   <div>
-                    <span>Mapa Interactivo</span>
+                    <span>Saferide Map</span>
                     <CardDescription className="text-blue-100 text-xs mt-0.5">
                       Selecciona tu ubicación y destino en el mapa
                     </CardDescription>

@@ -1251,7 +1251,19 @@ function PassengerDashboardContent() {
                     <div className="absolute top-0 right-0 w-12 h-12 bg-white/10 rounded-full -mr-6 -mt-6" />
                     <div className="relative z-10">
                       <p className="text-2xl font-bold">{passengerStats.averageRating.toFixed(1)}</p>
-                      <p className="text-yellow-100 text-sm">Rating</p>
+                      <div className="flex items-center justify-center mt-2 space-x-1">
+                        {[...Array(5)].map((_, i) => (
+                          <Star
+                            key={i}
+                            className={`h-4 w-4 ${
+                              i < Math.round(passengerStats.averageRating)
+                                ? "fill-yellow-400 text-yellow-400"
+                                : "text-yellow-100"
+                            }`}
+                          />
+                        ))}
+                      </div>
+                      <p className="text-yellow-100 text-sm mt-1">Rating</p>
                     </div>
                   </div>
                 </div>

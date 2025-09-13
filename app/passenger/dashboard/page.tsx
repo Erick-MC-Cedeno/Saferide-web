@@ -137,6 +137,8 @@ function PassengerDashboardContent() {
     }
   })()
 
+
+
   // Función driverData integrada
   const driverData = async (lat?: number | null, lng?: number | null, radiusKm = DEFAULT_RADIUS_KM) => {
     console.log("[PassengerDashboard] Ejecutando driverData() con filtro de ubicación...")
@@ -168,6 +170,9 @@ function PassengerDashboardContent() {
     }
   }
 
+
+
+
   // Haversine distance in km
   const haversineDistance = (lat1: number, lng1: number, lat2: number, lng2: number) => {
     const toRad = (v: number) => (v * Math.PI) / 180
@@ -180,7 +185,7 @@ function PassengerDashboardContent() {
     return R * c
   }
 
-  // Show nearby drivers: calls /api/drivers/all, maps coordinates, filters <= 1km
+  // Show nearby drivers: calls /api/drivers/all, maps coordinates, filters by configured radius
   const showNearbyDriversInMap = async (userLat?: number | null, userLng?: number | null) => {
     try {
       // If we have user coords, prefer server-side filtering for robustness
@@ -208,7 +213,7 @@ function PassengerDashboardContent() {
         // If server already filtered, this is redundant but harmless. Keep for safety.
         nearby = mapped.filter((d) => {
           if (!d || isNaN(d.lat) || isNaN(d.lng)) return false
-          const dist = haversineDistance(userLat, userLng, d.lat, d.lng)
+            const dist = haversineDistance(userLat, userLng, d.lat, d.lng)
           return dist <= DEFAULT_RADIUS_KM
         })
       }
@@ -241,6 +246,8 @@ function PassengerDashboardContent() {
       return []
     }
   }
+
+
 
   // Auto-load nearby drivers when user authenticates
   useEffect(() => {
@@ -282,6 +289,9 @@ function PassengerDashboardContent() {
   }, [user?.uid])
 
 
+
+
+
   // Load available drivers when coordinates are set - MODIFICADO para usar driverData
   useEffect(() => {
     const loadAvailableDrivers = async () => {
@@ -291,7 +301,7 @@ function PassengerDashboardContent() {
 
       try {
   // Usar la función driverData pasando coordenadas para filtrar por 1km
-  const driverResult = await driverData(pickupCoords?.lat, pickupCoords?.lng, 1)
+  const driverResult = await driverData(pickupCoords?.lat, pickupCoords?.lng, DEFAULT_RADIUS_KM)
 
         // Filtrar conductores verificados o en línea
         const verifiedDrivers = driverResult.data.filter((driver) => driver.is_verified)
@@ -348,6 +358,8 @@ function PassengerDashboardContent() {
       setShowRatingDialog(true)
     }
   }, [rides, user?.uid])
+
+
 
 
 
@@ -432,7 +444,7 @@ function PassengerDashboardContent() {
 
     try {
       console.log("[PassengerDashboard] Llamando a await driverData()...")
-  const driverResult = await driverData(pickupCoords?.lat, pickupCoords?.lng, 1)
+  const driverResult = await driverData(pickupCoords?.lat, pickupCoords?.lng, DEFAULT_RADIUS_KM)
 
       if (!driverResult.success) {
         console.error("Error en driverData:", driverResult.error)

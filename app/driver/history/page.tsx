@@ -565,7 +565,6 @@ function DriverHistoryContent() {
                       </Button>
                     </div>
                   </div>
-                  </div>
                 </div>
               </CardContent>
             </Card>

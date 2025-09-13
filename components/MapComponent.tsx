@@ -1,8 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Crosshair } from "lucide-react"
+// UI button and crosshair icon removed to keep map UI clean
 import { useGoogleMapsLoader } from "@/hooks/useGoogleMapsLoader"
 import { MapFallback } from "./MapFallback"
 
@@ -86,6 +85,7 @@ export function MapComponent({
           mapTypeControl: false,
           streetViewControl: false,
           fullscreenControl: false,
+          keyboardShortcuts: false,
         })
 
         setMap(mapInstance)
@@ -357,26 +357,7 @@ export function MapComponent({
   className="rounded-lg w-full h-60 sm:h-72 md:h-96 bg-gray-200 relative overflow-hidden"
       />
 
-      {userLocation && (
-        <Button
-          onClick={centerOnUser}
-          size="sm"
-          className="absolute bottom-3 right-3 sm:bottom-4 sm:right-4 bg-white text-gray-700 hover:bg-gray-50 shadow-lg"
-          variant="outline"
-        >
-          <Crosshair className="h-4 w-4" />
-        </Button>
-      )}
-
-      {userType === "passenger" && (
-        <div className="absolute top-3 left-3 sm:top-4 sm:left-4 bg-white/90 backdrop-blur-sm p-1.5 sm:p-2 rounded-lg shadow-lg text-xs sm:text-sm">
-          <p className="text-gray-600">Toca en el mapa para seleccionar ubicación</p>
-        </div>
-      )}
-
-      <div className="absolute top-3 right-3 sm:top-4 sm:right-4 bg-white/90 backdrop-blur-sm p-1.5 sm:p-2 rounded-lg shadow-lg text-xs text-gray-500">
-        <p>Google Maps cargado ✓</p>
-      </div>
+      {/* Overlays intentionally removed for a clean map UI; map functionality remains unchanged */}
     </div>
   )
 }

@@ -845,6 +845,126 @@ function PassengerDashboardContent() {
                 )}
               </div>
             )}
+            {/* Mobile: Solicitar Viaje (shown above recent trips on small screens) */}
+            {canRequestNewRide && (
+              <div className="block lg:hidden">
+                <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm max-w-full">
+                  <CardHeader className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-t-lg py-2">
+                    <CardTitle className="flex items-center space-x-2 text-base">
+                      <div className="bg-white/20 p-1.5 rounded-lg">
+                        <Car className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <span>Solicitar Viaje</span>
+                        <CardDescription className="text-blue-100 text-xs mt-0.5">
+                          Ingresa tu destino y encuentra un conductor
+                        </CardDescription>
+                      </div>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-3 space-y-3">
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="pickup" className="text-sm font-semibold text-gray-700">
+                          Punto de Recogida
+                        </Label>
+                        <button
+                          type="button"
+                          onClick={handleUseMyLocation}
+                          className="inline-flex items-center space-x-2 text-xs px-2 py-1 rounded-md border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 hover:border-blue-400 transition-all shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
+                          title="Ubicación actual"
+                        >
+                          <MapPin className="h-4 w-4" />
+                          <span>Mi ubicación</span>
+                        </button>
+                      </div>
+                      <AddressAutocomplete
+                        placeholder="Tu ubicación actual"
+                        value={pickup}
+                        onChange={setPickup}
+                        onAddressSelect={(address, coords) => {
+                          setPickup(address)
+                          setPickupCoords(coords)
+                        }}
+                      />
+                    </div>
+                    <div className="space-y-3">
+                      <Label htmlFor="destination" className="text-sm font-semibold text-gray-700">
+                        Destino
+                      </Label>
+                      <AddressAutocomplete
+                        placeholder="¿A dónde vas?"
+                        value={destination}
+                        onChange={setDestination}
+                        onAddressSelect={(address, coords) => {
+                          setDestination(address)
+                          setDestinationCoords(coords)
+                        }}
+                      />
+                    </div>
+                    {pickupCoords && destinationCoords && (
+                      <div className="p-6 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border-2 border-blue-200">
+                        <h4 className="font-bold text-gray-900 mb-4 text-lg">📋 Resumen del Viaje</h4>
+                        <div className="space-y-3 text-sm">
+                          <div className="flex justify-between items-center p-3 bg-white/60 rounded-lg">
+                            <span className="text-gray-700 font-medium">Distancia:</span>
+                            <span className="font-bold text-blue-700">
+                              {calculateDistance(
+                                pickupCoords.lat,
+                                pickupCoords.lng,
+                                destinationCoords.lat,
+                                destinationCoords.lng,
+                              ).toFixed(1)}{' '}
+                              km
+                            </span>
+                          </div>
+                          <div className="flex justify-between items-center p-3 bg-white/60 rounded-lg">
+                            <span className="text-gray-700 font-medium">Tiempo estimado:</span>
+                            <span className="font-bold text-blue-700">
+                              {calculateEstimatedDuration(pickupCoords, destinationCoords)} min
+                            </span>
+                          </div>
+                          <div className="flex justify-between items-center p-4 bg-gradient-to-r from-green-100 to-emerald-100 rounded-lg border-2 border-green-200">
+                            <span className="text-green-700 font-semibold">Tarifa estimada:</span>
+                            <div className="flex items-center space-x-2">
+                              <DollarSign className="h-5 w-5 text-green-600" />
+                              <span className="font-bold text-green-800 text-xl">
+                                {calculateEstimatedFare(pickupCoords, destinationCoords)}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    {noDriversNearby && (
+                      <div className="p-3 mb-3 rounded-lg bg-red-50 border border-red-200 text-red-800 font-medium">
+                        {noDriversNearby}
+                      </div>
+                    )}
+                    <Button
+                      className="w-full h-14 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-xl font-bold text-lg"
+                      onClick={handleRequestRide}
+                      disabled={
+                        !pickup || !destination || !pickupCoords || !destinationCoords || rideStatus === "searching"
+                      }
+                    >
+                      {rideStatus === "searching" ? (
+                        <>
+                          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-3"></div>
+                          Buscando conductor...
+                        </>
+                      ) : (
+                        <>
+                          <Car className="mr-3 h-6 w-6" />
+                          Solicitar Viaje
+                        </>
+                      )}
+                    </Button>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+
             {/* Enhanced Recent Trips - Redesigned */}
             <Card className="border-0 shadow-xl bg-white/90 backdrop-blur-sm max-w-full">
               <CardHeader className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-2">
@@ -952,9 +1072,9 @@ function PassengerDashboardContent() {
           </div>
           {/* Enhanced Sidebar */}
           <div className="space-y-4">
-            {/* Enhanced Request Ride Form */}
+            {/* Enhanced Request Ride Form (hidden on small screens) */}
             {canRequestNewRide && (
-              <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm max-w-full">
+              <Card className="hidden lg:block border-0 shadow-xl bg-white/80 backdrop-blur-sm max-w-full">
                 <CardHeader className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-t-lg py-2">
                   <CardTitle className="flex items-center space-x-2 text-base">
                     <div className="bg-white/20 p-1.5 rounded-lg">

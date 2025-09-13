@@ -64,20 +64,7 @@ function PassengerDashboardContent() {
 
   const [showChatDialog, setShowChatDialog] = useState(false)
   // Quick destinations state
-  const [showQuickDestDialog, setShowQuickDestDialog] = useState(false)
-  const [editingDestIndex, setEditingDestIndex] = useState<number | null>(null)
-  const [quickDestinations, setQuickDestinations] = useState([
-    { name: "Casa", address: "Tu domicilio", coords: { lat: 19.4326, lng: -99.1332 }, icon: "🏠" },
-    { name: "Trabajo", address: "Tu oficina", coords: { lat: 19.4285, lng: -99.1277 }, icon: "🏢" },
-    { name: "Aeropuerto", address: "Aeropuerto Internacional", coords: { lat: 19.4363, lng: -99.0721 }, icon: "✈️" },
-    { name: "Centro", address: "Centro Histórico", coords: { lat: 19.4326, lng: -99.1332 }, icon: "🏛️" },
-  ])
-  const [newDestination, setNewDestination] = useState({
-    name: "",
-    address: "",
-    coords: { lat: 0, lng: 0 },
-    icon: "📍",
-  })
+  // Quick destinations removed
   const { rides, loading, cancelRide, refreshRides } = useRealTimeRides(undefined, user?.uid)
   const currentRide = rides.find((ride) => ["pending", "accepted", "in-progress"].includes(ride.status))
   const [driversForMap, setDriversForMap] = useState<Array<{ id?: string; uid?: string; name?: string; lat: number; lng: number }>>([])
@@ -637,19 +624,7 @@ function PassengerDashboardContent() {
 
 
 
-  // Quick destinations functions
-  const handleQuickDestinationClick = (dest, index) => {
-    if (editingDestIndex === index) {
-      // If already editing, save the destination
-      setDestination(dest.address)
-      setDestinationCoords(dest.coords)
-      setEditingDestIndex(null)
-    } else {
-      // If not editing, use the destination
-      setDestination(dest.address)
-      setDestinationCoords(dest.coords)
-    }
-  }
+  // Quick destinations removed
 
   const handleUseMyLocation = async () => {
     if (typeof window === "undefined" || !navigator.geolocation) {
@@ -698,98 +673,13 @@ function PassengerDashboardContent() {
 
 
 
-  const handleEditDestination = (index) => {
-    setEditingDestIndex(index)
-    setNewDestination(quickDestinations[index])
-    setShowQuickDestDialog(true)
-  }
-
-
-
-  const handleAddNewDestination = () => {
-    setEditingDestIndex(null)
-    setNewDestination({
-      name: "",
-      address: "",
-      coords: { lat: 0, lng: 0 },
-      icon: "📍",
-    })
-    setShowQuickDestDialog(true)
-  }
-
-
-
-  const handleSaveDestination = () => {
-    if (!newDestination.name || !newDestination.address) {
-      toast({
-        title: "Error",
-        description: "Por favor completa todos los campos",
-        variant: "destructive",
-      })
-      return
-    }
-
-
-
-    const updatedDestinations = [...quickDestinations]
-    if (editingDestIndex !== null) {
-      // Edit existing destination
-      updatedDestinations[editingDestIndex] = newDestination
-      toast({
-        title: "Destino actualizado",
-        description: `${newDestination.name} ha sido actualizado exitosamente`,
-      })
-    } else {
-      // Add new destination
-      if (updatedDestinations.length >= 6) {
-        toast({
-          title: "Límite alcanzado",
-          description: "Solo puedes tener máximo 6 destinos rápidos",
-          variant: "destructive",
-        })
-        return
-      }
-      updatedDestinations.push(newDestination)
-      toast({
-        title: "Destino agregado",
-        description: `${newDestination.name} ha sido agregado a tus destinos rápidos`,
-      })
-    }
-
-    setQuickDestinations(updatedDestinations)
-    setShowQuickDestDialog(false)
-    setEditingDestIndex(null)
-  }
-
-
-
-  const handleDeleteDestination = (index) => {
-    const updatedDestinations = quickDestinations.filter((_, i) => i !== index)
-    setQuickDestinations(updatedDestinations)
-    toast({
-      title: "Destino eliminado",
-      description: "El destino ha sido eliminado de tus favoritos",
-    })
-  }
-
-  const availableIcons = ["🏠", "🏢", "✈️", "🏛️", "🏥", "🏫", "🛒", "🍽️", "⛽", "🏋️", "📍", "🎯"]
+  // Quick destinations functions removed
 
   const canRequestNewRide = !currentRide && rideStatus === "idle"
   const hasActiveRide = currentRide && ["pending", "accepted", "in-progress"].includes(currentRide.status)
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
-      {/* Simplified Header */}
-      <header className="bg-white/90 backdrop-blur-md shadow-sm border-b border-blue-100">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="py-4">
-            <h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent text-center">
-              ¡Hola, {userData?.name?.split(" ")[0] || "Erick"}! 👋
-            </h1>
-            <p className="text-gray-600 font-medium text-center mt-1">¿A dónde quieres ir hoy?</p>
-          </div>
-        </div>
-      </header>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -797,14 +687,18 @@ function PassengerDashboardContent() {
           <div className="lg:col-span-2 space-y-6">
             {/* Enhanced Map Component */}
             <Card className="overflow-hidden border-0 shadow-xl bg-white/80 backdrop-blur-sm max-w-full">
-              <CardHeader className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white">
-                <CardTitle className="flex items-center space-x-2">
-                  <MapPin className="h-6 w-6" />
-                  <span>Mapa Interactivo</span>
+              <CardHeader className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-2">
+                <CardTitle className="flex items-center space-x-2 text-base">
+                  <div className="bg-white/20 p-1.5 rounded-lg">
+                    <MapPin className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <span>Mapa Interactivo</span>
+                    <CardDescription className="text-blue-100 text-xs mt-0.5">
+                      Selecciona tu ubicación y destino en el mapa
+                    </CardDescription>
+                  </div>
                 </CardTitle>
-                <CardDescription className="text-blue-100">
-                  Selecciona tu ubicación y destino en el mapa
-                </CardDescription>
               </CardHeader>
               <CardContent className="p-0">
                 <MapComponent
@@ -951,79 +845,104 @@ function PassengerDashboardContent() {
                 )}
               </div>
             )}
-            {/* Enhanced Recent Trips - Made Larger */}
-            <Card className="border-0 shadow-lg bg-white/80 backdrop-blur-sm max-w-full">
-              <CardHeader className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-3">
-                <CardTitle className="flex items-center space-x-2 text-lg">
-                  <Clock className="h-5 w-5" />
-                  <span>Viajes Recientes</span>
+            {/* Enhanced Recent Trips - Redesigned */}
+            <Card className="border-0 shadow-xl bg-white/90 backdrop-blur-sm max-w-full">
+              <CardHeader className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-2">
+                <CardTitle className="flex items-center space-x-2 text-base">
+                  <div className="bg-white/20 p-1.5 rounded-lg">
+                    <Clock className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <span>Viajes Recientes</span>
+                    <CardDescription className="text-blue-100 text-xs">
+                      Historial de tus últimos viajes completados
+                    </CardDescription>
+                  </div>
                 </CardTitle>
-                <CardDescription className="text-blue-100 text-sm">
-                  Historial de tus últimos viajes completados
-                </CardDescription>
               </CardHeader>
               <CardContent className="p-0">
-                <ScrollArea className="h-80 px-3 py-3">
-                  <div className="space-y-3">
+                <ScrollArea className="h-[400px]">
+                  <div className="p-2 space-y-2">
                     {recentTrips.length > 0 ? (
                       recentTrips.map((trip) => (
                         <div
                           key={trip.id}
-                          className="p-3 bg-gradient-to-r from-gray-50 to-slate-50 rounded-lg shadow-sm hover:shadow-md transition-all duration-300 border border-gray-100"
+                          className="group bg-white rounded-lg shadow-sm hover:shadow-md transition-all duration-300 border border-gray-100 overflow-hidden"
                         >
-                          <div className="flex items-center justify-between">
-                            <div className="flex-1">
-                              <div className="flex items-center space-x-3 mb-2">
-                                <Avatar className="h-8 w-8 ring-1 ring-blue-200">
+                          <div className="p-3">
+                            {/* Driver Info & DateTime */}
+                            <div className="flex items-center justify-between mb-2">
+                              <div className="flex items-center space-x-2">
+                                <Avatar className="h-8 w-8 ring-1 ring-blue-100">
                                   <AvatarFallback className="bg-gradient-to-r from-blue-500 to-indigo-500 text-white font-bold text-sm">
                                     {trip.driver_name?.charAt(0) || "D"}
                                   </AvatarFallback>
                                 </Avatar>
                                 <div>
-                                  <p className="font-semibold text-sm text-gray-800">{trip.driver_name}</p>
+                                  <p className="font-semibold text-sm text-gray-900">{trip.driver_name}</p>
                                   <p className="text-xs text-gray-500">
                                     {new Date(trip.completed_at).toLocaleDateString()} • {trip.estimated_duration} min
                                   </p>
                                 </div>
                               </div>
-                              <div className="bg-white/60 p-2 rounded-md mb-2 border border-gray-100">
-                                <div className="flex items-center space-x-2">
-                                  <Navigation className="h-3 w-3 text-gray-500" />
-                                  <p className="font-medium text-gray-900 text-xs truncate">
-                                    {trip.pickup_address} → {trip.destination_address}
+                              <Badge 
+                                className="bg-gradient-to-r from-green-500 to-emerald-500 text-white font-semibold text-sm px-2 py-0.5"
+                              >
+                                ${trip.actual_fare || trip.estimated_fare}
+                              </Badge>
+                            </div>
+
+                            {/* Route Info */}
+                            <div className="bg-gradient-to-r from-gray-50 to-slate-50 rounded-md p-2 mb-2">
+                              <div className="flex items-start space-x-2">
+                                <div className="min-w-[16px] pt-0.5">
+                                  <Navigation className="h-3 w-3 text-blue-500" />
+                                </div>
+                                <div className="flex-1">
+                                  <p className="font-medium text-xs text-gray-700 leading-snug">
+                                    {trip.pickup_address} 
+                                    <span className="mx-1 text-blue-500">→</span> 
+                                    {trip.destination_address}
                                   </p>
                                 </div>
                               </div>
-                              <div className="flex items-center space-x-1">
-                                {[...Array(5)].map((_, i) => (
-                                  <Star
-                                    key={i}
-                                    className={`h-3 w-3 ${
-                                      i < (trip.passenger_rating || 0)
-                                        ? "fill-yellow-400 text-yellow-400"
-                                        : "text-gray-300"
-                                    }`}
-                                  />
-                                ))}
-                                <span className="text-xs text-gray-600 ml-2">({trip.passenger_rating || 0}/5)</span>
-                              </div>
                             </div>
-                            <div className="text-right ml-3">
-                              <Badge className="bg-gradient-to-r from-green-500 to-emerald-500 text-white px-2 py-1 text-sm font-bold mb-1">
-                                ${trip.actual_fare || trip.estimated_fare}
-                              </Badge>
-                              <p className="text-xs text-green-600 font-medium">✅ Completado</p>
+
+                            {/* Rating & Status */}
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center space-x-1">
+                                <div className="flex items-center">
+                                  {[...Array(5)].map((_, i) => (
+                                    <Star
+                                      key={i}
+                                      className={`h-3 w-3 ${
+                                        i < (trip.passenger_rating || 0)
+                                          ? "fill-yellow-400 text-yellow-400"
+                                          : "text-gray-200"
+                                      }`}
+                                    />
+                                  ))}
+                                </div>
+                                <span className="text-xs font-medium text-gray-600">({trip.passenger_rating || 0}/5)</span>
+                              </div>
+                              <div className="flex items-center space-x-1 text-emerald-600">
+                                <div className="h-1.5 w-1.5 rounded-full bg-emerald-500"></div>
+                                <span className="text-xs font-medium">Completado</span>
+                              </div>
                             </div>
                           </div>
                         </div>
                       ))
                     ) : (
-                      <div className="text-center py-12">
-                        <div className="p-4 bg-gradient-to-r from-blue-100 to-indigo-100 rounded-full w-20 h-20 mx-auto mb-4 flex items-center justify-center">
-                          <Calendar className="h-10 w-10 text-blue-600" />
+                      <div className="text-center py-8">
+                        <div className="relative">
+                          <div className="absolute inset-0 bg-gradient-to-r from-blue-100 to-indigo-100 rounded-full w-16 h-16 mx-auto blur-lg opacity-70"></div>
+                          <div className="relative p-4 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+                            <Calendar className="h-8 w-8 text-white" />
+                          </div>
                         </div>
-                        <p className="text-lg font-bold text-gray-700 mb-2">No hay viajes recientes</p>
-                        <p className="text-gray-500 text-sm">Tus viajes aparecerán aquí una vez completados</p>
+                        <h3 className="text-base font-bold text-gray-800 mb-1">No hay viajes recientes</h3>
+                        <p className="text-sm text-gray-500">Tus viajes aparecerán aquí una vez completados</p>
                       </div>
                     )}
                   </div>
@@ -1036,16 +955,20 @@ function PassengerDashboardContent() {
             {/* Enhanced Request Ride Form */}
             {canRequestNewRide && (
               <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm max-w-full">
-                <CardHeader className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-t-lg">
-                  <CardTitle className="flex items-center space-x-2">
-                    <Car className="h-6 w-6" />
-                    <span>Solicitar Viaje</span>
+                <CardHeader className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-t-lg py-2">
+                  <CardTitle className="flex items-center space-x-2 text-base">
+                    <div className="bg-white/20 p-1.5 rounded-lg">
+                      <Car className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <span>Solicitar Viaje</span>
+                      <CardDescription className="text-blue-100 text-xs mt-0.5">
+                        Ingresa tu destino y encuentra un conductor
+                      </CardDescription>
+                    </div>
                   </CardTitle>
-                  <CardDescription className="text-blue-100 font-medium">
-                    Ingresa tu destino y encuentra un conductor
-                  </CardDescription>
                 </CardHeader>
-                <CardContent className="p-4 sm:p-6 space-y-4">
+                <CardContent className="p-3 space-y-3">
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
                       <Label htmlFor="pickup" className="text-sm font-semibold text-gray-700">
@@ -1184,86 +1107,39 @@ function PassengerDashboardContent() {
                   </CardContent>
                 </Card>
             )}
-            {/* Enhanced Quick Destinations with Edit Functionality */}
-            {canRequestNewRide && (
-              <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm max-w-full">
-                <CardHeader className="bg-gradient-to-r from-indigo-600 to-blue-600 text-white rounded-t-lg">
-                  <CardTitle className="flex items-center justify-between">
-                    <div className="flex items-center space-x-2">
-                      <Zap className="h-5 w-5" />
-                      <span>Destinos Rápidos</span>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={handleAddNewDestination}
-                      className="text-white hover:bg-white/20 h-8 w-8 p-0"
-                    >
-                      <Plus className="h-4 w-4" />
-                    </Button>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="p-4 sm:p-6 space-y-3">
-                  {quickDestinations.map((dest, index) => (
-                    <div key={index} className="relative group">
-                      <Button
-                        variant="outline"
-                        className="w-full justify-start h-auto p-4 hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 hover:border-blue-300 transition-all duration-300 bg-white/60"
-                        onClick={() => handleQuickDestinationClick(dest, index)}
-                      >
-                        <div className="flex items-center space-x-4 w-full">
-                          <div className="text-3xl p-2 bg-gradient-to-r from-blue-100 to-indigo-100 rounded-lg">
-                            {dest.icon}
-                          </div>
-                          <div className="text-left flex-1">
-                            <p className="font-bold text-gray-800">{dest.name}</p>
-                            <p className="text-sm text-gray-600 truncate">{dest.address}</p>
-                          </div>
-                        </div>
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleEditDestination(index)}
-                        className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8 p-0 bg-white/80 hover:bg-white"
-                      >
-                        <Edit3 className="h-3 w-3 text-gray-600" />
-                      </Button>
-                    </div>
-                  ))}
-                </CardContent>
-              </Card>
-            )}
+            {/* Quick Destinations section removed */}
             {/* Enhanced User Stats */}
             <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm max-w-full">
-              <CardHeader className="bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-t-lg">
-                <CardTitle className="flex items-center space-x-2">
-                  <Activity className="h-5 w-5" />
+              <CardHeader className="bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-t-lg py-2">
+                <CardTitle className="flex items-center space-x-2 text-base">
+                  <div className="bg-white/20 p-1.5 rounded-lg">
+                    <Activity className="h-4 w-4" />
+                  </div>
                   <span>Tu Actividad</span>
                 </CardTitle>
               </CardHeader>
-              <CardContent className="p-6 space-y-6">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="text-center p-4 bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-xl shadow-lg overflow-hidden relative">
-                    <div className="absolute top-0 right-0 w-16 h-16 bg-white/10 rounded-full -mr-8 -mt-8" />
+              <CardContent className="p-3 space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="text-center p-3 bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-lg shadow overflow-hidden relative">
+                    <div className="absolute top-0 right-0 w-12 h-12 bg-white/10 rounded-full -mr-6 -mt-6" />
                     <div className="relative z-10">
-                      <p className="text-3xl font-bold">{passengerStats.totalTrips}</p>
-                      <p className="text-blue-100 font-medium">Viajes</p>
+                      <p className="text-2xl font-bold">{passengerStats.totalTrips}</p>
+                      <p className="text-blue-100 text-sm">Viajes</p>
                     </div>
                   </div>
-                  <div className="text-center p-4 bg-gradient-to-br from-yellow-500 to-orange-500 text-white rounded-xl shadow-lg overflow-hidden relative">
-                    <div className="absolute top-0 right-0 w-16 h-16 bg-white/10 rounded-full -mr-8 -mt-8" />
+                  <div className="text-center p-3 bg-gradient-to-br from-yellow-500 to-orange-500 text-white rounded-lg shadow overflow-hidden relative">
+                    <div className="absolute top-0 right-0 w-12 h-12 bg-white/10 rounded-full -mr-6 -mt-6" />
                     <div className="relative z-10">
-                      <p className="text-3xl font-bold">{passengerStats.averageRating.toFixed(1)}</p>
-                      <p className="text-yellow-100 font-medium">Rating</p>
+                      <p className="text-2xl font-bold">{passengerStats.averageRating.toFixed(1)}</p>
+                      <p className="text-yellow-100 text-sm">Rating</p>
                     </div>
                   </div>
                 </div>
-                <div className="text-center p-6 bg-gradient-to-br from-purple-500 to-pink-500 text-white rounded-xl shadow-lg overflow-hidden relative">
-                  <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full -mr-10 -mt-10" />
+                <div className="text-center p-4 bg-gradient-to-br from-purple-500 to-pink-500 text-white rounded-lg shadow overflow-hidden relative">
+                  <div className="absolute top-0 right-0 w-14 h-14 bg-white/10 rounded-full -mr-7 -mt-7" />
                   <div className="relative z-10">
-                    <p className="text-4xl font-bold">${passengerStats.totalSpent}</p>
-                    <p className="text-purple-100 font-semibold text-lg">Total gastado</p>
+                    <p className="text-2xl font-bold">${passengerStats.totalSpent}</p>
+                    <p className="text-purple-100 text-sm">Total gastado</p>
                   </div>
                 </div>
               </CardContent>
@@ -1271,98 +1147,7 @@ function PassengerDashboardContent() {
           </div>
         </div>
       </div>
-      {/* Quick Destination Edit/Add Dialog */}
-      <Dialog open={showQuickDestDialog} onOpenChange={setShowQuickDestDialog}>
-        <DialogContent className="sm:max-w-md border-0 shadow-2xl">
-          <DialogHeader>
-            <DialogTitle className="text-xl font-bold flex items-center space-x-2">
-              <MapPin className="h-5 w-5 text-blue-600" />
-              <span>{editingDestIndex !== null ? "Editar Destino" : "Agregar Destino"}</span>
-            </DialogTitle>
-            <DialogDescription className="text-base">
-              {editingDestIndex !== null
-                ? "Modifica la información de tu destino favorito"
-                : "Agrega un nuevo destino a tus favoritos"}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-6">
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="dest-name" className="text-sm font-semibold">
-                  Nombre del destino
-                </Label>
-                <Input
-                  id="dest-name"
-                  placeholder="Ej: Casa, Trabajo, Gimnasio..."
-                  value={newDestination.name}
-                  onChange={(e) => setNewDestination({ ...newDestination, name: e.target.value })}
-                  className="h-12"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="dest-address" className="text-sm font-semibold">
-                  Dirección
-                </Label>
-                <AddressAutocomplete
-                  placeholder="Ingresa la dirección completa"
-                  value={newDestination.address}
-                  onChange={(address) => setNewDestination({ ...newDestination, address })}
-                  onAddressSelect={(address, coords) => {
-                    setNewDestination({
-                      ...newDestination,
-                      address,
-                      coords,
-                    })
-                  }}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label className="text-sm font-semibold">Icono</Label>
-                <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
-                  {availableIcons.map((icon) => (
-                    <Button
-                      key={icon}
-                      variant="outline"
-                      className={`h-10 w-10 text-xl p-0 sm:h-12 sm:w-12 sm:text-2xl ${
-                        newDestination.icon === icon
-                          ? "bg-blue-100 border-blue-500 ring-2 ring-blue-200"
-                          : "hover:bg-blue-50"
-                      }`}
-                      onClick={() => setNewDestination({ ...newDestination, icon })}
-                    >
-                      {icon}
-                    </Button>
-                  ))}
-                </div>
-              </div>
-            </div>
-            <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3">
-              <Button
-                className="flex-1 bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 font-semibold"
-                onClick={handleSaveDestination}
-              >
-                <Save className="h-4 w-4 mr-2" />
-                {editingDestIndex !== null ? "Actualizar" : "Agregar"}
-              </Button>
-              {editingDestIndex !== null && (
-                <Button
-                  variant="destructive"
-                  onClick={() => {
-                    handleDeleteDestination(editingDestIndex)
-                    setShowQuickDestDialog(false)
-                  }}
-                  className="px-4"
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              )}
-              <Button variant="outline" onClick={() => setShowQuickDestDialog(false)} className="px-4">
-                Cancelar
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+      {/* Quick Destination Dialog removed */}
       {/* Enhanced Chat Dialog */}
       <Dialog open={showChatDialog} onOpenChange={setShowChatDialog}>
         <DialogContent className="sm:max-w-lg border-0 shadow-2xl">

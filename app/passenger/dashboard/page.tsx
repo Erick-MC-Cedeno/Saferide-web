@@ -886,6 +886,7 @@ function PassengerDashboardContent() {
                           setPickup(address)
                           setPickupCoords(coords)
                         }}
+                        suppressSuggestions={showDriverSelection}
                       />
                     </div>
                     <div className="space-y-3">
@@ -900,6 +901,7 @@ function PassengerDashboardContent() {
                           setDestination(address)
                           setDestinationCoords(coords)
                         }}
+                        suppressSuggestions={showDriverSelection}
                       />
                     </div>
                     {pickupCoords && destinationCoords && (

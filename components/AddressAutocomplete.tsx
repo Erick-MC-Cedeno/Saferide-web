@@ -10,6 +10,7 @@ interface AddressAutocompleteProps {
   onAddressSelect: (address: string, coordinates: { lat: number; lng: number }) => void
   value: string
   onChange: (value: string) => void
+  suppressSuggestions?: boolean
 }
 
 interface Suggestion {
@@ -24,7 +25,7 @@ declare global {
   }
 }
 
-export function AddressAutocomplete({ placeholder, onAddressSelect, value, onChange }: AddressAutocompleteProps) {
+export function AddressAutocomplete({ placeholder, onAddressSelect, value, onChange, suppressSuggestions }: AddressAutocompleteProps) {
   const [suggestions, setSuggestions] = useState<Suggestion[]>([])
   const [showSuggestions, setShowSuggestions] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
@@ -32,6 +33,13 @@ export function AddressAutocomplete({ placeholder, onAddressSelect, value, onCha
   const lastSelectedRef = useRef<string | null>(null)
   const autocompleteService = useRef<any | null>(null)
   const placesService = useRef<any | null>(null)
+
+  // If parent requests suggestions be suppressed (for example when a dialog opens), hide them
+  useEffect(() => {
+    if (suppressSuggestions) {
+      setShowSuggestions(false)
+    }
+  }, [suppressSuggestions])
 
   // Initialize Google Places services
   useEffect(() => {

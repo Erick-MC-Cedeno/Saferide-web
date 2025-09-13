@@ -728,19 +728,7 @@ function PassengerDashboardContent() {
           <div className="lg:col-span-2 space-y-6">
             {/* Enhanced Map Component */}
             <Card className="overflow-hidden border-0 shadow-xl bg-white/80 backdrop-blur-sm max-w-full">
-              <CardHeader className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-2">
-                <CardTitle className="flex items-center space-x-2 text-base">
-                  <div className="bg-white/20 p-1.5 rounded-lg">
-                    <MapPin className="h-4 w-4" />
-                  </div>
-                  <div>
-                    <span>Saferide Map</span>
-                    <CardDescription className="text-blue-100 text-xs mt-0.5">
-                      Selecciona tu ubicación y destino en el mapa
-                    </CardDescription>
-                  </div>
-                </CardTitle>
-              </CardHeader>
+              {/* Header removed to show map only */}
               <CardContent className="p-0">
                 <MapComponent
                   userType="passenger"

@@ -1,10 +1,10 @@
 import { createClient } from "@supabase/supabase-js"
 
-// Verify that the environment variables are defined
+// LEE LAS VARIABLES DE ENTORNO PARA CONFIGURAR SUPABASE
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
-// Create a singleton for the client of Supabase
+// SINGLETON DEL CLIENTE DE SUPABASE PARA EVITAR MÚLTIPLES INSTANCIAS
 let supabaseInstance: ReturnType<typeof createClient> | null = null
 
 export const getSupabase = () => {
@@ -13,67 +13,14 @@ export const getSupabase = () => {
       supabaseInstance = createClient(supabaseUrl, supabaseAnonKey, {
         realtime: {
           params: {
-            eventsPerSecond: 2, // Reducir eventos por segundo
+            eventsPerSecond: 2,
           },
         },
         auth: {
+          // CONFIGURACIÓN DE AUTH: PERSISTENCIA DE SESIONES Y DETECCIÓN AUTOMÁTICA EN URL
           persistSession: true,
           autoRefreshToken: true,
-          detectSessionInUrl: true, // Asegurar que detecte la sesión en la URL
-          // Configuración de cookies seguras
-          storageKey: 'supabase-auth-token',
-          storage: {
-            getItem: (key) => {
-              if (typeof window === 'undefined') return null
-              // Intentar obtener primero desde localStorage
-              const localValue = window.localStorage.getItem(key)
-              if (localValue) return localValue
-              
-              // Si no está en localStorage, intentar obtener de cookies
-              if (typeof document !== 'undefined' && key === 'supabase-auth-token') {
-                const cookies = document.cookie.split(';')
-                const tokenCookie = cookies.find(c => c.trim().startsWith('sb-access-token='))
-                if (tokenCookie) {
-                  // Si encontramos la cookie, reconstruir el objeto de sesión
-                  const token = tokenCookie.split('=')[1]
-                  if (token) {
-                    try {
-                      // Crear un objeto de sesión básico con el token
-                      return JSON.stringify({ access_token: token })
-                    } catch (e) {
-                      console.error('Error al procesar cookie de token:', e)
-                    }
-                  }
-                }
-              }
-              return null
-            },
-            setItem: (key, value) => {
-              if (typeof window === 'undefined') return
-              window.localStorage.setItem(key, value)
-              // Establecer una cookie segura para el token
-              if (key === 'supabase-auth-token' && typeof document !== 'undefined') {
-                try {
-                  const data = JSON.parse(value)
-                  if (data?.access_token) {
-                    // Configurar cookie segura (HttpOnly se maneja en el servidor)
-                    const isProduction = process.env.NODE_ENV === 'production'
-                    document.cookie = `sb-access-token=${data.access_token}; Path=/; Max-Age=86400; ${isProduction ? 'Secure; ' : ''}SameSite=Lax`
-                  }
-                } catch (e) {
-                  console.error('Error al procesar token para cookie:', e)
-                }
-              }
-            },
-            removeItem: (key) => {
-              if (typeof window === 'undefined') return
-              window.localStorage.removeItem(key)
-              // Eliminar cookie si existe
-              if (key === 'supabase-auth-token' && typeof document !== 'undefined') {
-                document.cookie = `sb-access-token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT; ${process.env.NODE_ENV === 'production' ? 'Secure; ' : ''}SameSite=Lax`
-              }
-            }
-          }
+          detectSessionInUrl: true,
         },
         global: {
           headers: {
@@ -88,17 +35,17 @@ export const getSupabase = () => {
   return supabaseInstance
 }
 
-// Export the client of Supabase for direct use with fallback
+// EXPORTACIÓN DEL CLIENTE DE SUPABASE (FALLBACK MEDIANTE LA FUNCIÓN getSupabase)
 export const supabase = getSupabase()
 
-// If Supabase is not configured, log a warning but don't throw an error
+// SI FALTAN VARIABLES DE ENTORNO, SE EMITE UNA ADVERTENCIA (NO LANZAMOS EXCEPCIÓN)
 if (!supabaseUrl || !supabaseAnonKey) {
   console.warn(
     "Supabase configuration is incomplete. Some features may not work. Please set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY in your environment variables.",
   )
 }
 
-// Database types
+// TIPOS DE BASE DE DATOS (TIPADO EXPLÍCITO DE TABLAS): passengers, drivers, rides, ride_messages
 export interface Database {
   public: {
     Tables: {

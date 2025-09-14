@@ -1,4 +1,4 @@
-// Ride management utilities with Supabase
+// UTILIDADES PARA GESTIÓN DE VIAJES (RIDES) USANDO SUPABASE: CREAR, ACEPTAR, ACTUALIZAR Y CONSULTAR
 import { supabase } from "../../lib/supabase"
 
 export interface RideRequest {
@@ -22,6 +22,7 @@ export interface RideRequest {
   driver_rating?: number
 }
 
+// CREA UNA SOLICITUD DE VIAJE Y RETORNA EL ID DEL NUEVO VIAJE
 export const createRideRequest = async (rideData: Omit<RideRequest, "id" | "requested_at">) => {
   try {
     const { data, error } = await supabase
@@ -49,6 +50,7 @@ export const createRideRequest = async (rideData: Omit<RideRequest, "id" | "requ
   }
 }
 
+// ACEPTA UNA SOLICITUD DE VIAJE: ASIGNA DRIVER, CAMBIA ESTADO A 'accepted' Y REGISTRA accepted_at
 export const acceptRideRequest = async (rideId: string, driverId: string, driverName: string) => {
   try {
     const { error } = await supabase
@@ -71,6 +73,7 @@ export const acceptRideRequest = async (rideId: string, driverId: string, driver
   }
 }
 
+// ACTUALIZA EL ESTADO DE UN VIAJE; SI SE MARCA COMO 'completed' SE REGISTRA completed_at
 export const updateRideStatus = async (rideId: string, status: RideRequest["status"]) => {
   try {
     const updateData: any = { status }
@@ -89,6 +92,7 @@ export const updateRideStatus = async (rideId: string, status: RideRequest["stat
   }
 }
 
+// OBTIENE EL HISTORIAL DE VIAJES PARA UN USUARIO (PASAJERO O CONDUCTOR)
 export const getRideHistory = async (userId: string, userType: "passenger" | "driver") => {
   try {
     const column = userType === "passenger" ? "passenger_id" : "driver_id"
@@ -109,9 +113,9 @@ export const getRideHistory = async (userId: string, userType: "passenger" | "dr
   }
 }
 
+// OBTIENE VIAJES PENDIENTES (BÚSQUEDA SIMPLE; EN PRODUCCIÓN USAR QUERIES GEOSPACIALES)
 export const getPendingRides = async (driverLocation?: [number, number]) => {
   try {
-    // In a real app, you would use PostGIS functions for geospatial queries
     const { data, error } = await supabase
       .from("rides")
       .select("*")
@@ -128,6 +132,7 @@ export const getPendingRides = async (driverLocation?: [number, number]) => {
   }
 }
 
+// ACTUALIZA LA UBICACIÓN DEL CONDUCTOR (GUARDADA COMO GEOJSON POINT EN current_location)
 export const updateDriverLocation = async (driverId: string, location: [number, number]) => {
   try {
     const { error } = await supabase
@@ -149,6 +154,7 @@ export const updateDriverLocation = async (driverId: string, location: [number, 
   }
 }
 
+// ACTUALIZA EL ESTADO ONLINE DEL CONDUCTOR
 export const updateDriverOnlineStatus = async (driverId: string, isOnline: boolean) => {
   try {
     const { error } = await supabase.from("drivers").update({ is_online: isOnline }).eq("uid", driverId)

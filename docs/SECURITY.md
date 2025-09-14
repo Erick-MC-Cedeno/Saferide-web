@@ -4,46 +4,31 @@
 
 Este documento describe las mejoras de seguridad implementadas en el sistema de autenticación de Saferide para prevenir fugas de cookies y garantizar una gestión segura de las sesiones de usuario.
 
-### 1. Gestión Centralizada de Cookies
+### 1. Gestión de Sesión segura (sin cookies)
 
-Se ha implementado un módulo centralizado (`cookie-utils.ts`) para la gestión de cookies con las siguientes características:
+Por decisión del equipo, la aplicación ya no persiste tokens de acceso en cookies ni en localStorage. En su lugar:
 
-- **Configuración segura por defecto**:
-  - `HttpOnly`: Evita el acceso desde JavaScript del lado del cliente, protegiendo contra ataques XSS.
-  - `Secure`: Asegura que las cookies solo se envíen por HTTPS (activado automáticamente en producción).
-  - `SameSite=Lax`: Ayuda a prevenir ataques CSRF limitando el envío de cookies en solicitudes cross-site.
-  - `Path=/`: Establece la ruta para la cual la cookie es válida.
-  - `Max-Age`: Tiempo de expiración consistente para todas las cookies (24 horas por defecto).
-
-- **Funciones de utilidad**:
-  - `setSecureCookie()`: Establece cookies con configuraciones seguras.
-  - `removeSecureCookie()`: Elimina cookies de forma segura.
-  - `clearAuthCookies()`: Elimina todas las cookies relacionadas con la autenticación.
-  - `clearAuthData()`: Limpia todos los datos de autenticación (cookies y localStorage).
+- La sesión de Supabase se mantiene en memoria por el SDK del cliente mientras la aplicación está activa.
+- No se usan utilidades para escribir tokens en cookies ni sincronizar entre almacenamiento y cookies.
+- Eliminar `middleware.ts` (antes usado para leer cookies en tiempo de petición) y `cookie-utils.ts` fue parte de esta migración.
 
 ### 2. Mejoras en el Cierre de Sesión
 
 Se ha mejorado el proceso de cierre de sesión para garantizar una limpieza completa de los datos de autenticación:
 
 - Eliminación de todas las cookies relacionadas con la autenticación.
-- Limpieza de todos los elementos de localStorage relacionados con la autenticación.
+- Limpieza de rastros locales: dado que no se persiste la sesión en localStorage, no hay elementos de almacenamiento de sesión que limpiar en el cierre de sesión por defecto.
 - Orden optimizado de operaciones para garantizar una experiencia de usuario fluida.
 
 ### 3. Configuración Mejorada de Supabase
 
 Se ha personalizado la configuración del cliente Supabase para mejorar la seguridad:
 
-- Implementación de almacenamiento personalizado para gestionar tokens de forma segura.
-- Sincronización entre localStorage y cookies para mantener la consistencia.
-- Configuración de cookies con atributos de seguridad para los tokens de acceso.
+-- El cliente Supabase está configurado para no persistir sesiones al almacenamiento del navegador en producción. Esto evita exponer tokens en localStorage o cookies.
 
-### 4. Validación de Origen en Middleware
+### 4. Middleware
 
-Se ha implementado una validación de origen en el middleware para prevenir ataques CSRF:
-
-- Verificación del encabezado `Origin` contra el `Host` de la solicitud.
-- Registro de advertencias para posibles intentos de CSRF.
-- Preparación para bloquear solicitudes sospechosas en entornos de producción.
+El middleware que validaba cookies y redirecciones fue eliminado porque la autenticación ahora depende de la sesión en memoria del SDK en el cliente y las rutas protegidas se controlan en el cliente/servidor según sea necesario.
 
 ### 5. Buenas Prácticas Implementadas
 

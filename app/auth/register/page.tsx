@@ -1,5 +1,5 @@
 "use client"
-// Expresión regular para validar contraseñas fuertes
+// EXPRESIÓN REGULAR PARA VALIDAR CONTRASEÑAS FUERTES: AL MENOS 8 CARACTERES, UNA MAYÚSCULA, UN NÚMERO Y UN CARÁCTER ESPECIAL
 const strongPasswordRegex = /^(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]).{8,}$/;
 
 import type React from "react"
@@ -12,10 +12,11 @@ import { Label } from "@/components/ui/label"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Shield, Car, Users, Sparkles, UserPlus, Loader2, Eye, EyeOff } from "lucide-react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 
-
-// HANDLER PARA LA SOLICITUD GET - REGISTRARSE COMO PASAJERO
+// COMPONENTE DE PÁGINA: FORMULARIO DE REGISTRO PARA PASAJEROS Y CONDUCTORES
 export default function RegisterPage() {
+  const router = useRouter()
   const [showPassword, setShowPassword] = useState(false)
   const [formData, setFormData] = useState({
     name: "",
@@ -40,16 +41,16 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
 
+  // MANEJADOR DE REGISTRO: VALIDA CAMPOS EN EL LADO DEL CLIENTE, SANITIZA EL TELEFONO, IMPORTA registerUser
+  // Y EJECUTA EL REGISTRO EN EL SERVIDOR; REDIRIGE AL LOGIN SI ES EXITOSO.
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     setError("")
 
-    // Basic client-side validation and sanitization to avoid platform-specific issues (mobile)
     const email = formData.email?.trim()
     const password = (formData.password || "").trim()
     const name = formData.name?.trim()
-    // Allow leading + for international numbers, keep digits and + only
     const sanitizedPhone = (formData.phone || "").replace(/[^\d+]/g, "").trim()
 
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
@@ -65,10 +66,8 @@ export default function RegisterPage() {
     }
 
     try {
-      // Importar la función registerUser desde auth.ts
       const { registerUser } = await import("@/lib/auth")
 
-      // Preparar los datos del usuario según el tipo (usar teléfono sanitizado)
       const userData = {
         ...formData,
         name,
@@ -77,19 +76,15 @@ export default function RegisterPage() {
         userType: userType as "passenger" | "driver",
       }
 
-      // Registrar el usuario
       const result = await registerUser(userData, password)
 
       if (result.success) {
-        // Redirigir al login después de un registro exitoso
-        window.location.href = "/auth/login"
+        router.replace("/auth/login")
       } else {
-        // Mostrar error amigable y registrar el detalle en consola para depuración en móviles
         console.error("Registro fallido (server):", result.error)
         setError(result.error || "Error al registrar usuario")
       }
     } catch (error: any) {
-      // Registrar detalle completo para diagnóstico en móvil
       console.error("Error de registro (excepción):", error)
       setError("Error inesperado. Por favor intenta de nuevo.")
     } finally {

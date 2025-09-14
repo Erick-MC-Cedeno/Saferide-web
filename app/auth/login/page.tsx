@@ -14,7 +14,6 @@ import { Shield, Car, Users, Eye, EyeOff, Loader2, AlertCircle, Wifi, WifiOff, S
 import Link from "next/link"
 import { loginUser } from "@/lib/auth"
 import { useAuth } from "@/lib/auth-context"
-import { setAuthInProgressCookie } from "@/lib/cookie-utils"
 
 export default function LoginPage() {
   const [email, setEmail] = useState("")
@@ -28,23 +27,22 @@ export default function LoginPage() {
 
 
 
-  // CHECK IF USER IS LOGGED IN AND REDIRECT TO APPROUTE
+  // VERIFICA SI EL USUARIO ESTÁ AUTENTICADO Y REDIRIGE AL DASHBOARD CORRESPONDIENTE
   const { user, userData, userType: ctxUserType, loading: authLoading } = useAuth()
 
   useEffect(() => {
-  if (authLoading) return
-  // Verificar explícitamente cookie de sesión real de Supabase para evitar falsos positivos tras logout
-  const hasAuthCookie = typeof document !== 'undefined' && document.cookie.includes('sb-access-token=')
-  if (hasAuthCookie && user && (ctxUserType === 'driver' || ctxUserType === 'passenger')) {
-  const redirectPath = ctxUserType === 'driver' ? '/driver/dashboard' : '/passenger/dashboard'
-  router.replace(redirectPath)
-  }
+    if (authLoading) return
+    if (user && (ctxUserType === 'driver' || ctxUserType === 'passenger')) {
+      const redirectPath = ctxUserType === 'driver' ? '/driver/dashboard' : '/passenger/dashboard'
+      router.replace(redirectPath)
+    }
   }, [authLoading, user, ctxUserType, router])
 
+  // MANEJADOR DE LOGIN: VALIDA SERVICIOS, LLAMA A loginUser Y REDIRIGE AL USUARIO SEGÚN EL TIPO O PARÁMETRO 'redirect'
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
 
-      if (!isSupabaseReady) {
+    if (!isSupabaseReady) {
       setError("Los servicios de autenticación no están disponibles. Por favor, intenta más tarde.")
       return
     }
@@ -54,26 +52,16 @@ export default function LoginPage() {
 
     try {
       const result = await loginUser(email, password)
-
       if (result.success) {
-        // Establecer una cookie temporal para indicar que hay un proceso de autenticación en curso
-        setAuthInProgressCookie()
-        
-        // Obtener el parámetro de redirección de la URL si existe
+        // REDIRECCIÓN POST-LOGIN: LEER PARAMETRO 'redirect' Y NAVEGAR A LA RUTA CORRESPONDIENTE
         const urlParams = new URLSearchParams(window.location.search)
         const redirectParam = urlParams.get('redirect')
-        
-        // Usar el parámetro de redirección si existe, de lo contrario usar la ruta predeterminada
+
         const defaultPath = userType === "driver" ? "/driver/dashboard" : "/passenger/dashboard"
         const redirectPath = redirectParam || defaultPath
-        
+
         console.log("Redirigiendo a:", redirectPath)
-        
-        // Usar window.location.href para forzar una redirección completa en lugar de router.push
-        // Esto asegura que el middleware procese correctamente la redirección
-        setTimeout(() => {
-          window.location.href = redirectPath
-        }, 1000)
+        router.replace(redirectPath)
       } else {
         setError(result.error || "Error al iniciar sesión")
       }
@@ -85,7 +73,7 @@ export default function LoginPage() {
   }
 
 
-  // SHOW LOADING STATE WHILE AUTH IS INITIALIZING
+  // ESTADO DE CARGA: MUESTRA PANTALLA DE INICIALIZACIÓN MIENTRAS SE VERIFICA AUTH
   if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center -mt-32">
@@ -103,14 +91,14 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-cyan-50 flex items-center justify-center p-4 relative overflow-hidden">
-      {/* Animated background elements */}
+  {/* ELEMENTOS ANIMADOS DE FONDO */}
   <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-blue-400/20 to-purple-400/20 rounded-full blur-3xl animate-pulse"></div>
         <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-gradient-to-tr from-cyan-400/20 to-blue-400/20 rounded-full blur-3xl animate-pulse delay-1000"></div>
       </div>
 
       <div className="w-full max-w-md relative z-10">
-        {/* Header */}
+  {/* ENCABEZADO: TITULO Y SUBTITULO */}
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-3">¡Bienvenido de vuelta!</h1>
           <p className="text-gray-600 text-lg">Inicia sesión en tu cuenta de SafeRide</p>
@@ -238,8 +226,8 @@ export default function LoginPage() {
           </CardContent>
         </Card>
 
-        {/* Security Notice */}
-        <div className="mt-8 text-center">
+  {/* AVISO DE SEGURIDAD: TERMINOS Y POLITICA DE PRIVACIDAD */}
+  <div className="mt-8 text-center">
           <p className="text-xs text-gray-500 leading-relaxed">
             Al iniciar sesión, aceptas nuestros{" "}
             <Link href="/terms" className="text-blue-600 hover:text-purple-600 hover:underline transition-colors">

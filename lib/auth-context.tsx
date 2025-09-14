@@ -4,7 +4,6 @@ import React from "react"
 import { createContext, useContext, useEffect, useState, useRef } from "react"
 import { getUserData } from "./auth"
 import { supabase } from "./supabase"
-import { setSecureCookie, clearAuthData } from "./cookie-utils"
 
 interface AuthContextType {
   user: any | null
@@ -26,8 +25,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [supabaseReady, setSupabaseReady] = useState(!!(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY))
   const isLoadingUserData = useRef(false)
 
+  // CARGA LOS DATOS DEL USUARIO DESDE SUPABASE: INTENTA PRIMERO EN LA TABLA 'PASSENGER' Y LUEGO EN 'DRIVER'.
+  // EVITA CARGAS SIMULTÁNEAS USANDO UN FLAG, ACTUALIZA EL ESTADO LOCAL CON LOS DATOS Y EL TIPO DE USUARIO.
   const loadUserData = async (userId: string, source = "unknown") => {
-    // Prevent multiple simultaneous loads
     if (isLoadingUserData.current) {
       return
     }
@@ -35,7 +35,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     isLoadingUserData.current = true
 
     try {
-      // Try to get user data from both tables
       let data = await getUserData(userId, "passenger")
       let type: "passenger" | "driver" = "passenger"
 
@@ -53,6 +52,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
+  // REFRESCA LOS DATOS DEL USUARIO ACTUAL LLAMANDO A loadUserData SI HAY UN USUARIO AUTENTICADO.
   const refreshUserData = async () => {
     if (!user?.uid) {
       return
@@ -67,47 +67,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const initializeAuth = async () => {
       try {
-        // Supabase readiness
+        // INICIALIZA EL ESTADO DE AUTENTICACIÓN: VERIFICA LA DISPONIBILIDAD DE SUPABASE, CARGA LA SESIÓN ACTIVA SI EXISTE
+        // Y CONFIGURA UN LISTENER PARA CAMBIOS EN EL ESTADO DE AUTENTICACIÓN.
         setSupabaseReady(!!(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY))
 
-        // Verificar si hay una sesión activa primero
         const { data: { session } } = await supabase.auth.getSession()
         if (session?.user) {
           const sbUser = session.user
           const userWithUid = { uid: sbUser.id, ...sbUser }
           setUser(userWithUid)
           await loadUserData(sbUser.id, "session-init")
-          
-          // Establecer cookie de autenticación con configuración segura y mayor duración
-          // Usar httpOnly: false para que el middleware pueda acceder a la cookie
-          setSecureCookie('auth-token', sbUser.id, { maxAge: 7 * 24 * 60 * 60, httpOnly: false })
-          
+
           if (mounted) setLoading(false)
         }
 
-        // Set up supabase auth state listener
+        // LISTENER QUE SINCRONIZA EL ESTADO DE AUTH DE SUPABASE CON EL ESTADO LOCAL
         const { data: listener } = supabase.auth.onAuthStateChange(async (event, session) => {
           try {
-            // debug: auth state change event removed
             const sbUser = session?.user ?? null
             if (sbUser) {
-              // For compatibility with existing code that expects `user.uid`, expose uid mapping
-              // while still keeping the original Supabase user fields.
               const userWithUid = { uid: sbUser.id, ...sbUser }
               setUser(userWithUid)
               await loadUserData(sbUser.id, "auth-state-change")
-
-              // Establecer cookie de autenticación con configuración segura y mayor duración
-              // Usar httpOnly: false para que el middleware pueda acceder a la cookie
-              setSecureCookie('auth-token', sbUser.id, { maxAge: 7 * 24 * 60 * 60, httpOnly: false })
             } else {
               setUser(null)
               setUserData(null)
               setUserType(null)
               isLoadingUserData.current = false
-
-              // Eliminar TODOS los datos de autenticación (cookies + storage) de forma robusta
-              clearAuthData()
             }
           } catch (error) {
             console.error("Error handling supabase auth state change:", error)
@@ -116,10 +102,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
         })
 
-        // Store unsubscribe
         unsubscribe = () => {
           listener?.subscription.unsubscribe()
         }
+
+        if (mounted) setLoading(false)
       } catch (error) {
         console.error("Error initializing auth:", error)
         if (mounted) setLoading(false)
@@ -140,8 +127,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Update cookies when userType changes
   useEffect(() => {
     if (userType) {
-      // Usar httpOnly: false para que el middleware pueda acceder a la cookie
-      setSecureCookie('user-type', userType, { maxAge: 7 * 24 * 60 * 60, httpOnly: false })
+      // Do not write userType to cookies. Keep role in memory/state only.
     }
   }, [userType])
 
@@ -154,10 +140,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUserType(null)
         isLoadingUserData.current = false
 
-        // Cierre de sesión: no establecemos la cookie 'auth-in-progress' para evitar estados temporales
-        
-        // Limpiar todas las cookies y localStorage relacionados con autenticación
-        clearAuthData()
+      
 
         // Luego realizar el cierre de sesión en Supabase
         const { error } = await supabase.auth.signOut()

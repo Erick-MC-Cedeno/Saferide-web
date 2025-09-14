@@ -23,7 +23,7 @@ export function Navbar() {
   const [profileImage, setProfileImage] = useState<string | null>(null)
   const hasInitialLoad = useRef(false)
 
-  // Update profile image when userData changes
+  // ACTUALIZA LA IMAGEN DE PERFIL CUANDO CAMBIAN LOS DATOS DEL USUARIO
   useEffect(() => {
     if (userData?.profile_image) {
       setProfileImage(userData.profile_image)
@@ -32,7 +32,7 @@ export function Navbar() {
     }
   }, [userData])
 
-  // Only refresh if we have a user but no userData yet (initial load scenario)
+  // REFRESCA LOS DATOS DEL USUARIO SOLO EN LA CARGA INICIAL SI HAY USUARIO PERO NO HAY userData
   useEffect(() => {
     if (user?.uid && !userData && !hasInitialLoad.current) {
       hasInitialLoad.current = true
@@ -42,21 +42,22 @@ export function Navbar() {
     }
   }, [user?.uid, userData, refreshUserData])
 
+  // MANEJA EL CIERRE DE SESIÓN: RESETEA FLAGS, LLAMA A signOut, ESPERA BREVE Y NAVEGA A LA RAÍZ
   const handleSignOut = async () => {
     try {
-      hasInitialLoad.current = false // Reset flag on logout
+      hasInitialLoad.current = false
       await signOut()
-      
-      // Pequeña pausa para asegurar que la operación de cierre de sesión se complete
+
+      // ESPERA CORTA PARA ASEGURAR LA CONSISTENCIA ANTES DE REDIRIGIR
       await new Promise(resolve => setTimeout(resolve, 100))
-      
-      // Usar window.location.href en lugar de router.push para forzar una recarga completa
-      window.location.href = "/"
-      setMobileMenuOpen(false); // Close mobile menu on sign out
+
+      // NAVEGACIÓN CLIENTE A LA PÁGINA PRINCIPAL Y CIERRE DEL MENÚ MÓVIL
+      router.replace("/")
+      setMobileMenuOpen(false)
     } catch (error) {
       console.error("Error al cerrar sesión:", error)
-      // En caso de error, forzar recarga de la página
-      window.location.reload()
+      // EN CASO DE ERROR, REDIRECCIONAR A LA RAÍZ COMO RECOVERY
+      router.replace("/")
     }
   }
 
@@ -83,7 +84,7 @@ export function Navbar() {
     <nav className="bg-white shadow-lg border-b border-gray-200">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-14 md:h-16">
-          {/* Logo */}
+          {/* LOGOTIPO */}
           <Link href="/" className="flex items-center space-x-3">
             <div className="bg-gradient-to-r from-blue-600 to-blue-700 p-2 rounded-lg">
               <Shield className="h-6 w-6 text-white" />
@@ -96,7 +97,7 @@ export function Navbar() {
             </div>
           </Link>
 
-          {/* Desktop Navigation */}
+          {/* NAVEGACIÓN DE ESCRITORIO */}
           <div className="hidden md:flex items-center space-x-8">
             {navigation.map((item) => (
               <Link
@@ -109,10 +110,10 @@ export function Navbar() {
             ))}
           </div>
 
-          {/* User Menu or Auth Buttons */}
+          {/* MENÚ DE USUARIO O BOTONES DE AUTENTICACIÓN */}
           <div className="flex items-center space-x-4">
             {user ? (
-              // Hide this div on mobile screens
+              /* BLOQUE VISIBLE SOLO EN PANTALLAS MEDIANAS/GRANDES: TIPO DE USUARIO, AVATAR Y MENÚ */
               <div className="hidden md:flex items-center space-x-3">
                 {/* User Type Badge */}
                 <Badge
@@ -121,7 +122,7 @@ export function Navbar() {
                 >
                   {userType === "driver" ? "Conductor" : "Pasajero"}
                 </Badge>
-                {/* User Dropdown */}
+                {/* MENÚ DESPLEGABLE DEL USUARIO */}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" className="relative h-10 w-10 rounded-full">
@@ -230,7 +231,7 @@ export function Navbar() {
                 {user ? (
                   <div className="mt-4 px-4 py-3 border-t border-gray-200">
                     <div className="flex flex-col space-y-4">
-                      {/* User Info and Badge */}
+                      {/* INFORMACIÓN DEL USUARIO Y BADGE */}
                       <div className="flex items-center space-x-3">
                         <Avatar className="h-10 w-10 border-2 border-blue-200">
                           <AvatarImage src={profileImage || "/placeholder.svg?height=40&width=40"} alt="Foto de perfil" className="object-cover" />
@@ -250,7 +251,7 @@ export function Navbar() {
                         {userType === "driver" ? "Conductor" : "Pasajero"}
                       </Badge>
 
-                      {/* Navigation Links for Authenticated User */}
+                      {/* ENLACES DE NAVEGACIÓN PARA USUARIOS AUTENTICADOS */}
                       <div className="flex flex-col space-y-1">
                         <Link href="/profile" className="flex items-center text-gray-700 hover:bg-gray-50 hover:text-blue-600 px-4 py-3 text-sm font-medium transition-colors duration-200 -mx-4" onClick={() => setMobileMenuOpen(false)}>
                           <User className="mr-2 h-4 w-4" />
@@ -300,7 +301,7 @@ export function Navbar() {
             </div>
           </div>
         </div>
-        {/* Overlay */}
+        {/* OVERLAY DEL MENÚ MÓVIL */}
         {mobileMenuOpen && (
           <div
             className="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden"

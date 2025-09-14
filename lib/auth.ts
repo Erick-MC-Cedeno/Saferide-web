@@ -1,9 +1,8 @@
-// Expresión regular para validar contraseñas fuertes
+// EXPRESIÓN REGULAR PARA VALIDAR CONTRASEÑAS FUERTES: AL MENOS 8 CARACTERES, UNA MAYÚSCULA, UN NÚMERO Y UN CARÁCTER ESPECIAL
 const strongPasswordRegex = /^(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]).{8,}$/;
 
-// Authentication utilities using Supabase for auth and Supabase DB for user profiles
+// UTILIDADES DE AUTENTICACIÓN: FUNCIONES QUE INTERACTÚAN CON SUPABASE PARA AUTH Y GESTIÓN DE PERFILES EN LA BD
 import { supabase } from "./supabase"
-import { clearAuthData } from "./cookie-utils"
 
 export interface UserData {
   uid: string
@@ -21,42 +20,34 @@ export interface UserData {
   totalTrips?: number
 }
 
+// REGISTRA UN NUEVO USUARIO: VALIDA CAMPOS (EMAIL, NOMBRE, CONTRASEÑA FUERTE), CREA LA CUENTA EN SUPABASE
+// Y GUARDA LOS CAMPOS ADICIONALES EN LA TABLA CORRESPONDIENTE ('drivers' O 'passengers').
 export const registerUser = async (userData: Omit<UserData, "uid">, password: string) => {
   try {
     if (!supabase) {
       return { success: false, error: "Servicios de autenticación no están disponibles." }
     }
 
-      // Validación estricta de contraseña
-      if (!strongPasswordRegex.test(password)) {
-        return {
-          success: false,
-          error:
-            "La contraseña debe tener al menos 8 caracteres, una mayúscula, un número y un carácter especial."
-        }
+    if (!strongPasswordRegex.test(password)) {
+      return {
+        success: false,
+        error:
+          "La contraseña debe tener al menos 8 caracteres, una mayúscula, un número y un carácter especial."
       }
-
-    // Basic validation guard for phone (helpful for mobile submissions)
-    if (!userData.phone || typeof userData.phone !== "string" || userData.phone.trim().length === 0) {
-      // Allow registration without phone in some flows but return a clear message
-      console.warn("Registro sin teléfono o teléfono inválido:", userData.phone)
-      // Continue registration but include a warning in the response so UI can show it
-      // (This avoids blocking users but surfaces the root cause for debugging)
-      // Note: For stricter validation, uncomment the line below to reject.
-      // return { success: false, error: "El número de teléfono no es válido." }
     }
 
-      // Validación básica de email
-      if (!userData.email || typeof userData.email !== "string" || !userData.email.includes("@")) {
-        return { success: false, error: "El correo electrónico no es válido." }
-      }
+    if (!userData.phone || typeof userData.phone !== "string" || userData.phone.trim().length === 0) {
+      console.warn("Registro sin teléfono o teléfono inválido:", userData.phone)
+    }
 
-      // Validación básica de nombre
-      if (!userData.name || typeof userData.name !== "string" || userData.name.trim().length < 2) {
-        return { success: false, error: "El nombre es obligatorio y debe tener al menos 2 caracteres." }
-      }
+    if (!userData.email || typeof userData.email !== "string" || !userData.email.includes("@")) {
+      return { success: false, error: "El correo electrónico no es válido." }
+    }
 
-    // Create user in Supabase Auth
+    if (!userData.name || typeof userData.name !== "string" || userData.name.trim().length < 2) {
+      return { success: false, error: "El nombre es obligatorio y debe tener al menos 2 caracteres." }
+    }
+
     const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
       email: userData.email,
       password,
@@ -64,21 +55,18 @@ export const registerUser = async (userData: Omit<UserData, "uid">, password: st
     })
 
     if (signUpError) {
-      // Map common Supabase errors to friendly messages
       let message = "Error al crear la cuenta. " + signUpError.message
       if (signUpError.message?.includes("duplicate")) {
         message = "Este correo electrónico ya está registrado."
       }
       return { success: false, error: message }
     }
-    
 
     const user = signUpData.user
     if (!user) {
       return { success: false, error: "No se pudo crear el usuario. Revisa la configuración de Supabase." }
     }
 
-    // Save additional user data to Supabase database tables
     if (userData.userType === "driver") {
       const { error } = await supabase.from("drivers").insert({
         uid: user.id,
@@ -113,10 +101,8 @@ export const registerUser = async (userData: Omit<UserData, "uid">, password: st
   } catch (error: any) {
     console.error("Registration error:", error)
 
-    // Provide more specific error messages
     let errorMessage = "Error al crear la cuenta. "
 
-    // Map Firebase-specific codes where possible, otherwise fall back to error.message
     if (error?.code === "auth/email-already-in-use" || error?.message?.includes("duplicate")) {
       errorMessage = "Este correo electrónico ya está registrado."
     } else if (error?.code === "auth/weak-password") {
@@ -131,6 +117,7 @@ export const registerUser = async (userData: Omit<UserData, "uid">, password: st
   }
 }
 
+// INICIA SESIÓN CON EMAIL Y CONTRASEÑA USANDO SUPABASE; MAPEADO DE ERRORES A MENSAJES AMIGABLES EN ESPAÑOL
 export const loginUser = async (email: string, password: string) => {
   try {
     if (!supabase) {
@@ -139,7 +126,6 @@ export const loginUser = async (email: string, password: string) => {
 
     const { data, error } = await supabase.auth.signInWithPassword({ email, password })
     if (error) {
-      // Handle common Supabase auth errors with friendly Spanish messages
       let message = "Error al iniciar sesión. " + error.message
 
       if (error.message?.toLowerCase().includes("email not confirmed") || error.message?.toLowerCase().includes("not confirmed")) {
@@ -155,7 +141,6 @@ export const loginUser = async (email: string, password: string) => {
   } catch (error: any) {
     console.error("Login error:", error)
 
-    // Provide more specific error messages
     let errorMessage = "Error al iniciar sesión. "
 
     if (error?.code === "auth/user-not-found" || error?.message?.toLowerCase().includes("not found")) {
@@ -176,14 +161,11 @@ export const loginUser = async (email: string, password: string) => {
   }
 }
 
+// CIERRA LA SESIÓN ACTUAL EN SUPABASE Y RETORNA UN RESULTADO AMIGABLE
 export const logoutUser = async () => {
   try {
     if (!supabase) return { success: false, error: "Servicios de autenticación no están disponibles." }
 
-    // Limpiar todas las cookies y localStorage relacionados con autenticación
-    clearAuthData()
-
-    // Realizar el cierre de sesión en Supabase
     const { error } = await supabase.auth.signOut()
     if (error) {
       console.error("Error en Supabase signOut:", error)
@@ -197,6 +179,7 @@ export const logoutUser = async () => {
   }
 }
 
+// OBTIENE LOS DATOS DEL USUARIO DESDE LA TABLA CORRESPONDIENTE ('drivers' O 'passengers'). DEVUELVE NULL SI NO HAY REGISTRO
 export const getUserData = async (uid: string, userType: "passenger" | "driver") => {
   try {
     if (!supabase) {
@@ -212,7 +195,6 @@ export const getUserData = async (uid: string, userType: "passenger" | "driver")
       return null
     }
 
-    // data may be null when no record exists
     return data || null
   } catch (error) {
     console.error("Get user data error:", error)

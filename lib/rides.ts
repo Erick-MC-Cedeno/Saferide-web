@@ -1,4 +1,4 @@
-// Ride management utilities with Supabase
+// UTILIDADES DE GESTIÓN DE VIAJES: OPERACIONES CRUD BÁSICAS SOBRE LA TABLA 'rides' DE SUPABASE
 import { supabase } from "./supabase"
 
 export interface RideRequest {
@@ -6,7 +6,7 @@ export interface RideRequest {
   passenger_id: string
   passenger_name: string
   pickup_address: string
-  pickup_coordinates: [number, number] // [longitude, latitude]
+  pickup_coordinates: [number, number] // COORDENADAS [LONGITUDE, LATITUDE]
   destination_address: string
   destination_coordinates: [number, number]
   status: "pending" | "accepted" | "in-progress" | "completed" | "cancelled"
@@ -22,6 +22,8 @@ export interface RideRequest {
   driver_rating?: number
 }
 
+
+// CREA UNA NUEVA SOLICITUD DE EMBARQUE PARA UN PASSENGER Y RETORNA UN OBJETO AMIGABLE
 export const createRideRequest = async (rideData: Omit<RideRequest, "id" | "requested_at">) => {
   try {
     const { data, error } = await supabase
@@ -49,6 +51,7 @@ export const createRideRequest = async (rideData: Omit<RideRequest, "id" | "requ
   }
 }
 
+// ACEPTA UNA SOLICITUD DE VIAJE: ASIGNA DRIVER, CAMBIA ESTADO A 'accepted' Y REGISTRA accepted_at
 export const acceptRideRequest = async (rideId: string, driverId: string, driverName: string) => {
   try {
     const { error } = await supabase
@@ -71,6 +74,8 @@ export const acceptRideRequest = async (rideId: string, driverId: string, driver
   }
 }
 
+
+// ACTUALIZA EL ESTADO DE UN VIAJE; SI SE MARCA COMO 'completed' SE REGISTRA completed_at
 export const updateRideStatus = async (rideId: string, status: RideRequest["status"]) => {
   try {
     const updateData: any = { status }
@@ -89,6 +94,8 @@ export const updateRideStatus = async (rideId: string, status: RideRequest["stat
   }
 }
 
+
+// OBTIENE EL HISTORIAL DE VIAJES PARA UN USUARIO (PASAJERO O CONDUCTOR)
 export const getRideHistory = async (userId: string, userType: "passenger" | "driver") => {
   try {
     const column = userType === "passenger" ? "passenger_id" : "driver_id"
@@ -109,9 +116,11 @@ export const getRideHistory = async (userId: string, userType: "passenger" | "dr
   }
 }
 
+
+// OBTIENE UNA LISTA DE VIAJES PENDIENTES CERCA DE LA UBICACIÓN DEL CONDUCTOR (SI SE PROPORCIONA)
 export const getPendingRides = async (driverLocation?: [number, number]) => {
   try {
-    // In a real app, you would use PostGIS functions for geospatial queries
+    // CONSULTA DE VIAJES PENDIENTES: EN PRODUCCIÓN USAR CONSULTAS GEOSPACIALES (POSTGIS/ETC.)
     const { data, error } = await supabase
       .from("rides")
       .select("*")
@@ -128,6 +137,8 @@ export const getPendingRides = async (driverLocation?: [number, number]) => {
   }
 }
 
+
+// ACTUALIZA LA UBICACIÓN DEL CONDUCTOR (GUARDADA COMO GEOJSON POINT EN current_location)
 export const updateDriverLocation = async (driverId: string, location: [number, number]) => {
   try {
     const { error } = await supabase
@@ -149,6 +160,8 @@ export const updateDriverLocation = async (driverId: string, location: [number, 
   }
 }
 
+
+// ACTUALIZA EL ESTADO ONLINE DEL CONDUCTOR
 export const updateDriverOnlineStatus = async (driverId: string, isOnline: boolean) => {
   try {
     const { error } = await supabase.from("drivers").update({ is_online: isOnline }).eq("uid", driverId)

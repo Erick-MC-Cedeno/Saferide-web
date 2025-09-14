@@ -371,29 +371,29 @@ function DriverDashboardContent() {
       {/* Enhanced Header */}
       <header className="bg-white/80 backdrop-blur-md shadow-lg border-b border-blue-100">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col sm:flex-row justify-between items-center py-6 space-y-4 sm:space-y-0">
+          <div className="flex items-center justify-between py-4">
+            {/* Left: Logo + Badge */}
             <div className="flex items-center space-x-3">
-              <div className="p-2 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl shadow-lg">
-                <Shield className="h-8 w-8 text-white" />
+              <div className="p-2 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg shadow-md flex items-center justify-center">
+                <Shield className="h-7 w-7 text-white" />
               </div>
-              <div>
-                <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-                  SafeRide
-                </h1>
-                <Badge variant="secondary" className="mt-1 bg-blue-100 text-blue-700 border-blue-200">
-                  Conductor
-                </Badge>
-              </div>
+              <Badge variant="secondary" className="bg-blue-100 text-blue-700 border-blue-200 text-xs py-0.5 px-2">
+                Conductor
+              </Badge>
             </div>
-            <div className="flex items-center space-x-6 mt-4 sm:mt-0">
-              <div className="flex items-center space-x-3 bg-white/60 rounded-full px-4 py-2 border border-blue-200">
+
+            {/* Right: Compact status block */}
+            <div className="flex items-center space-x-3">
+              <div className="flex items-center space-x-2 bg-white/60 rounded-full px-3 py-1 border border-blue-200">
                 <Activity className="h-4 w-4 text-blue-600" />
-                <span className="text-sm font-medium text-gray-700">Estado:</span>
-                <Switch checked={isOnline} onCheckedChange={updateOnlineStatus} disabled={statusLoading} />
-                <span className={`text-sm font-semibold ${isOnline ? "text-green-600" : "text-gray-500"}`}>
-                  {isOnline ? "En línea" : "Desconectado"}
-                </span>
-                {isOnline && <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />}
+                <div className="flex items-center space-x-2">
+                  <span className="text-xs font-medium text-gray-700">Estado</span>
+                  <Switch checked={isOnline} onCheckedChange={updateOnlineStatus} disabled={statusLoading} />
+                  <span className={`text-xs font-semibold ${isOnline ? "text-green-600" : "text-gray-500"}`}>
+                    {isOnline ? "En línea" : "Desconectado"}
+                  </span>
+                </div>
+                {isOnline && <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse ml-2" />}
               </div>
             </div>
           </div>
@@ -442,18 +442,8 @@ function DriverDashboardContent() {
               <div className="lg:col-span-2 space-y-8">
                 {/* Enhanced Map Component */}
                 <Card className="overflow-hidden border-0 shadow-xl bg-white/80 backdrop-blur-sm">
-                  <CardHeader className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white">
-                    <CardTitle className="flex items-center space-x-2">
-                      <MapPin className="h-5 w-5" />
-                      <span>Mapa de Ubicaciones</span>
-                    </CardTitle>
-                  </CardHeader>
                   <CardContent className="p-0">
-                    <div className="mb-4 p-4 bg-blue-50/80 border-b border-blue-100">
-                      <p className="text-sm text-blue-800 font-medium">
-                        <strong>Vista en tiempo real:</strong> Ubicaciones de clientes esperando viaje
-                      </p>
-                    </div>
+                    {/* Header and info bar removed per request; map remains */}
                     <MapComponent
                       userType="driver"
                       driverLocations={rideLocations}
@@ -574,13 +564,13 @@ function DriverDashboardContent() {
               <div className="space-y-6">
                 {/* Enhanced Status Card */}
                 <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm">
-                  <CardHeader className="bg-gradient-to-r from-slate-600 to-slate-700 text-white rounded-t-lg">
-                    <CardTitle className="flex items-center space-x-2">
-                      <Activity className="h-5 w-5" />
-                      <span>Estado del Conductor</span>
+                  <CardHeader className="bg-gradient-to-r from-slate-600 to-slate-700 text-white rounded-t-lg py-2 px-3">
+                    <CardTitle className="flex items-center space-x-2 text-sm">
+                      <Activity className="h-4 w-4" />
+                      <span className="text-sm">Estado del Conductor</span>
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="p-6 space-y-6">
+                  <CardContent className="p-4 space-y-4">
                     <div className="flex items-center justify-between p-4 bg-slate-50 rounded-lg">
                       <span className="font-medium text-slate-700">Disponibilidad</span>
                       <Badge
@@ -610,13 +600,13 @@ function DriverDashboardContent() {
 
                 {/* Enhanced Earnings Summary */}
                 <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm">
-                  <CardHeader className="bg-gradient-to-r from-emerald-600 to-green-600 text-white rounded-t-lg">
-                    <CardTitle className="flex items-center space-x-2">
-                      <TrendingUp className="h-5 w-5" />
-                      <span>Resumen de Ganancias</span>
+                  <CardHeader className="bg-gradient-to-r from-emerald-600 to-green-600 text-white rounded-t-lg py-2 px-3">
+                    <CardTitle className="flex items-center space-x-2 text-sm">
+                      <TrendingUp className="h-4 w-4" />
+                      <span className="text-sm">Resumen de Ganancias</span>
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="p-6 space-y-4">
+                  <CardContent className="p-4 space-y-3">
                     <div className="flex justify-between items-center p-3 bg-green-50 rounded-lg">
                       <span className="text-green-700 font-medium">Hoy</span>
                       <span className="font-bold text-green-800 text-lg">${driverStats.todayEarnings}</span>

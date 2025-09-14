@@ -202,7 +202,7 @@ export default function HomePage() {
                   size="lg"
                   className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-8 py-4 text-lg font-semibold rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300"
                 >
-                  <Link href="/auth/register" className="flex items-center">
+                  <Link href="/passenger/dashboard" className="flex items-center">
                     Comenzar Ahora
                     <ArrowRight className="ml-2 h-5 w-5" />
                   </Link>

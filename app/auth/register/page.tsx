@@ -10,12 +10,13 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Shield, Car, Users, Sparkles, UserPlus, Loader2 } from "lucide-react"
+import { Shield, Car, Users, Sparkles, UserPlus, Loader2, Eye, EyeOff } from "lucide-react"
 import Link from "next/link"
 
 
 // HANDLER PARA LA SOLICITUD GET - REGISTRARSE COMO PASAJERO
 export default function RegisterPage() {
+  const [showPassword, setShowPassword] = useState(false)
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -192,16 +193,31 @@ export default function RegisterPage() {
                 <Label htmlFor="password" className="text-sm font-semibold text-gray-700">
                   Contraseña
                 </Label>
-                <Input
-                  id="password"
-                  name="password"
-                  type="password"
-                  placeholder="••••••••"
-                  value={formData.password}
-                  onChange={handleInputChange}
-                  required
-                  className="h-12 border-2 border-gray-200 focus:border-purple-500 focus:ring-purple-500/20 transition-all duration-300 rounded-xl bg-white/50 backdrop-blur-sm"
-                />
+                <div className="relative">
+                  <Input
+                    id="password"
+                    name="password"
+                    type={showPassword ? "text" : "password"}
+                    placeholder="••••••••"
+                    value={formData.password}
+                    onChange={handleInputChange}
+                    required
+                    className="h-12 pr-12 border-2 border-gray-200 focus:border-purple-500 focus:ring-purple-500/20 transition-all duration-300 rounded-xl bg-white/50 backdrop-blur-sm"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="absolute right-0 top-0 h-full px-4 hover:bg-transparent transition-all duration-300"
+                    onClick={() => setShowPassword(!showPassword)}
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-5 w-5 text-gray-400 hover:text-gray-600 transition-colors" />
+                    ) : (
+                      <Eye className="h-5 w-5 text-gray-400 hover:text-gray-600 transition-colors" />
+                    )}
+                  </Button>
+                </div>
               </div>
 
               {userType === "driver" && (

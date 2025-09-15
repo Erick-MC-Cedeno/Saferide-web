@@ -112,11 +112,12 @@ function DriverHistoryContent() {
         .eq("driver_id", user.uid)
         .order("requested_at", { ascending: false })
 
-      if (error) throw error
+  if (error) throw error
 
-      setRides(data || [])
-      calculateDriverStats(data || [])
-      calculateMonthlyData(data || [])
+  const ridesData = (data || []) as unknown as DriverRide[]
+  setRides(ridesData)
+  calculateDriverStats(ridesData)
+  calculateMonthlyData(ridesData)
     } catch (error) {
       console.error("Error loading driver history:", error)
       toast({
@@ -164,36 +165,6 @@ function DriverHistoryContent() {
   useEffect(() => {
     filterRides()
   }, [filterRides])
-
-  const loadDriverHistory = async () => {
-    if (!user?.uid || !supabase) {
-      setLoading(false)
-      return
-    }
-
-    try {
-      const { data, error } = await supabase
-        .from("rides")
-        .select("*")
-        .eq("driver_id", user.uid)
-        .order("requested_at", { ascending: false })
-
-      if (error) throw error
-
-      setRides(data || [])
-      calculateDriverStats(data || [])
-      calculateMonthlyData(data || [])
-    } catch (error) {
-      console.error("Error loading driver history:", error)
-      toast({
-        title: "Error",
-        description: "No se pudo cargar el historial de viajes.",
-        variant: "destructive",
-      })
-    } finally {
-      setLoading(false)
-    }
-  }
 
   const calculateDriverStats = (ridesData: DriverRide[]) => {
     const totalTrips = ridesData.length
@@ -296,33 +267,6 @@ function DriverHistoryContent() {
     setMonthlyData(monthlyArray)
   }
 
-  const filterRides = () => {
-    let filtered = rides
-
-    if (searchTerm) {
-      filtered = filtered.filter(
-        (ride) =>
-          ride.pickup_address.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          ride.destination_address.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          ride.passenger_name.toLowerCase().includes(searchTerm.toLowerCase()),
-      )
-    }
-
-    if (statusFilter !== "all") {
-      filtered = filtered.filter((ride) => ride.status === statusFilter)
-    }
-
-    if (dateRange.from) {
-      filtered = filtered.filter((ride) => {
-        const rideDate = new Date(ride.requested_at)
-        const fromDate = dateRange.from!
-        const toDate = dateRange.to || new Date()
-        return rideDate >= fromDate && rideDate <= toDate
-      })
-    }
-
-    setFilteredRides(filtered)
-  }
 
   const exportToCSV = () => {
     const headers = [

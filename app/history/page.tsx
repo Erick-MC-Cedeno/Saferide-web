@@ -117,10 +117,11 @@ function HistoryContent() {
         .eq(column, user.uid)
         .order("requested_at", { ascending: false })
 
-      if (error) throw error
+  if (error) throw error
 
-      setRides(data || [])
-      calculateStats(data || [])
+  const ridesData = (data || []) as unknown as Ride[]
+  setRides(ridesData)
+  calculateStats(ridesData)
     } catch (error) {
       console.error("Error loading ride history:", error)
       toast({
@@ -172,93 +173,6 @@ function HistoryContent() {
   useEffect(() => {
     filterRides()
   }, [filterRides])
-
-  const loadRideHistory = async () => {
-    if (!user?.uid || !supabase) {
-      setLoading(false)
-      return
-    }
-
-    try {
-      const column = userType === "driver" ? "driver_id" : "passenger_id"
-      const { data, error } = await supabase
-        .from("rides")
-        .select("*")
-        .eq(column, user.uid)
-        .order("requested_at", { ascending: false })
-
-      if (error) throw error
-
-      setRides(data || [])
-      calculateStats(data || [])
-    } catch (error) {
-      console.error("Error loading ride history:", error)
-      toast({
-        title: "Error",
-        description: "No se pudo cargar el historial de viajes.",
-        variant: "destructive",
-      })
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const calculateStats = (ridesData: Ride[]) => {
-    const completedRides = ridesData.filter((ride) => ride.status === "completed")
-    const totalTrips = ridesData.length
-    const completedTrips = completedRides.length
-    const totalSpent = completedRides.reduce((sum, ride) => sum + (ride.actual_fare || ride.estimated_fare), 0)
-    const averageFare = completedTrips > 0 ? totalSpent / completedTrips : 0
-
-    // Calculate average rating
-    const ratingsField = userType === "driver" ? "driver_rating" : "passenger_rating"
-    const ratings = completedRides.filter((ride) => ride[ratingsField] !== null).map((ride) => ride[ratingsField]!)
-    const averageRating = ratings.length > 0 ? ratings.reduce((sum, rating) => sum + rating, 0) / ratings.length : 0
-
-    // Estimate total distance (mock calculation based on average trip distance)
-    const totalDistance = completedTrips * 8.5 // Average 8.5 km per trip
-
-    setStats({
-      totalTrips,
-      totalSpent,
-      averageRating,
-      totalDistance,
-      averageFare,
-      completedTrips,
-    })
-  }
-
-  const filterRides = () => {
-    let filtered = rides
-
-    // Search filter
-    if (searchTerm) {
-      filtered = filtered.filter(
-        (ride) =>
-          ride.pickup_address.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          ride.destination_address.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          ride.passenger_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          (ride.driver_name && ride.driver_name.toLowerCase().includes(searchTerm.toLowerCase())),
-      )
-    }
-
-    // Status filter
-    if (statusFilter !== "all") {
-      filtered = filtered.filter((ride) => ride.status === statusFilter)
-    }
-
-    // Date range filter
-    if (dateRange.from) {
-      filtered = filtered.filter((ride) => {
-        const rideDate = new Date(ride.requested_at)
-        const fromDate = dateRange.from!
-        const toDate = dateRange.to || new Date()
-        return rideDate >= fromDate && rideDate <= toDate
-      })
-    }
-
-    setFilteredRides(filtered)
-  }
 
   const exportToCSV = () => {
     const headers = [

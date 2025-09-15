@@ -39,11 +39,11 @@ import { RideChat } from "@/components/RideChat"
 
 
 
-// DRIVER DASHBOARD CONTENT AND STATE MANAGEMENT
+// CONTENIDO Y GESTIÓN DE ESTADO DEL DASHBOARD DEL CONDUCTOR: AGRUPA ESTADO, EFECTOS Y FUNCIONES
 function DriverDashboardContent() {
   const { user } = useAuth()
   const { toast } = useToast()
-  // Pass undefined when user is not available to avoid sending placeholder IDs to the API
+  // PASAR UNDEFINED SI EL USUARIO NO ESTÁ DISPONIBLE PARA EVITAR ENVIAR IDS POR DEFECTO AL API
   const driverId = user?.uid
   const { isOnline, loading: statusLoading, updateOnlineStatus } = useDriverStatus(driverId)
   const {
@@ -67,40 +67,41 @@ function DriverDashboardContent() {
   const [recentTrips, setRecentTrips] = useState([])
   const [showRatingDialog, setShowRatingDialog] = useState(false)
   const [completedRide, setCompletedRide] = useState(null)
-  // Ensure auto-open effects only run once per mount to avoid double-opening
+  // ASEGURAR QUE LOS EFECTOS DE APERTURA AUTOMÁTICA SOLO SE EJECUTEN UNA VEZ POR MONTAJE PARA EVITAR DOBLE APERTURA
   const autoOpenedRatingRef = useRef(false)
   const [passengerRating, setPassengerRating] = useState(0)
   const [ratingComment, setRatingComment] = useState("")
   const [showChatDialog, setShowChatDialog] = useState(false)
   const autoOpenedSelectRef = useRef(false)
-  // When the user manually closes the select dialog, prevent auto re-open
+  // SI EL USUARIO CIERRA MANUALMENTE EL DIÁLOGO DE SELECCIÓN, EVITAR QUE SE VUELVA A ABRIR AUTOMÁTICAMENTE
   const manualClosedSelectRef = useRef(false)
-  // New state to handle multiple active rides selection
+  // ESTADO PARA MANEJAR LA SELECCIÓN CUANDO HAY MÚLTIPLES VIAJES ACTIVOS
   const [selectedActiveRide, setSelectedActiveRide] = useState<any | null>(null)
   const [showSelectDialog, setShowSelectDialog] = useState(false)
   const suppressAutoOpenRef = useRef(false)
 
   const pendingRides = rides.filter((ride) => ride.status === "pending")
-  // Support multiple active rides assigned to this driver (accepted or in-progress)
+    // SOPORTE PARA MÚLTIPLES VIAJES ACTIVOS ASIGNADOS A ESTE CONDUCTOR (ACEPTADOS O EN PROGRESO)
   const activeRides = rides.filter(
     (ride) => ride.driver_id === driverId && ["accepted", "in-progress"].includes(ride.status),
   )
 
-  // Determine which ride to show in the RideTracker:
-  // - If the driver explicitly selected one, use it
-  // - Else if there's exactly one active ride, use that
-  // - Else undefined (no active ride shown until selection)
+
+  // DETERMINAR QUÉ VIAJE MOSTRAR EN EL RIDE TRACKER:
+  // - SI EL CONDUCTOR LO SELECCIONÓ, USAR ESA SELECCIÓN
+  // - SI SOLO HAY UN VIAJE ACTIVO, MOSTRAR ESE
+  // - EN CASO CONTRARIO, NO MOSTRAR NINGUNO HASTA QUE SE SELECCIONE
   const activeRide = selectedActiveRide ?? (activeRides.length === 1 ? activeRides[0] : null)
 
-  // LOAD DRIVER STATISTICS AND RECENT TRIPS
+  // CARGAR ESTADÍSTICAS DEL CONDUCTOR Y VIAJES RECIENTES (EFECTO DE INICIALIZACIÓN)
   useEffect(() => {
     const loadDriverStats = async () => {
       if (!supabase || !driverId) return
       try {
-        // Get driver info (only rating, we'll calculate total_trips from rides)
+        // OBTENER DATOS DEL CONDUCTOR (SÓLO RATING; TOTAL_TRIPS SE CALCULA A PARTIR DE LOS VIAJES)
         const { data: driverData } = await supabase.from("drivers").select("rating").eq("uid", driverId).single()
 
-        // Get ALL completed rides for this driver (not just recent ones)
+  // OBTENER TODOS LOS VIAJES COMPLETADOS DE ESTE CONDUCTOR (NO SOLO LOS RECIENTES)
         const { data: allCompletedRides } = await supabase
           .from("rides")
           .select("actual_fare, estimated_fare, completed_at")
@@ -120,14 +121,19 @@ function DriverDashboardContent() {
           setDriverStats({
             todayTrips: todayRides.length,
             todayEarnings: todayRides.reduce((sum, ride) => sum + (ride.actual_fare || ride.estimated_fare), 0),
-            todayHours: todayRides.length * 0.5, // Estimate 30 min per ride
+              todayHours: todayRides.length * 0.5, // ESTIMADO: 30 MIN POR VIAJE
             weeklyEarnings: weeklyRides.reduce((sum, ride) => sum + (ride.actual_fare || ride.estimated_fare), 0),
             monthlyEarnings: monthlyRides.reduce((sum, ride) => sum + (ride.actual_fare || ride.estimated_fare), 0),
             totalTrips: allCompletedRides.length, // Calculate from actual completed rides
+            totalTrips: allCompletedRides.length, // CALCULADO A PARTIR DE LOS VIAJES COMPLETADOS
+          // ACTUALIZAR LA TABLA 'drivers' CON EL RECUENTO CORRECTO DE 'total_trips'
+          // NO SE ENCONTRARON VIAJES COMPLETADOS: INICIALIZAR ESTADÍSTICAS A CERO
+  // OBTENER VIAJES RECIENTES PARA MOSTRAR EN LA INTERFAZ
             rating: driverData?.rating || 0,
           })
 
-          // Update the drivers table with the correct total_trips count
+
+          // ACTUALIZAR LA TABLA 'drivers' CON EL RECUENTO CORRECTO DE 'total_trips'
           await supabase
             .from("drivers")
             .update({
@@ -135,7 +141,7 @@ function DriverDashboardContent() {
             })
             .eq("uid", driverId)
         } else {
-          // No completed rides found
+          // NO SE ENCONTRARON VIAJES COMPLETADOS: INICIALIZAR ESTADÍSTICAS A CERO
           setDriverStats({
             todayTrips: 0,
             todayEarnings: 0,
@@ -147,7 +153,7 @@ function DriverDashboardContent() {
           })
         }
 
-        // Get recent trips for display
+  // OBTENER VIAJES RECIENTES PARA MOSTRAR EN LA INTERFAZ
         const { data: recent } = await supabase
           .from("rides")
           .select("*")
@@ -165,20 +171,22 @@ function DriverDashboardContent() {
 
 
 
-  // CHECK FOR COMPLETED RIDES TO SHOW RATING DIALOG
+
+
+  // COMPROBAR SI HAY VIAJES COMPLETADOS PARA MOSTRAR EL DIÁLOGO DE CALIFICACIÓN
   useEffect(() => {
     const completedRide = rides.find((ride) => {
       return (
         ride.status === "completed" &&
         ride.driver_id === driverId &&
         (ride.driver_rating == null) &&
-        // Also ensure driver hasn't already left a comment or skipped
+  // TAMBIÉN ASEGURARSE DE QUE EL CONDUCTOR NO HAYA YA DEJADO UN COMENTARIO O LO HAYA OMITIDO
         !ride.driver_comment
       )
     })
     if (completedRide) {
       setCompletedRide(completedRide)
-      // Avoid auto-opening the rating dialog more than once during mount/strict re-renders
+  // EVITAR APERTURA AUTOMÁTICA DEL DIÁLOGO DE CALIFICACIÓN MÁS DE UNA VEZ DURANTE MOUNT/STRICT RERENDERS
       if (!autoOpenedRatingRef.current) {
         setShowRatingDialog(true)
         autoOpenedRatingRef.current = true
@@ -186,9 +194,11 @@ function DriverDashboardContent() {
     }
   }, [rides, driverId])
 
-  // If there are multiple active rides for this driver, auto-open the selection dialog
+
+
+  // SI HAY MÚLTIPLES VIAJES ACTIVOS PARA ESTE CONDUCTOR, ABRIR AUTOMÁTICAMENTE EL DIÁLOGO DE SELECCIÓN
   useEffect(() => {
-    // Auto-open selection dialog only once per mount to avoid double renders
+  // ABRIR EL DIÁLOGO DE SELECCIÓN AUTOMÁTICAMENTE SOLO UNA VEZ POR MONTAJE PARA EVITAR RENDERIZADOS DUPLICADOS
     if (
       activeRides.length > 1 &&
       !selectedActiveRide &&
@@ -201,7 +211,9 @@ function DriverDashboardContent() {
     }
   }, [activeRides, selectedActiveRide])
 
-  // If the selected ride disappears (cancelled/completed/removed), clear selection
+
+  
+  // SI LA SELECCIÓN ACTUAL DESAPARECE (CANCELADO/COMPLETADO/ELIMINADO), BORRAR LA SELECCIÓN
   useEffect(() => {
     if (selectedActiveRide && !activeRides.find((r) => r.id === selectedActiveRide.id)) {
       setSelectedActiveRide(null)
@@ -210,10 +222,10 @@ function DriverDashboardContent() {
 
 
 
-  // ACCEPT A RIDE
+  // ACEPTAR UN VIAJE: EJECUTAR LÓGICA DE ACEPTACIÓN Y NOTIFICAR AL USUARIO
   const handleAcceptRide = async (rideId: string) => {
     try {
-      // Get driver name
+  // OBTENER NOMBRE DEL CONDUCTOR PARA REGISTRAR EN LA ACCIÓN DE ACEPTAR
       const { data: driverData } = await supabase.from("drivers").select("name").eq("uid", driverId).single()
       const result = await acceptRide(rideId, driverData?.name || "Conductor")
       if (!result.success) {
@@ -241,7 +253,7 @@ function DriverDashboardContent() {
 
 
 
-  // REJECT A RIDE 
+  // RECHAZAR UN VIAJE: ENVIAR MOTIVO Y NOTIFICAR AL USUARIO
   const handleRejectRide = async (rideId: string) => {
     const result = await rejectRide(rideId, "No disponible en este momento")
     if (!result.success) {
@@ -261,7 +273,7 @@ function DriverDashboardContent() {
 
 
 
-  // UPDATE RIDE STATUS
+  // ACTUALIZAR EL ESTADO DEL VIAJE: CAMBIOS DE ESTADO Y REFRESCO DE LA LISTA
   const handleStatusUpdate = async (rideId: string, status: string) => {
     try {
       const result = await updateRideStatus(rideId, status)
@@ -273,12 +285,11 @@ function DriverDashboardContent() {
         })
         return
       }
-      // Ensure UI reflects the latest ride state immediately.
-      // refreshRides will reload the rides list from the DB.
+  // ASEGURAR QUE LA UI REFLEJE EL ESTADO MÁS RECIENTE INMEDIATAMENTE.
+  // refreshRides RECARGA LA LISTA DE VIAJES DESDE LA BASE DE DATOS.
       try {
         await refreshRides()
-        // If the user had explicitly selected an active ride, update that selection
-        // with the fresh version from the DB so the component shows the new status.
+  // SI EL USUARIO TENÍA UN VIAJE SELECCIONADO, ACTUALIZAR ESA SELECCIÓN CON LA VERSIÓN MÁS RECIENTE DESDE LA BD
         if (selectedActiveRide && selectedActiveRide.id === rideId) {
           const { data: freshRide, error: rideErr } = await supabase.from("rides").select("*").eq("id", rideId).single()
           if (!rideErr && freshRide) {
@@ -286,7 +297,7 @@ function DriverDashboardContent() {
           }
         }
       } catch (e) {
-        // non-fatal; we already updated the ride in the DB
+        // NO FATAL: YA SE ACTUALIZÓ EL REGISTRO EN LA BASE DE DATOS
         console.warn("Could not refresh rides after status update:", e)
       }
       const statusMessages = {
@@ -294,8 +305,8 @@ function DriverDashboardContent() {
         completed: "Viaje completado",
       }
       toast({
-        title: "Estado Actualizado",
-        description: statusMessages[status] || `Estado cambiado a ${status}`,
+        title: "ESTADO ACTUALIZADO",
+        description: statusMessages[status] || `ESTADO CAMBIADO A ${status}`,
       })
       console.log("Ride status updated:", rideId, status)
     } catch (error) {
@@ -309,7 +320,7 @@ function DriverDashboardContent() {
   }
 
 
-  // SUBMIT PASSENGER RATING (OPTIONAL) AND OPTIONAL COMMENT
+  // ENVIAR CALIFICACIÓN AL PASAJERO (OPCIONAL) Y COMENTARIO: ACTUALIZA RIDE Y PROMEDIA CALIFICACIONES
   const handleRatePassenger = async () => {
     if (!completedRide) return
     if (passengerRating === 0 && ratingComment.trim() === "") return
@@ -354,7 +365,7 @@ function DriverDashboardContent() {
   }
 
 
-  // HANDLE SKIP PASSENGER RATING
+  // OMITIR CALIFICACIÓN DEL PASAJERO: GUARDAR COMENTARIO POR DEFECTO SI NO HAY TEXTO
   const handleSkipPassengerRating = async () => {
     if (!completedRide) return
     try {
@@ -380,7 +391,7 @@ function DriverDashboardContent() {
 
 
 
-  // CANCEL ACTIVE RIDE
+  // CANCELAR VIAJE ACTIVO: MARCAR COMO 'cancelled' Y REGISTRAR FECHA/MOTIVO
   const handleCancelActiveRide = async (rideId: string) => {
     try {
       const { error } = await supabase
@@ -416,7 +427,7 @@ function DriverDashboardContent() {
     }
   }
 
-  // Convert pending rides to map format
+  // CONVERTIR SOLICITUDES PENDIENTES A FORMATO DE UBICACIONES PARA EL MAPA
   const rideLocations = pendingRides.map((ride) => ({
     id: ride.id,
     lat: ride.pickup_coordinates[1],
@@ -425,14 +436,14 @@ function DriverDashboardContent() {
   }))
 
 
-  // RENDERING LOGIC
+  // LÓGICA DE RENDERIZADO (JSX): ESTRUCTURA PRINCIPAL DEL DASHBOARD
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
-      {/* Enhanced Header */}
+  {/* ENCABEZADO MEJORADO: ICONO, BADGE Y BLOQUE DE ESTADO */}
       <header className="bg-white/80 backdrop-blur-md shadow-lg border-b border-blue-100">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between py-4">
-            {/* Left: Logo + Badge */}
+            {/* IZQUIERDA: LOGO Y BADGE QUE IDENTIFICAN AL USUARIO COMO CONDUCTOR */}
             <div className="flex items-center space-x-3">
               <div className="p-2 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg shadow-md flex items-center justify-center">
                 <Shield className="h-7 w-7 text-white" />
@@ -442,7 +453,7 @@ function DriverDashboardContent() {
               </Badge>
             </div>
 
-            {/* Right: Compact status block */}
+            {/* DERECHA: BLOQUE COMPACTO DE ESTADO (ONLINE/OFFLINE) */}
             <div className="flex items-center space-x-3">
               <div className="flex items-center space-x-2 bg-white/60 rounded-full px-3 py-1 border border-blue-200">
                 <Activity className="h-4 w-4 text-blue-600" />
@@ -463,10 +474,10 @@ function DriverDashboardContent() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Tabs defaultValue="dashboard" className="space-y-16">
           {" "}
-          {/* Increased space-y from 12 to 16 */}
+          {/* AUMENTO DE ESPACIADO VERTICAL PARA MEJOR DISTRIBUCIÓN */}
           <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 bg-white/60 backdrop-blur-sm border border-blue-200 rounded-xl p-1 gap-6">
             {" "}
-            {/* Increased gap from 4 to 6 */}
+            {/* AUMENTO DE GAP ENTRE PESTAÑAS */}
             <TabsTrigger
               value="dashboard"
               className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-indigo-500 data-[state=active]:text-white rounded-lg font-medium"
@@ -498,9 +509,9 @@ function DriverDashboardContent() {
           </TabsList>
           <TabsContent value="dashboard" className="space-y-8">
             <div className="grid lg:grid-cols-3 gap-8">
-              {/* Main Content */}
+              {/* CONTENIDO PRINCIPAL: MAPA, VIAJES ACTIVOS Y ESTADÍSTICAS */}
               <div className="lg:col-span-2 space-y-8">
-                {/* Selection Dialog for multiple active rides */}
+                {/* DIÁLOGO DE SELECCIÓN CUANDO HAY MÚLTIPLES VIAJES ACTIVOS */}
                 <Dialog
                   open={showSelectDialog}
                   onOpenChange={(open) => {
@@ -562,10 +573,10 @@ function DriverDashboardContent() {
                   </DialogContent>
                 </Dialog>
 
-                {/* Enhanced Map Component */}
+                {/* COMPONENTE MAPA MEJORADO: MUESTRA UBICACIONES Y PUNTOS DE RECOGIDA */}
                   <Card className="overflow-hidden border-0 shadow-xl bg-white/80 backdrop-blur-sm">
                   <CardContent className="p-0">
-                    {/* Header and info bar removed per request; map remains */}
+                    {/* ENCABEZADO E BARRA DE INFORMACIÓN ELIMINADOS (MAPA PERMANECE) */}
                     <MapComponent
                       userType="driver"
                       driverLocations={rideLocations}
@@ -583,7 +594,7 @@ function DriverDashboardContent() {
                   </CardContent>
                 </Card>
 
-                  {/* If there are multiple active rides, show selection button in the same place as before */}
+                  {/* SI HAY VARIOS VIAJES ACTIVOS, MOSTRAR BOTÓN DE SELECCIÓN */}
                   {activeRides.length > 1 && (
                     <div className="flex justify-end mt-4">
                       <Button
@@ -599,12 +610,12 @@ function DriverDashboardContent() {
                     </div>
                   )}
 
-                {/* Enhanced Active Ride */}
+                {/* VIAJE ACTIVO MEJORADO: TRACKER, CHAT Y OPCIONES */}
                 {activeRide && (
                   <div className="space-y-6">
-                    {/* Selection button moved above the map so it's always visible when there are multiple active rides */}
+                    {/* BOTÓN DE SELECCIÓN MOVIDO SOBRE EL MAPA PARA VISIBILIDAD */}
                     <RideTracker ride={activeRide} userType="driver" onStatusUpdate={handleStatusUpdate} />
-                    {/* Enhanced Chat and Cancel Options */}
+                    {/* OPCIONES DE CHAT Y CANCELACIÓN MEJORADAS PARA VIAJES EN PROGRESO */}
                     {activeRide.status === "in-progress" && (
                       <Card className="border-0 shadow-xl bg-gradient-to-r from-orange-50 to-amber-50">
                         <CardContent className="p-6">
@@ -646,7 +657,7 @@ function DriverDashboardContent() {
                   </div>
                 )}
 
-                {/* Enhanced Today's Stats */}
+                {/* ESTADÍSTICAS DEL DÍA (TARJETAS RESUMEN) */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
                   <Card className="border-0 shadow-lg bg-gradient-to-br from-blue-500 to-blue-600 text-white overflow-hidden relative">
                     <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full -mr-10 -mt-10" />
@@ -699,9 +710,9 @@ function DriverDashboardContent() {
                 </div>
               </div>
 
-              {/* Enhanced Sidebar */}
+              {/* BARRA LATERAL MEJORADA: ESTADO, GANANCIAS Y RESUMEN */}
               <div className="space-y-6">
-                {/* Enhanced Status Card */}
+                {/* TARJETA DE ESTADO MEJORADA: DISPONIBILIDAD Y NÚMERO DE VIAJES */}
                 <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm">
                   <CardHeader className="bg-gradient-to-r from-slate-600 to-slate-700 text-white rounded-t-lg py-2 px-3">
                     <CardTitle className="flex items-center space-x-2 text-sm">
@@ -737,7 +748,7 @@ function DriverDashboardContent() {
                   </CardContent>
                 </Card>
 
-                {/* Enhanced Earnings Summary */}
+                {/* RESUMEN DE GANANCIAS MEJORADO: HOY, SEMANA, MES */}
                 <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm">
                   <CardHeader className="bg-gradient-to-r from-emerald-600 to-green-600 text-white rounded-t-lg py-2 px-3">
                     <CardTitle className="flex items-center space-x-2 text-sm">
@@ -1019,7 +1030,7 @@ function DriverDashboardContent() {
         </Tabs>
       </div>
 
-      {/* Chat Dialog */}
+  {/* DIÁLOGO DE CHAT: VENTANA PARA COMUNICACIÓN ENTRE CONDUCTOR Y PASAJERO */}
       <Dialog open={showChatDialog} onOpenChange={setShowChatDialog}>
         <DialogContent className="sm:max-w-lg border-0 shadow-2xl">
           <DialogHeader>
@@ -1038,7 +1049,7 @@ function DriverDashboardContent() {
         </DialogContent>
       </Dialog>
 
-      {/* Enhanced Rating Dialog */}
+  {/* DIÁLOGO DE CALIFICACIÓN MEJORADO: PIDE RATING Y COMENTARIO AL CONDUCTOR */}
       <Dialog
         open={showRatingDialog}
         onOpenChange={(open) => {

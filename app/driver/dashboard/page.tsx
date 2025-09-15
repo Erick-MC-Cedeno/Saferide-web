@@ -1,12 +1,12 @@
 "use client"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Switch } from "@/components/ui/switch"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogClose, DialogFooter } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import {
@@ -67,14 +67,30 @@ function DriverDashboardContent() {
   const [recentTrips, setRecentTrips] = useState([])
   const [showRatingDialog, setShowRatingDialog] = useState(false)
   const [completedRide, setCompletedRide] = useState(null)
+  // Ensure auto-open effects only run once per mount to avoid double-opening
+  const autoOpenedRatingRef = useRef(false)
   const [passengerRating, setPassengerRating] = useState(0)
   const [ratingComment, setRatingComment] = useState("")
   const [showChatDialog, setShowChatDialog] = useState(false)
+  const autoOpenedSelectRef = useRef(false)
+  // When the user manually closes the select dialog, prevent auto re-open
+  const manualClosedSelectRef = useRef(false)
+  // New state to handle multiple active rides selection
+  const [selectedActiveRide, setSelectedActiveRide] = useState<any | null>(null)
+  const [showSelectDialog, setShowSelectDialog] = useState(false)
+  const suppressAutoOpenRef = useRef(false)
 
   const pendingRides = rides.filter((ride) => ride.status === "pending")
-  const activeRide = rides.find(
+  // Support multiple active rides assigned to this driver (accepted or in-progress)
+  const activeRides = rides.filter(
     (ride) => ride.driver_id === driverId && ["accepted", "in-progress"].includes(ride.status),
   )
+
+  // Determine which ride to show in the RideTracker:
+  // - If the driver explicitly selected one, use it
+  // - Else if there's exactly one active ride, use that
+  // - Else undefined (no active ride shown until selection)
+  const activeRide = selectedActiveRide ?? (activeRides.length === 1 ? activeRides[0] : null)
 
   // LOAD DRIVER STATISTICS AND RECENT TRIPS
   useEffect(() => {
@@ -162,9 +178,35 @@ function DriverDashboardContent() {
     })
     if (completedRide) {
       setCompletedRide(completedRide)
-      setShowRatingDialog(true)
+      // Avoid auto-opening the rating dialog more than once during mount/strict re-renders
+      if (!autoOpenedRatingRef.current) {
+        setShowRatingDialog(true)
+        autoOpenedRatingRef.current = true
+      }
     }
   }, [rides, driverId])
+
+  // If there are multiple active rides for this driver, auto-open the selection dialog
+  useEffect(() => {
+    // Auto-open selection dialog only once per mount to avoid double renders
+    if (
+      activeRides.length > 1 &&
+      !selectedActiveRide &&
+      !suppressAutoOpenRef.current &&
+      !autoOpenedSelectRef.current &&
+      !manualClosedSelectRef.current
+    ) {
+      setShowSelectDialog(true)
+      autoOpenedSelectRef.current = true
+    }
+  }, [activeRides, selectedActiveRide])
+
+  // If the selected ride disappears (cancelled/completed/removed), clear selection
+  useEffect(() => {
+    if (selectedActiveRide && !activeRides.find((r) => r.id === selectedActiveRide.id)) {
+      setSelectedActiveRide(null)
+    }
+  }, [activeRides, selectedActiveRide])
 
 
 
@@ -231,6 +273,22 @@ function DriverDashboardContent() {
         })
         return
       }
+      // Ensure UI reflects the latest ride state immediately.
+      // refreshRides will reload the rides list from the DB.
+      try {
+        await refreshRides()
+        // If the user had explicitly selected an active ride, update that selection
+        // with the fresh version from the DB so the component shows the new status.
+        if (selectedActiveRide && selectedActiveRide.id === rideId) {
+          const { data: freshRide, error: rideErr } = await supabase.from("rides").select("*").eq("id", rideId).single()
+          if (!rideErr && freshRide) {
+            setSelectedActiveRide(freshRide)
+          }
+        }
+      } catch (e) {
+        // non-fatal; we already updated the ride in the DB
+        console.warn("Could not refresh rides after status update:", e)
+      }
       const statusMessages = {
         "in-progress": "Viaje iniciado",
         completed: "Viaje completado",
@@ -282,7 +340,8 @@ function DriverDashboardContent() {
         }
       }
 
-      setShowRatingDialog(false)
+  setShowRatingDialog(false)
+  autoOpenedRatingRef.current = false
       setPassengerRating(0)
       setRatingComment("")
       setCompletedRide(null)
@@ -307,7 +366,8 @@ function DriverDashboardContent() {
         return
       }
 
-      setShowRatingDialog(false)
+  setShowRatingDialog(false)
+  autoOpenedRatingRef.current = false
       setPassengerRating(0)
       setRatingComment("")
       setCompletedRide(null)
@@ -440,8 +500,70 @@ function DriverDashboardContent() {
             <div className="grid lg:grid-cols-3 gap-8">
               {/* Main Content */}
               <div className="lg:col-span-2 space-y-8">
+                {/* Selection Dialog for multiple active rides */}
+                <Dialog
+                  open={showSelectDialog}
+                  onOpenChange={(open) => {
+                    // Defer state update to avoid setState during render warnings
+                    setTimeout(() => {
+                      setShowSelectDialog(open)
+                      if (!open) {
+                        // mark that the user closed the dialog manually so it won't auto re-open
+                        manualClosedSelectRef.current = true
+                        // but clear the auto-open flag so a future manual open isn't blocked
+                        autoOpenedSelectRef.current = false
+                      }
+                    }, 0)
+                  }}
+                >
+                  <DialogContent className="sm:max-w-2xl border-0 shadow-2xl">
+                    <DialogHeader>
+                      <DialogTitle>Seleccionar Viaje</DialogTitle>
+                      <DialogDescription>
+                        Tienes {activeRides.length} viajes activos. Selecciona el que deseas ver e iniciar.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 p-2">
+                      {activeRides.map((r) => (
+                        <div key={r.id} className="flex items-center justify-between p-3 bg-white/60 rounded-md">
+                          <div>
+                            <p className="font-semibold">{r.passenger_name} — ${r.estimated_fare}</p>
+                            <p className="text-sm text-muted-foreground">{r.pickup_address} → {r.destination_address}</p>
+                            <p className="text-xs text-muted-foreground">Solicitado: {new Date(r.requested_at).toLocaleString()}</p>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <DialogClose asChild>
+                              <Button
+                                className="bg-blue-600 hover:bg-blue-700"
+                                onClick={() => {
+                                  setSelectedActiveRide(r)
+                                  // prevent auto re-open while selection is being processed
+                                  suppressAutoOpenRef.current = true
+                                  setShowSelectDialog(false)
+                                  setTimeout(() => (suppressAutoOpenRef.current = false), 300)
+                                }}
+                              >
+                                Seleccionar
+                              </Button>
+                            </DialogClose>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="mt-4 flex justify-end">
+                      <DialogFooter>
+                        <DialogClose asChild>
+                          <Button variant="outline" className="text-sm">
+                            Cerrar
+                          </Button>
+                        </DialogClose>
+                      </DialogFooter>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+
                 {/* Enhanced Map Component */}
-                <Card className="overflow-hidden border-0 shadow-xl bg-white/80 backdrop-blur-sm">
+                  <Card className="overflow-hidden border-0 shadow-xl bg-white/80 backdrop-blur-sm">
                   <CardContent className="p-0">
                     {/* Header and info bar removed per request; map remains */}
                     <MapComponent
@@ -461,9 +583,26 @@ function DriverDashboardContent() {
                   </CardContent>
                 </Card>
 
+                  {/* If there are multiple active rides, show selection button in the same place as before */}
+                  {activeRides.length > 1 && (
+                    <div className="flex justify-end mt-4">
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          manualClosedSelectRef.current = false
+                          setShowSelectDialog(true)
+                        }}
+                        className="text-sm"
+                      >
+                        Viajes activos ({activeRides.length})
+                      </Button>
+                    </div>
+                  )}
+
                 {/* Enhanced Active Ride */}
                 {activeRide && (
                   <div className="space-y-6">
+                    {/* Selection button moved above the map so it's always visible when there are multiple active rides */}
                     <RideTracker ride={activeRide} userType="driver" onStatusUpdate={handleStatusUpdate} />
                     {/* Enhanced Chat and Cancel Options */}
                     {activeRide.status === "in-progress" && (
@@ -900,7 +1039,16 @@ function DriverDashboardContent() {
       </Dialog>
 
       {/* Enhanced Rating Dialog */}
-      <Dialog open={showRatingDialog} onOpenChange={setShowRatingDialog}>
+      <Dialog
+        open={showRatingDialog}
+        onOpenChange={(open) => {
+          // Defer state update to avoid setState during render warnings
+          setTimeout(() => {
+            setShowRatingDialog(open)
+            if (!open) autoOpenedRatingRef.current = false
+          }, 0)
+        }}
+      >
         <DialogContent className="sm:max-w-md border-0 shadow-2xl">
           <DialogHeader>
             <DialogTitle className="text-xl font-bold">⭐ Califica al pasajero</DialogTitle>

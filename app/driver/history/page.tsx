@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -99,13 +99,71 @@ function DriverHistoryContent() {
   const [dateRange, setDateRange] = useState<{ from?: Date; to?: Date }>({})
   const [selectedRide, setSelectedRide] = useState<DriverRide | null>(null)
 
+  const loadDriverHistory = useCallback(async () => {
+    if (!user?.uid || !supabase) {
+      setLoading(false)
+      return
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from("rides")
+        .select("*")
+        .eq("driver_id", user.uid)
+        .order("requested_at", { ascending: false })
+
+      if (error) throw error
+
+      setRides(data || [])
+      calculateDriverStats(data || [])
+      calculateMonthlyData(data || [])
+    } catch (error) {
+      console.error("Error loading driver history:", error)
+      toast({
+        title: "Error",
+        description: "No se pudo cargar el historial de viajes.",
+        variant: "destructive",
+      })
+    } finally {
+      setLoading(false)
+    }
+  }, [user?.uid, toast])
+
+  const filterRides = useCallback(() => {
+    let filtered = rides
+
+    if (searchTerm) {
+      filtered = filtered.filter(
+        (ride) =>
+          ride.pickup_address.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          ride.destination_address.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          ride.passenger_name.toLowerCase().includes(searchTerm.toLowerCase()),
+      )
+    }
+
+    if (statusFilter !== "all") {
+      filtered = filtered.filter((ride) => ride.status === statusFilter)
+    }
+
+    if (dateRange.from) {
+      filtered = filtered.filter((ride) => {
+        const rideDate = new Date(ride.requested_at)
+        const fromDate = dateRange.from!
+        const toDate = dateRange.to || new Date()
+        return rideDate >= fromDate && rideDate <= toDate
+      })
+    }
+
+    setFilteredRides(filtered)
+  }, [rides, searchTerm, statusFilter, dateRange])
+
   useEffect(() => {
     loadDriverHistory()
-  }, [user?.uid])
+  }, [loadDriverHistory])
 
   useEffect(() => {
     filterRides()
-  }, [rides, searchTerm, statusFilter, dateRange])
+  }, [filterRides])
 
   const loadDriverHistory = async () => {
     if (!user?.uid || !supabase) {
@@ -796,11 +854,11 @@ function DriverHistoryContent() {
                                     </div>
                                   )}
 
-                                  {(selectedRide as any).driver_comment && (
+                                  {selectedRide?.driver_comment && (
                                     <div className="space-y-3">
                                       <h4 className="font-semibold text-gray-900">Comentario del Conductor</h4>
                                       <p className="text-sm text-gray-600 bg-gray-50 p-3 rounded-lg">
-                                        {(selectedRide as any).driver_comment}
+                                        {selectedRide.driver_comment}
                                       </p>
                                     </div>
                                   )}

@@ -30,12 +30,14 @@ import {
 import { useRealTimeRides } from "@/hooks/useRealTimeRides"
 import { useDriverStatus } from "@/hooks/useDriverStatus"
 import { supabase } from "@/lib/supabase"
+import type { Database } from "@/lib/supabase"
 import { MapComponent } from "@/components/MapComponent"
 import { useAuth } from "@/lib/auth-context"
 import { ProtectedRoute } from "@/components/ProtectedRoute"
 import { RideTracker } from "@/components/RideTracker"
 import { useToast } from "@/hooks/use-toast"
 import { RideChat } from "@/components/RideChat"
+import { RealtimeStatus } from "@/components/RealtimeStatus"
 
 
 
@@ -76,7 +78,8 @@ function DriverDashboardContent() {
   // SI EL USUARIO CIERRA MANUALMENTE EL DIÁLOGO DE SELECCIÓN, EVITAR QUE SE VUELVA A ABRIR AUTOMÁTICAMENTE
   const manualClosedSelectRef = useRef(false)
   // ESTADO PARA MANEJAR LA SELECCIÓN CUANDO HAY MÚLTIPLES VIAJES ACTIVOS
-  const [selectedActiveRide, setSelectedActiveRide] = useState<any | null>(null)
+  type RideRow = Database["public"]["Tables"]["rides"]["Row"]
+  const [selectedActiveRide, setSelectedActiveRide] = useState<RideRow | null>(null)
   const [showSelectDialog, setShowSelectDialog] = useState(false)
   const suppressAutoOpenRef = useRef(false)
 
@@ -92,6 +95,7 @@ function DriverDashboardContent() {
   // - SI SOLO HAY UN VIAJE ACTIVO, MOSTRAR ESE
   // - EN CASO CONTRARIO, NO MOSTRAR NINGUNO HASTA QUE SE SELECCIONE
   const activeRide = selectedActiveRide ?? (activeRides.length === 1 ? activeRides[0] : null)
+
 
   // CARGAR ESTADÍSTICAS DEL CONDUCTOR Y VIAJES RECIENTES (EFECTO DE INICIALIZACIÓN)
   useEffect(() => {
@@ -326,7 +330,7 @@ function DriverDashboardContent() {
     if (passengerRating === 0 && ratingComment.trim() === "") return
 
     try {
-      const payload: any = {
+      const payload: { driver_comment?: string | null; driver_rating?: number } = {
         driver_comment: ratingComment.trim() || null,
       }
 
@@ -664,7 +668,12 @@ function DriverDashboardContent() {
                     <CardContent className="p-6 relative z-10">
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="text-3xl font-bold">{driverStats.todayTrips}</p>
+                          <div className="flex items-center justify-between">
+                            <p className="text-3xl font-bold">{driverStats.todayTrips}</p>
+                            <div className="ml-4">
+                              <RealtimeStatus lastUpdate={lastUpdate} onRefresh={() => refreshRides()} isLoading={ridesLoading} />
+                            </div>
+                          </div>
                           <p className="text-blue-100 font-medium">Viajes Hoy</p>
                         </div>
                         <Users className="h-8 w-8 text-blue-200" />

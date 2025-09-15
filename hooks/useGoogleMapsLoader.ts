@@ -22,10 +22,12 @@ export function useGoogleMapsLoader() {
     const loadGoogleMaps = async () => {
       try {
         // Si ya está completamente cargado, actualizar el estado
-        if (typeof window !== "undefined" && 
-            window.google?.maps?.Map && 
-            window.google?.maps?.marker?.AdvancedMarkerElement && 
-            window.google?.maps?.places) {
+        if (
+                typeof window !== "undefined" &&
+                (window.google as any)?.maps?.Map &&
+                ((window.google as any)?.maps?.marker?.AdvancedMarkerElement || (window.google as any)?.maps?.Marker) &&
+                (window.google as any)?.maps?.places
+              ) {
           setState({ isLoaded: true, isLoading: false, error: null })
           return
         }
@@ -68,12 +70,12 @@ export function useGoogleMapsLoader() {
         await globalLoader
         
         setState({ isLoaded: true, isLoading: false, error: null })
-      } catch (error) {
+      } catch (error: unknown) {
         console.error("Error cargando Google Maps:", error)
         setState({
           isLoaded: false,
           isLoading: false,
-          error: error instanceof Error ? error.message : "Error desconocido al cargar Google Maps",
+          error: error instanceof Error ? error.message : String(error),
         })
         globalLoader = null // Resetear el loader global en caso de error
       }
@@ -87,7 +89,7 @@ export function useGoogleMapsLoader() {
     globalLoader = null // Resetear el loader global
     try {
       await loadGoogleMaps()
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("Error en retry:", error)
     }
   }

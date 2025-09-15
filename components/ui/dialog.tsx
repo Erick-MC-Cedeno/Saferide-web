@@ -28,7 +28,7 @@ function setInertForBackground(target: HTMLElement | null, inert = true) {
         child.removeAttribute("inert")
       }
     }
-  } catch (e) {
+  } catch {
     // ignore
   }
 }
@@ -53,14 +53,14 @@ function createFocusInGuard(target: HTMLElement | null) {
           // Blur the element to avoid the warning.
           try {
             t.blur()
-          } catch (err) {
+          } catch {
             // ignore
           }
           break
         }
         el = el.parentElement
       }
-    } catch (e) {
+      } catch {
       // ignore
     }
   }
@@ -83,9 +83,9 @@ const DialogTrigger = React.forwardRef<
         if (typeof document !== "undefined" && document.activeElement instanceof HTMLElement) {
           ;(document.activeElement as HTMLElement).blur()
         }
-      } catch (e) {
-        // ignore
-      }
+            } catch {
+              // ignore
+            }
 
       if (typeof onPointerDown === "function") onPointerDown(event)
     }}
@@ -97,7 +97,7 @@ const DialogTrigger = React.forwardRef<
             ;(document.activeElement as HTMLElement).blur()
           }
         }
-      } catch (e) {
+      } catch {
         // ignore
       }
 
@@ -170,7 +170,7 @@ const DialogContent = React.forwardRef<
                 document.addEventListener("focusin", guard, true)
                 focusGuardMap.set(target, guard)
               }
-            } catch (e) {
+            } catch {
               // ignore
             }
 
@@ -189,12 +189,12 @@ const DialogContent = React.forwardRef<
                     // Fallback focus on the dialog container
                     target.focus()
                   }
-                } catch (e) {
+                } catch {
                   // ignore
                 }
               }, 0)
             }
-          } catch (e) {
+          } catch {
             // ignore
           }
         }}
@@ -220,11 +220,11 @@ const DialogContent = React.forwardRef<
                 focusGuardMap.delete(target)
               }
             }
-          } catch (e) {
+          } catch {
             // ignore
           }
           setInertForBackground(target, false)
-        } catch (e) {
+        } catch {
           // ignore
         }
       }}

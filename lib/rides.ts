@@ -45,9 +45,9 @@ export const createRideRequest = async (rideData: Omit<RideRequest, "id" | "requ
     if (error) throw error
 
     return { success: true, rideId: data.id }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Create ride request error:", error)
-    return { success: false, error: error.message }
+    return { success: false, error: error instanceof Error ? error.message : String(error) }
   }
 }
 
@@ -68,9 +68,9 @@ export const acceptRideRequest = async (rideId: string, driverId: string, driver
     if (error) throw error
 
     return { success: true }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Accept ride request error:", error)
-    return { success: false, error: error.message }
+    return { success: false, error: error instanceof Error ? error.message : String(error) }
   }
 }
 
@@ -78,7 +78,7 @@ export const acceptRideRequest = async (rideId: string, driverId: string, driver
 // ACTUALIZA EL ESTADO DE UN VIAJE; SI SE MARCA COMO 'completed' SE REGISTRA completed_at
 export const updateRideStatus = async (rideId: string, status: RideRequest["status"]) => {
   try {
-    const updateData: any = { status }
+  const updateData: { status: RideRequest["status"]; completed_at?: string } = { status }
     if (status === "completed") {
       updateData.completed_at = new Date().toISOString()
     }
@@ -88,9 +88,9 @@ export const updateRideStatus = async (rideId: string, status: RideRequest["stat
     if (error) throw error
 
     return { success: true }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Update ride status error:", error)
-    return { success: false, error: error.message }
+    return { success: false, error: error instanceof Error ? error.message : String(error) }
   }
 }
 
@@ -110,7 +110,7 @@ export const getRideHistory = async (userId: string, userType: "passenger" | "dr
     if (error) throw error
 
     return data || []
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Get ride history error:", error)
     return []
   }
@@ -119,6 +119,8 @@ export const getRideHistory = async (userId: string, userType: "passenger" | "dr
 
 // OBTIENE UNA LISTA DE VIAJES PENDIENTES CERCA DE LA UBICACIÓN DEL CONDUCTOR (SI SE PROPORCIONA)
 export const getPendingRides = async (driverLocation?: [number, number]) => {
+  // driverLocation is an optional hint for future geospatial filtering; reference it to avoid lint warnings
+  void driverLocation
   try {
     // CONSULTA DE VIAJES PENDIENTES: EN PRODUCCIÓN USAR CONSULTAS GEOSPACIALES (POSTGIS/ETC.)
     const { data, error } = await supabase
@@ -131,7 +133,7 @@ export const getPendingRides = async (driverLocation?: [number, number]) => {
     if (error) throw error
 
     return data || []
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Get pending rides error:", error)
     return []
   }
@@ -154,9 +156,9 @@ export const updateDriverLocation = async (driverId: string, location: [number, 
     if (error) throw error
 
     return { success: true }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Update driver location error:", error)
-    return { success: false, error: error.message }
+    return { success: false, error: error instanceof Error ? error.message : String(error) }
   }
 }
 
@@ -169,8 +171,8 @@ export const updateDriverOnlineStatus = async (driverId: string, isOnline: boole
     if (error) throw error
 
     return { success: true }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Update driver online status error:", error)
-    return { success: false, error: error.message }
+    return { success: false, error: error instanceof Error ? error.message : String(error) }
   }
 }

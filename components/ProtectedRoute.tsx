@@ -5,8 +5,7 @@ import type React from "react"
 import { useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/lib/auth-context"
-import { Card, CardContent } from "@/components/ui/card"
-import { Shield, Loader2 } from "lucide-react"
+import { Loader2 } from "lucide-react"
 
 interface ProtectedRouteProps {
   children: React.ReactNode

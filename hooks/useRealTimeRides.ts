@@ -17,7 +17,7 @@ export function useRealTimeRides(driverId?: string, passengerId?: string) {
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date())
 
   /* ------------ refs --------------- */
-  const pollingInterval = useRef<NodeJS.Timeout>()
+  const pollingInterval = useRef<number | null>(null)
   const mountedRef = useRef(true)
   const isLoadingRef = useRef(false)
 
@@ -56,8 +56,11 @@ export function useRealTimeRides(driverId?: string, passengerId?: string) {
           setRides(data ?? [])
           setLastUpdate(new Date())
         }
-      } catch (e: any) {
-        if (mountedRef.current) setError(e.message ?? "Error desconocido")
+      } catch (e: unknown) {
+        if (mountedRef.current) {
+          const msg = (e as { message?: string })?.message ?? String(e)
+          setError(msg ?? "Error desconocido")
+        }
       } finally {
         isLoadingRef.current = false
         mountedRef.current && setLoading(false)
@@ -68,9 +71,11 @@ export function useRealTimeRides(driverId?: string, passengerId?: string) {
 
   /* ------------ polling --------------- */
   const startPolling = useCallback(() => {
-    clearInterval(pollingInterval.current as any)
+    if (pollingInterval.current !== null) {
+      clearInterval(pollingInterval.current)
+    }
     const interval = driverId ? 3_000 : 5_000
-    pollingInterval.current = setInterval(() => loadRides(), interval)
+    pollingInterval.current = window.setInterval(() => loadRides(), interval)
   }, [loadRides, driverId])
 
   /* ------------ side-effects --------------- */
@@ -83,7 +88,10 @@ export function useRealTimeRides(driverId?: string, passengerId?: string) {
 
     return () => {
       mountedRef.current = false
-      clearInterval(pollingInterval.current as any)
+      if (pollingInterval.current !== null) {
+        clearInterval(pollingInterval.current)
+        pollingInterval.current = null
+      }
       ridesCache.delete(cacheKey)
     }
   }, [cacheKey, loadRides, startPolling])

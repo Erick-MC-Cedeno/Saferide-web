@@ -22,6 +22,7 @@ import {
   Zap,
 } from "lucide-react"
 import { Input } from "@/components/ui/input"
+import Image from "next/image"
 
 export default function BlogPage() {
   const [isVisible, setIsVisible] = useState(false)
@@ -268,9 +269,11 @@ export default function BlogPage() {
           <Card className="group hover:shadow-2xl transition-all duration-500 border-0 bg-white/90 backdrop-blur-sm transform hover:scale-[1.02] overflow-hidden">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-0">
               <div className="relative overflow-hidden">
-                <img
+                <Image
                   src={featuredPost.image || "/placeholder.svg"}
                   alt={featuredPost.title}
+                  width={800}
+                  height={400}
                   className="w-full h-64 lg:h-full object-cover group-hover:scale-110 transition-transform duration-500"
                 />
                 <div className="absolute top-4 left-4">
@@ -359,9 +362,11 @@ export default function BlogPage() {
                 style={{ animationDelay: `${index * 100}ms` }}
               >
                 <div className="relative overflow-hidden">
-                  <img
+                  <Image
                     src={post.image || "/placeholder.svg"}
                     alt={post.title}
+                    width={400}
+                    height={300}
                     className="w-full h-48 object-cover group-hover:scale-110 transition-transform duration-500"
                   />
                   <div className="absolute top-4 right-4">

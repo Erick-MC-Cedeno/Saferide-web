@@ -1,6 +1,29 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { supabase } from "@/lib/supabase"
 
+// Tipos locales para mejorar seguridad de tipos
+type RawDriver = Record<string, unknown>
+
+type CleanDriver = {
+  id: unknown
+  uid: string
+  email: string | null
+  name: string
+  phone: string | null
+  license_number: string | null
+  vehicle_plate: string
+  vehicle_model: string
+  vehicle_year: unknown
+  is_verified: boolean
+  rating: number
+  total_trips: number
+  is_online: boolean
+  current_location: unknown | null
+  distance_km: number | null
+  created_at: unknown
+  updated_at: unknown
+}
+
 
 // HANDLER PARA LA SOLICITUD GET - OBTENER TODOS LOS CONDUCTORES EN UN RADIO
 export async function GET(request: NextRequest) {
@@ -112,39 +135,50 @@ export async function GET(request: NextRequest) {
   const queryTime = Date.now() - startTime
 
     // PROCESAR Y LIMPIAR LOS DATOS OBTENIDOS
-    const processStartTime = Date.now()
-    const validDrivers: any[] = []
+  const processStartTime = Date.now()
+  const validDrivers: CleanDriver[] = []
     let duplicatesRemoved = 0
     let nullsRemoved = 0
     let malformedRemoved = 0
     const seenUids = new Set()
-    // TRABAJAR CON LOS DATOS COMO ANY PARA SIMPLIFICAR LAS VALIDACIONES DE PROPIEDADES
-    const driversArray = (rawDrivers as any[]) || []
+  // Trabajar con datos genéricos y validar propiedades explícitamente
+  const driversArray = (rawDrivers as RawDriver[]) || []
 
     if (driversArray && Array.isArray(driversArray)) {
       for (const driver of driversArray) {
         // Eliminar nulos o sin datos esenciales
-        if (!driver || !driver.uid || !driver.name) {
+        if (!driver || driver == null) {
+          nullsRemoved++
+          continue
+        }
+
+        // Normalizar y validar UID
+        const rawUid = (driver as Record<string, unknown>)?.uid
+        const uid = rawUid == null ? "" : String(rawUid)
+        if (!uid) {
           nullsRemoved++
           continue
         }
 
         // ELIMINAR DUPLICADOS POR UID
-        if (seenUids.has(driver.uid)) {
+        if (seenUids.has(uid)) {
           duplicatesRemoved++
           continue
         }
-        seenUids.add(driver.uid)
+        seenUids.add(uid)
 
-        // Validar estructura de datos
-        if (typeof driver.name !== "string" || driver.name.trim().length === 0) {
+        // Validar estructura de datos: nombre
+        const nameVal = (driver as Record<string, unknown>)?.name
+        if (typeof nameVal !== "string" || nameVal.trim().length === 0) {
           malformedRemoved++
           continue
         }
+        const name = nameVal.trim()
 
         // SI SE ENVIARON COORDENADAS DE BUSQUEDA, FILTRAR POR DISTANCIA (SI EL DRIVER TIENE current_location VALIDO)
         if (pickupLat !== null && pickupLng !== null) {
-          const coords = driver && driver.current_location && driver.current_location.coordinates
+          const rawCurrent = (driver as Record<string, unknown>)?.current_location
+          const coords = rawCurrent && typeof rawCurrent === "object" && Object.prototype.hasOwnProperty.call(rawCurrent, "coordinates") ? (rawCurrent as Record<string, unknown>)["coordinates"] : null
           if (!coords || !Array.isArray(coords) || coords.length < 2) {
             // no location -> no incluir cuando se pide filtro por distancia
             nullsRemoved++
@@ -166,37 +200,59 @@ export async function GET(request: NextRequest) {
         }
 
         // LIMPIAR Y NORMALIZAR LOS DATOS SEGÚN EL ESQUEMA DE LA BASE DE DATOS
-        const cleanDriver = {
-          id: driver.id,
-          uid: driver.uid,
-          email: driver.email || null,
-          name: driver.name.trim(),
-          phone: driver.phone || null,
-          license_number: driver.license_number || null,
-          vehicle_plate: driver.vehicle_plate?.trim() || "No especificado",
-          vehicle_model: driver.vehicle_model?.trim() || "No especificado",
-          vehicle_year: driver.vehicle_year || null,
-          is_verified: Boolean(driver.is_verified),
-          rating: typeof driver.rating === "number" ? Math.round(driver.rating * 10) / 10 : 0,
-          total_trips: typeof driver.total_trips === "number" ? driver.total_trips : 0,
-          is_online: Boolean(driver.is_online),
-          current_location: driver.current_location || null,
-          // opcional: incluir distancia si se solicitó búsqueda por ubicación
-          distance_km:
-            pickupLat !== null && pickupLng !== null && driver && driver.current_location && driver.current_location.coordinates
-              ? (function () {
-                  try {
-                    const c = driver.current_location.coordinates
-                    const dLat = Number(c[1])
-                    const dLng = Number(c[0])
-                    return haversineDistance({ lat: pickupLat, lon: pickupLng }, { lat: dLat, lon: dLng })
-                  } catch (e) {
-                    return null
-                  }
-                })()
+
+        // Calcular distancia (si aplica) de forma segura sin usar `any`
+        let computedDistance: number | null = null
+        if (
+          pickupLat !== null &&
+          pickupLng !== null &&
+          driver &&
+          driver.current_location &&
+          typeof driver.current_location === "object" &&
+          Object.prototype.hasOwnProperty.call(driver.current_location, "coordinates")
+        ) {
+          const coords = (driver.current_location as Record<string, unknown>)["coordinates"]
+          if (Array.isArray(coords) && coords.length >= 2) {
+            const dLat = Number(coords[1])
+            const dLng = Number(coords[0])
+            if (!Number.isNaN(dLat) && !Number.isNaN(dLng)) {
+              try {
+                computedDistance = haversineDistance({ lat: pickupLat, lon: pickupLng }, { lat: dLat, lon: dLng })
+              } catch {
+                computedDistance = null
+              }
+            }
+          }
+        }
+
+        const cleanDriver: CleanDriver = {
+          id: (driver as Record<string, unknown>)?.id,
+          uid,
+          email: typeof (driver as Record<string, unknown>)?.email === "string" ? ((driver as Record<string, unknown>)?.email as string) : null,
+          name,
+          phone: typeof (driver as Record<string, unknown>)?.phone === "string" ? ((driver as Record<string, unknown>)?.phone as string) : null,
+          license_number:
+            typeof (driver as Record<string, unknown>)?.license_number === "string"
+              ? ((driver as Record<string, unknown>)?.license_number as string)
               : null,
-          created_at: driver.created_at,
-          updated_at: driver.updated_at,
+          vehicle_plate:
+            typeof (driver as Record<string, unknown>)?.vehicle_plate === "string"
+              ? (((driver as Record<string, unknown>)?.vehicle_plate as string).trim() || "No especificado")
+              : "No especificado",
+          vehicle_model:
+            typeof (driver as Record<string, unknown>)?.vehicle_model === "string"
+              ? (((driver as Record<string, unknown>)?.vehicle_model as string).trim() || "No especificado")
+              : "No especificado",
+          vehicle_year: typeof (driver as Record<string, unknown>)?.vehicle_year === "number" ? ((driver as Record<string, unknown>)?.vehicle_year as number) : null,
+          is_verified: Boolean((driver as Record<string, unknown>)?.is_verified),
+          rating: typeof (driver as Record<string, unknown>)?.rating === "number" ? Math.round(((driver as Record<string, unknown>)?.rating as number) * 10) / 10 : 0,
+          total_trips: typeof (driver as Record<string, unknown>)?.total_trips === "number" ? ((driver as Record<string, unknown>)?.total_trips as number) : 0,
+          is_online: Boolean((driver as Record<string, unknown>)?.is_online),
+          current_location: (driver as Record<string, unknown>)?.current_location || null,
+          // opcional: incluir distancia si se solicitó búsqueda por ubicación
+          distance_km: computedDistance,
+          created_at: (driver as Record<string, unknown>)?.created_at,
+          updated_at: (driver as Record<string, unknown>)?.updated_at,
         }
 
         validDrivers.push(cleanDriver)

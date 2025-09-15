@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
@@ -79,7 +79,7 @@ const defaultSettings: UserSettings = {
 }
 
 function SettingsContent() {
-  const { user, userData, userType } = useAuth()
+  const { user, userType } = useAuth()
   const { toast } = useToast()
   const [settings, setSettings] = useState<UserSettings>(defaultSettings)
   const [loading, setLoading] = useState(false)
@@ -87,11 +87,27 @@ function SettingsContent() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [saveSuccess, setSaveSuccess] = useState(false)
 
-  useEffect(() => {
-    loadUserSettings()
+  const createDefaultSettings = useCallback(async () => {
+    if (!user?.uid || !supabase) return
+
+    try {
+      const { error } = await supabase.from("user_settings").upsert(
+        {
+          uid: user.uid,
+          settings: defaultSettings,
+        },
+        {
+          onConflict: "uid",
+        },
+      )
+
+      if (error) throw error
+    } catch (error) {
+      console.error("Error creating default settings:", error)
+    }
   }, [user?.uid])
 
-  const loadUserSettings = async () => {
+  const loadUserSettings = useCallback(async () => {
     if (!user?.uid || !supabase) {
       setInitialLoading(false)
       return
@@ -116,27 +132,12 @@ function SettingsContent() {
     } finally {
       setInitialLoading(false)
     }
-  }
+  }, [user?.uid, createDefaultSettings, toast])
 
-  const createDefaultSettings = async () => {
-    if (!user?.uid || !supabase) return
+  useEffect(() => {
+    loadUserSettings()
+  }, [loadUserSettings])
 
-    try {
-      const { error } = await supabase.from("user_settings").upsert(
-        {
-          uid: user.uid,
-          settings: defaultSettings,
-        },
-        {
-          onConflict: "uid",
-        },
-      )
-
-      if (error) throw error
-    } catch (error) {
-      console.error("Error creating default settings:", error)
-    }
-  }
 
   const saveSettings = async () => {
     if (!user?.uid || !supabase) return

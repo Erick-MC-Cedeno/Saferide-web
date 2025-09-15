@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
@@ -9,7 +9,6 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
-import { Input } from "@/components/ui/input"
 import {
   MapPin,
   Star,
@@ -21,11 +20,7 @@ import {
   X,
   Users,
   Activity,
-  Zap,
   MessageCircle,
-  Edit3,
-  Save,
-  Plus,
 } from "lucide-react"
 import { useRealTimeRides } from "@/hooks/useRealTimeRides"
 import { useAuth } from "@/lib/auth-context"
@@ -42,6 +37,38 @@ import { RideChat } from "@/components/RideChat"
 function PassengerDashboardContent() {
   const { user, userData } = useAuth()
   const { toast } = useToast()
+  // Types
+  type DriverApi = {
+    id?: string | number
+    uid?: string
+    name?: string
+    full_name?: string
+    driver_name?: string
+    current_location?: { coordinates?: number[] }
+    location?: { coordinates?: number[] }
+    coordinates?: number[] | null
+    lat?: number | string
+    lng?: number | string
+    is_online?: boolean
+    is_verified?: boolean
+    rating?: number
+    vehicle_model?: string
+  }
+
+  type NewRidePayload = {
+    passenger_id: string
+    passenger_name?: string
+    pickup_address: string
+    pickup_coordinates: [number, number]
+    destination_address: string
+    destination_coordinates: [number, number]
+    status: string
+    estimated_fare?: number
+    estimated_duration?: number
+    driver_id?: string
+    driver_name?: string
+    accepted_at?: string
+  }
   const [pickup, setPickup] = useState("")
   const [destination, setDestination] = useState("")
   const [pickupCoords, setPickupCoords] = useState<{ lat: number; lng: number } | null>(null)
@@ -67,11 +94,9 @@ function PassengerDashboardContent() {
 
 // QUIK DESTINATIONS REMOVED
   const [showChatDialog, setShowChatDialog] = useState(false)
-  const { rides, loading, cancelRide, refreshRides } = useRealTimeRides(undefined, user?.uid)
+  const { rides, cancelRide, refreshRides } = useRealTimeRides(undefined, user?.uid)
   const currentRide = rides.find((ride) => ["pending", "accepted", "in-progress"].includes(ride.status))
   const [driversForMap, setDriversForMap] = useState<Array<{ id: string; uid?: string; name: string; lat: number; lng: number }>>([])
-  const [driversLoadedCount, setDriversLoadedCount] = useState<number>(0)
-  const [rawDriversForDebug, setRawDriversForDebug] = useState<any[]>([])
 
   
   // RESET RIDE STATUS WHEN NO CURRENT RIDE
@@ -79,6 +104,7 @@ function PassengerDashboardContent() {
     if (!currentRide && rideStatus !== "idle") {
       setRideStatus("idle")
     }
+    // rideStatus intentionally included
   }, [currentRide, rideStatus])
 
 
@@ -89,11 +115,12 @@ function PassengerDashboardContent() {
       if (!supabase || !user?.uid) return
       try {
         // Get passenger stats
-        const { data: passengerData } = await supabase
+        const { data: passengerRow } = await supabase
           .from("passengers")
           .select("total_trips, rating")
           .eq("uid", user.uid)
           .single()
+        const passengerInfo: { total_trips?: number; rating?: number } | null = passengerRow ?? null
 
         // GET COMPLETED RIDES FOR SPENDING CALCULATION
         const { data: completedRides } = await supabase
@@ -104,20 +131,39 @@ function PassengerDashboardContent() {
           .order("completed_at", { ascending: false })
 
         if (completedRides) {
-          const totalSpent = (completedRides as any[]).reduce((sum, ride) => sum + Number(ride.actual_fare ?? ride.estimated_fare ?? 0), 0)
+          type RideRow = {
+            actual_fare?: number | string | null
+            estimated_fare?: number | string | null
+            driver_rating?: number | null
+            passenger_rating?: number | null
+            completed_at?: string | null
+            id?: string
+            driver_name?: string | null
+            estimated_duration?: number | null
+            pickup_address?: string | null
+            destination_address?: string | null
+          }
+
+          const completed = completedRides as RideRow[]
+          const totalSpent = completed.reduce((sum, ride) => sum + Number(ride.actual_fare ?? ride.estimated_fare ?? 0), 0)
           // Calculate average rating from driver ratings
-          const ratedRides = (completedRides as any[]).filter((ride) => ride.driver_rating != null)
-          const averageRating =
+          const ratedRides = completed.filter((ride) => ride.driver_rating != null)
+          let averageRating =
             ratedRides.length > 0
-              ? (ratedRides as any[]).reduce((sum, ride) => sum + Number(ride.driver_rating ?? 0), 0) / ratedRides.length
+              ? ratedRides.reduce((sum, ride) => sum + Number(ride.driver_rating ?? 0), 0) / ratedRides.length
               : 0
 
+          // Fallback: if DB has passenger rating stored separately use it
+          if (!averageRating && passengerInfo && passengerInfo.rating) {
+            averageRating = Number(passengerInfo.rating)
+          }
+
           setPassengerStats({
-            totalTrips: completedRides.length,
+            totalTrips: completed.length,
             totalSpent,
             averageRating,
           })
-          setRecentTrips(completedRides.slice(0, 5))
+          setRecentTrips(completed.slice(0, 5))
         }
       } catch (error) {
         console.error("Error loading passenger data:", error)
@@ -129,27 +175,27 @@ function PassengerDashboardContent() {
 
 
   // DEFAULT RADIUS (KM) READ FROM ENV FOR CLIENT SIDE
-  const DEFAULT_RADIUS_KM = (() => {
+  const DEFAULT_RADIUS_KM = useMemo(() => {
     try {
       const v = typeof process !== "undefined" ? process.env.NEXT_PUBLIC_RADIO : undefined
       const parsed = v ? parseFloat(v) : 1
       return isNaN(parsed) ? 1 : parsed
-    } catch (e) {
+    } catch {
       return 1
     }
-  })()
+  }, [])
 
 
 
   // FUNCION PARA OPTENER LOS DATOS DE EL DRIVER
-  const driverData = async (lat?: number | null, lng?: number | null, radiusKm = DEFAULT_RADIUS_KM) => {
-
+  const driverData = useCallback(async (lat?: number | null, lng?: number | null, radiusKm?: number) => {
     try {
       const params = new URLSearchParams()
+      const rad = typeof radiusKm === 'number' ? radiusKm : DEFAULT_RADIUS_KM
       if (typeof lat === "number" && typeof lng === "number") {
         params.set("lat", String(lat))
         params.set("lng", String(lng))
-        params.set("radiusKm", String(radiusKm))
+        params.set("radiusKm", String(rad))
       }
 
       const url = "/api/drivers/all" + (params.toString() ? `?${params.toString()}` : "")
@@ -171,12 +217,12 @@ function PassengerDashboardContent() {
       console.error("Error en driverData:", error)
       throw error
     }
-  }
+  }, [DEFAULT_RADIUS_KM])
 
 
 
   // HAVERSINE DISTANCE FUNCTION
-  const haversineDistance = (lat1: number, lng1: number, lat2: number, lng2: number) => {
+  const haversineDistance = useCallback((lat1: number, lng1: number, lat2: number, lng2: number) => {
     const toRad = (v: number) => (v * Math.PI) / 180
     const R = 6371 // km
     const dLat = toRad(lat2 - lat1)
@@ -186,26 +232,21 @@ function PassengerDashboardContent() {
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
     return R * c
 
-
-  }
+  }, [])
 // SHOW NEARBY DRIVERS CALLS  /api/drivers/all, maps coordinates, filters by configured radius
-  const showNearbyDriversInMap = async (userLat?: number | null, userLng?: number | null) => {
+  const showNearbyDriversInMap = useCallback(async (userLat?: number | null, userLng?: number | null) => {
     try {
       // If we have user coords, prefer server-side filtering for robustness
-  const res = typeof userLat === "number" && typeof userLng === "number" ? await driverData(userLat, userLng, DEFAULT_RADIUS_KM) : await driverData()
+      const res = typeof userLat === "number" && typeof userLng === "number" ? await driverData(userLat, userLng, DEFAULT_RADIUS_KM) : await driverData()
       // Manejo cuando el servidor indica que no hay rangos configurados
       if (res && res.noRangesConfigured) {
         toast({ title: "Rangos no configurados", description: "Aún no hay rangos configurados en el servidor", variant: "destructive" })
-        setRawDriversForDebug([])
         setDriversForMap([])
-        setDriversLoadedCount(0)
         setNoDriversNearby("Aún no hay rangos configurados")
         return []
       }
 
-      setRawDriversForDebug(res.data || [])
-
-      const mapped = (res.data || []).map((d) => {
+  const mapped = (res.data || []).map((d: DriverApi) => {
         // assumption: driver current_location.coordinates = [lng, lat]
         const coords = d?.current_location?.coordinates || d?.location?.coordinates || d?.coordinates
         let lat = 0
@@ -220,21 +261,21 @@ function PassengerDashboardContent() {
         return { ...d, lat, lng }
       })
 
-  let nearby = mapped
+      let nearby = mapped
       if (typeof userLat === "number" && typeof userLng === "number") {
         // If server already filtered, this is redundant but harmless. Keep for safety.
-        nearby = mapped.filter((d) => {
+        nearby = mapped.filter((d: DriverApi & { lat: number; lng: number }) => {
           if (!d || isNaN(d.lat) || isNaN(d.lng)) return false
-            const dist = haversineDistance(userLat, userLng, d.lat, d.lng)
+          const dist = haversineDistance(userLat, userLng, d.lat, d.lng)
           return dist <= DEFAULT_RADIUS_KM
         })
       }
 
   // Only include drivers that are currently online
-      nearby = nearby.filter((d) => Boolean(d.is_online))
+  nearby = nearby.filter((d: DriverApi) => Boolean(d.is_online))
 
       // normalize for map: id/uid, name, lat, lng
-      const driversForMapNormalized = nearby.map((d, idx) => ({
+      const driversForMapNormalized = nearby.map((d: DriverApi & { lat: number; lng: number }, idx: number) => ({
         id: String(d.id ?? d.uid ?? idx),
         uid: d.uid,
         name: String(d.name || d.full_name || d.driver_name || ""),
@@ -243,7 +284,6 @@ function PassengerDashboardContent() {
       }))
       // Cast to the expected driversForMap shape
       setDriversForMap(driversForMapNormalized as Array<{ id: string; uid?: string; name: string; lat: number; lng: number }>)
-      setDriversLoadedCount(driversForMapNormalized.length)
       if ((driversForMapNormalized || []).length === 0) {
         toast({
           title: "Sin conductores cercanos",
@@ -255,10 +295,9 @@ function PassengerDashboardContent() {
     } catch (err) {
       console.error("Error loading nearby drivers:", err)
       setDriversForMap([])
-      setDriversLoadedCount(0)
       return []
     }
-  }
+  }, [driverData, DEFAULT_RADIUS_KM, haversineDistance, toast])
 
 
 
@@ -299,7 +338,7 @@ function PassengerDashboardContent() {
     }
 
     loadOnAuth()
-  }, [user?.uid])
+  }, [user, pickupCoords, showNearbyDriversInMap])
 
 
 
@@ -357,7 +396,7 @@ function PassengerDashboardContent() {
     if (pickupCoords && destinationCoords) {
       loadAvailableDrivers()
     }
-  }, [pickupCoords, destinationCoords])
+  }, [pickupCoords, destinationCoords, driverData, DEFAULT_RADIUS_KM, toast])
 
 
   // CHECK FOR COMPLETED RIDES TO SHOW RATING DIALOG
@@ -388,7 +427,7 @@ function PassengerDashboardContent() {
   // debug log removed
 
     try {
-      const rideData: Record<string, any> = {
+      const rideData: NewRidePayload = {
         passenger_id: user.uid,
         passenger_name: userData.name,
         pickup_address: pickup,
@@ -412,7 +451,7 @@ function PassengerDashboardContent() {
         }
       }
 
-      const { data, error } = await supabase.from("rides").insert(rideData).select()
+  const { error } = await supabase.from("rides").insert(rideData).select()
 
       if (error) {
         console.error("Error creando viaje:", error)
@@ -431,7 +470,7 @@ function PassengerDashboardContent() {
         if (typeof document !== "undefined" && document.activeElement instanceof HTMLElement) {
           document.activeElement.blur()
         }
-      } catch (e) {
+      } catch {
         // suppressed debug
       }
 
@@ -588,7 +627,7 @@ function PassengerDashboardContent() {
 
     try {
       // Prepare payload: include passenger_comment and passenger_rating (nullable)
-      const payload: any = {
+      const payload: { passenger_comment?: string | null; passenger_rating?: number } = {
         passenger_comment: comment.trim() || null,
       }
 
@@ -612,7 +651,10 @@ function PassengerDashboardContent() {
           .not("passenger_rating", "is", null)
 
         if (driverRides && driverRides.length > 0) {
-          const avgRating = (driverRides as any[]).reduce((sum, ride) => sum + Number(ride.passenger_rating ?? 0), 0) / driverRides.length
+          const avgRating = (driverRides as Array<{ passenger_rating?: number }>).reduce(
+            (sum, ride) => sum + Number(ride.passenger_rating ?? 0),
+            0,
+          ) / driverRides.length
           await supabase.from("drivers").update({ rating: avgRating }).eq("uid", completedRide.driver_id)
         }
       }
@@ -627,7 +669,7 @@ function PassengerDashboardContent() {
         title: "Calificación enviada",
         description: "Gracias por compartir tu experiencia.",
       })
-    } catch (err) {
+    } catch (err: unknown) {
       console.error("Error submitting rating:", err)
       toast({
         title: "Error",
@@ -665,16 +707,7 @@ function PassengerDashboardContent() {
   }
 
 
-  // RESET RIDE FORM TO INITIAL STATE
-  const resetRideForm = () => {
-    setPickup("")
-    setDestination("")
-    setPickupCoords(null)
-    setDestinationCoords(null)
-    setSelectedDriver("")
-    setShowDriverSelection(false)
-    setRideStatus("idle")
-  }
+  // (resetRideForm removed — handled inline where needed)
 
 
   // CALCULATE ESTIMATED FARE
@@ -750,7 +783,7 @@ function PassengerDashboardContent() {
       setPickup(address)
       setPickupCoords({ lat, lng: lon })
       toast({ title: "Ubicación usada", description: address })
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Error obteniendo ubicación:", err)
       toast({ title: "Error", description: "No fue posible obtener tu ubicación", variant: "destructive" })
     }
@@ -760,7 +793,6 @@ function PassengerDashboardContent() {
 
   // RENDERING LOGIC
   const canRequestNewRide = !currentRide && rideStatus === "idle"
-  const hasActiveRide = currentRide && ["pending", "accepted", "in-progress"].includes(currentRide.status)
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
@@ -1019,10 +1051,10 @@ function PassengerDashboardContent() {
                       className="w-full h-14 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-xl font-bold text-lg"
                       onClick={handleRequestRide}
                       disabled={
-                        !pickup || !destination || !pickupCoords || !destinationCoords || (rideStatus as any) === "searching"
+                        !pickup || !destination || !pickupCoords || !destinationCoords || rideStatus === "searching"
                       }
                     >
-                      {(rideStatus as any) === "searching" ? (
+                      {rideStatus === "searching" ? (
                         <>
                           <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-3"></div>
                           Buscando conductor...
@@ -1247,10 +1279,10 @@ function PassengerDashboardContent() {
                     className="w-full h-14 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-xl font-bold text-lg"
                     onClick={handleRequestRide}
                     disabled={
-                      !pickup || !destination || !pickupCoords || !destinationCoords || (rideStatus as any) === "searching"
+                      !pickup || !destination || !pickupCoords || !destinationCoords || rideStatus === "searching"
                     }
                   >
-                      {(rideStatus as any) === "searching" ? (
+                      {rideStatus === "searching" ? (
                       <>
                         <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-3"></div>
                         Buscando conductor...

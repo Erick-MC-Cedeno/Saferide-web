@@ -111,7 +111,6 @@ export function ImageCropModal({ isOpen, onClose, onCrop, imageFile, uploading =
       })
 
       setImageLoaded(true)
-      drawCanvas()
     }
   }, [])
 
@@ -636,6 +635,9 @@ export function ImageCropModal({ isOpen, onClose, onCrop, imageFile, uploading =
                 onMouseLeave={handleMouseUp}
               />
               {imageUrl && (
+                // Using a native <img> here because we need direct access to
+                // the underlying HTMLImageElement (naturalWidth, naturalHeight)
+                // eslint-disable-next-line @next/next/no-img-element
                 <img
                   ref={imageRef}
                   src={imageUrl || "/placeholder.svg"}

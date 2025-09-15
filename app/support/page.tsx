@@ -34,7 +34,7 @@ export default function SupportPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedCategory, setSelectedCategory] = useState("all")
   const [isVisible, setIsVisible] = useState(false)
-  const [activeCard, setActiveCard] = useState<number | null>(null)
+  
 
   useEffect(() => {
     setIsVisible(true)
@@ -354,8 +354,7 @@ export default function SupportPage() {
                   isVisible ? "animate-fade-in-up" : ""
                 }`}
                 style={{ animationDelay: `${index * 200}ms` }}
-                onMouseEnter={() => setActiveCard(index)}
-                onMouseLeave={() => setActiveCard(null)}
+                
               >
                 <CardHeader className="pb-6">
                   <div
@@ -465,7 +464,7 @@ export default function SupportPage() {
 
           {/* Category Filter */}
           <div className="flex flex-wrap justify-center gap-3 mb-12">
-            {faqCategories.map((category, index) => (
+            {faqCategories.map((category) => (
               <Button
                 key={category.id}
                 variant={selectedCategory === category.id ? "default" : "outline"}

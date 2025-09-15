@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Shield, Car, Users, Sparkles, UserPlus, Loader2, Eye, EyeOff } from "lucide-react"
+import { Car, Users, Sparkles, UserPlus, Loader2, Eye, EyeOff } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 
@@ -84,7 +84,7 @@ export default function RegisterPage() {
         console.error("Registro fallido (server):", result.error)
         setError(result.error || "Error al registrar usuario")
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error de registro (excepción):", error)
       setError("Error inesperado. Por favor intenta de nuevo.")
     } finally {

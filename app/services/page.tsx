@@ -29,14 +29,9 @@ import { useState, useEffect } from "react"
 export default function ServicesPage() {
   const [isVisible, setIsVisible] = useState(false)
   const [hoveredCard, setHoveredCard] = useState<number | null>(null)
-  const [animationStep, setAnimationStep] = useState(0)
-
+  
   useEffect(() => {
     setIsVisible(true)
-    const timer = setInterval(() => {
-      setAnimationStep((prev) => (prev + 1) % 4)
-    }, 2000)
-    return () => clearInterval(timer)
   }, [])
 
   const subscriptionPlans = [

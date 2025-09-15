@@ -4,8 +4,15 @@ import { useEffect, useState } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Bell, Car, MapPin } from "lucide-react"
 
+interface MinimalRide {
+  id?: string
+  status?: string
+  driver_name?: string
+  passenger_name?: string
+}
+
 interface RideStatusNotificationProps {
-  ride: any
+  ride: MinimalRide | null | undefined
   userType: "passenger" | "driver"
 }
 

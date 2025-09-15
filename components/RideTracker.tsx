@@ -5,10 +5,24 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { MapPin, Navigation, Clock, DollarSign } from "lucide-react"
 
+type RideStatus = "pending" | "accepted" | "in-progress" | "completed" | "cancelled"
+
+interface MinimalRideForTracker {
+  id?: string
+  status?: RideStatus
+  passenger_name?: string
+  driver_name?: string
+  pickup_address?: string
+  destination_address?: string
+  estimated_duration?: number
+  estimated_fare?: number
+  requested_at?: string
+}
+
 interface RideTrackerProps {
-  ride: any
+  ride: MinimalRideForTracker
   userType: "passenger" | "driver"
-  onStatusUpdate?: (rideId: string, status: string) => void
+  onStatusUpdate?: (rideId: string, status: RideStatus) => void
   onCancel?: (rideId: string) => void
   onReject?: (rideId: string) => void
 }

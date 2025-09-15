@@ -23,14 +23,12 @@ interface Message {
 
 interface RideChatProps {
   rideId: string
-  driverId: string
   driverName: string
-  passengerId: string
   passengerName: string
   onClose?: () => void
 }
 
-export function RideChat({ rideId, driverId, driverName, passengerId, passengerName, onClose }: RideChatProps) {
+export function RideChat({ rideId, driverName, passengerName, onClose }: RideChatProps) {
   const [messages, setMessages] = useState<Message[]>([])
   const [newMessage, setNewMessage] = useState("")
   const [loading, setLoading] = useState(true)
@@ -62,7 +60,7 @@ export function RideChat({ rideId, driverId, driverName, passengerId, passengerN
       if (mountedRef.current) {
         setMessages(data || [])
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Error loading messages:", err)
       if (mountedRef.current) {
         setError("No se pudieron cargar los mensajes. Intenta de nuevo.")
@@ -82,7 +80,7 @@ export function RideChat({ rideId, driverId, driverName, passengerId, passengerN
         const status = await supabase.removeChannel(channelRef.current)
         console.log("Channel cleanup status:", status)
         channelRef.current = null
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error("Error removing channel:", err)
       }
     }
@@ -152,7 +150,7 @@ export function RideChat({ rideId, driverId, driverName, passengerId, passengerN
         })
 
       channelRef.current = channel
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("Error setting up realtime subscription:", error)
       setRealtimeOK(false)
     }
@@ -205,7 +203,7 @@ export function RideChat({ rideId, driverId, driverName, passengerId, passengerN
 
       console.log("Mensaje enviado exitosamente:", data)
       setError(null)
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Error sending message:", err)
       setError("No se pudo enviar el mensaje. Intenta de nuevo.")
       setNewMessage(messageText) // Restaurar mensaje si falló

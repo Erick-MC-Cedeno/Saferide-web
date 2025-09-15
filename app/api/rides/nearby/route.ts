@@ -7,9 +7,8 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const driverId = searchParams.get("driverId")
-    const lat = searchParams.get("lat")
-    const lng = searchParams.get("lng")
-    const radius = searchParams.get("radius") || "10" // km
+  // Note: radius-based filtering will be implemented later in this route.
+  // The params below were previously parsed but not used; keep driverId for now.
 
     if (!driverId) {
       return NextResponse.json({ error: "Driver ID is required" }, { status: 400 })

@@ -13,7 +13,7 @@ interface AddressAutocompleteProps {
   suppressSuggestions?: boolean
 }
 
-interface Suggestion {
+  interface Suggestion {
   formatted: string
   lat: number
   lon: number
@@ -21,6 +21,8 @@ interface Suggestion {
 
 declare global {
   interface Window {
+    // google maps object is dynamic; treat as unknown and narrow at runtime
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     google?: any
     googleMapsLoaded?: boolean
     initGoogleMaps?: () => void
@@ -33,8 +35,7 @@ export function AddressAutocomplete({ placeholder, onAddressSelect, value, onCha
   const [isLoading, setIsLoading] = useState(false)
   const debounceRef = useRef<NodeJS.Timeout>()
   const lastSelectedRef = useRef<string | null>(null)
-  const autocompleteService = useRef<any | null>(null)
-  const placesService = useRef<any | null>(null)
+  
 
   // If parent requests suggestions be suppressed (for example when a dialog opens), hide them
   useEffect(() => {
@@ -43,36 +44,8 @@ export function AddressAutocomplete({ placeholder, onAddressSelect, value, onCha
     }
   }, [suppressSuggestions])
 
-  // Initialize Google Places services
-  useEffect(() => {
-    if (typeof window !== "undefined" && window.google && window.google.maps && window.google.maps.places) {
-      // If the newer AutocompleteSuggestion/Place APIs are present, prefer server-side Geoapify
-      // or newer SDK usage. Many accounts no longer have AutocompleteService/PlacesService
-      // available; detect that and avoid calling them to prevent deprecation log spam.
-      const places = (window as any).google.maps.places
-      const hasAutocompleteSuggestion = !!places.AutocompleteSuggestion
-      const hasPlace = !!places.Place
-
-      if (!hasAutocompleteSuggestion && !hasPlace) {
-        // older APIs appear available for use
-        try {
-          autocompleteService.current = new (window as any).google.maps.places.AutocompleteService()
-          const dummyDiv = document.createElement("div")
-          placesService.current = new (window as any).google.maps.places.PlacesService(dummyDiv)
-        } catch (e) {
-          // If creation fails, fall back to Geoapify
-          console.debug("Google Places services unavailable, falling back to Geoapify:", e)
-          autocompleteService.current = null
-          placesService.current = null
-        }
-      } else {
-        // Newer Places APIs are present (or this account cannot use legacy services).
-        // Prefer Geoapify-based autocomplete for now to avoid deprecation issues.
-        autocompleteService.current = null
-        placesService.current = null
-      }
-    }
-  }, [])
+  // Intentionally use Geoapify-based autocomplete for broader compatibility.
+  // Legacy Google Places (AutocompleteService / PlacesService) are not relied upon here.
 
   useEffect(() => {
     if (value.length < 3) {
@@ -98,14 +71,9 @@ export function AddressAutocomplete({ placeholder, onAddressSelect, value, onCha
     debounceRef.current = setTimeout(async () => {
       setIsLoading(true)
       try {
-        if (autocompleteService.current && placesService.current) {
-          await searchWithGooglePlaces(value)
-        } else {
-          await searchWithGeoapify(value)
-        }
+        await searchWithGeoapify(value)
       } catch (error) {
         console.error("Error fetching suggestions:", error)
-        await searchWithGeoapify(value)
       } finally {
         setIsLoading(false)
       }
@@ -116,72 +84,7 @@ export function AddressAutocomplete({ placeholder, onAddressSelect, value, onCha
     }
   }, [value])
 
-  const searchWithGooglePlaces = async (query: string) => {
-    return new Promise<void>((resolve, reject) => {
-      if (!autocompleteService.current || !placesService.current) {
-        reject(new Error("Google Places not available"))
-        return
-      }
-
-      autocompleteService.current.getPlacePredictions(
-        {
-          input: query,
-          types: ["establishment", "geocode"],
-        },
-        (predictions: any, status: any) => {
-          if (status === (window as any).google.maps.places.PlacesServiceStatus.OK && predictions) {
-            const newSuggestions: Suggestion[] = []
-            let completed = 0
-            const limit = Math.min(predictions.length, 5)
-
-            // safety timeout in case some getDetails callbacks never return
-            const safetyTimer = setTimeout(() => {
-              setSuggestions(newSuggestions)
-              setShowSuggestions(newSuggestions.length > 0)
-              resolve()
-            }, 3000)
-
-            predictions.slice(0, limit).forEach((prediction: any) => {
-              placesService.current!.getDetails(
-                {
-                  placeId: prediction.place_id,
-                  fields: ["formatted_address", "geometry"],
-                },
-                (place: any, detailStatus: any) => {
-                  completed++
-                  if (detailStatus === (window as any).google.maps.places.PlacesServiceStatus.OK && place?.geometry?.location) {
-                    newSuggestions.push({
-                      formatted: place.formatted_address || prediction.description,
-                      lat: place.geometry.location.lat(),
-                      lon: place.geometry.location.lng(),
-                    })
-                  }
-                  if (completed === limit) {
-                    clearTimeout(safetyTimer)
-                    setSuggestions(newSuggestions)
-                    setShowSuggestions(newSuggestions.length > 0)
-                    resolve()
-                  }
-                }
-              )
-            })
-          } else if (status === (window as any).google.maps.places.PlacesServiceStatus.ZERO_RESULTS) {
-            // No results - treat as empty suggestions (not an error)
-            setSuggestions([])
-            setShowSuggestions(false)
-            resolve()
-          } else if (status === (window as any).google.maps.places.PlacesServiceStatus.REQUEST_DENIED) {
-            // Common when API key / billing not configured for Places
-            console.warn("Google Places request denied. Check API key and billing for Places API.", status)
-            reject(new Error("Google Places request denied"))
-          } else {
-            console.warn("Google Places request returned status:", status)
-            reject(new Error(`Google Places request failed: ${status}`))
-          }
-        }
-      )
-    })
-  }
+  // Removed Google Places fallback: this component relies on Geoapify autocomplete for compatibility
 
   const searchWithGeoapify = async (query: string) => {
     try {
@@ -200,12 +103,22 @@ export function AddressAutocomplete({ placeholder, onAddressSelect, value, onCha
       if (!response.ok) throw new Error(`API error: ${response.status}`)
       const data = await response.json()
 
-      if (data.features) {
-        const newSuggestions = data.features.map((feature: any) => ({
-          formatted: feature.properties.formatted,
-          lat: feature.geometry.coordinates[1],
-          lon: feature.geometry.coordinates[0],
-        }))
+      if (Array.isArray(data.features)) {
+        const newSuggestions = data.features
+          .map((feature: unknown) => {
+            if (!feature || typeof feature !== "object") return null
+            const f = feature as Record<string, unknown>
+            const properties = f.properties as Record<string, unknown> | undefined
+            const geometry = f.geometry as Record<string, unknown> | undefined
+            const formatted = properties && typeof properties.formatted === "string" ? properties.formatted : null
+            const coords = geometry && (geometry.coordinates as unknown)
+            if (!formatted || !Array.isArray(coords) || coords.length < 2) return null
+            const lat = Number(coords[1])
+            const lon = Number(coords[0])
+            if (Number.isNaN(lat) || Number.isNaN(lon)) return null
+            return { formatted, lat, lon } as Suggestion
+          })
+          .filter(Boolean) as Suggestion[]
         setSuggestions(newSuggestions)
         setShowSuggestions(true)
       }

@@ -99,7 +99,8 @@ export interface Database {
           rating: number
           total_trips: number
           is_online: boolean
-          current_location: any
+          // GeoJSON-like or PostGIS point; use unknown and validate where needed
+          current_location: unknown
           created_at: string
           updated_at: string
         }
@@ -117,7 +118,8 @@ export interface Database {
           rating?: number
           total_trips?: number
           is_online?: boolean
-          current_location?: any
+          // GeoJSON-like or PostGIS point; use unknown and validate where needed
+          current_location?: unknown
           created_at?: string
           updated_at?: string
         }
@@ -135,7 +137,8 @@ export interface Database {
           rating?: number
           total_trips?: number
           is_online?: boolean
-          current_location?: any
+          // GeoJSON-like or PostGIS point; use unknown and validate where needed
+          current_location?: unknown
           created_at?: string
           updated_at?: string
         }
@@ -148,9 +151,11 @@ export interface Database {
           driver_id: string | null
           driver_name: string | null
           pickup_address: string
-          pickup_coordinates: any
+          // [lng, lat] pair or similar; keep as unknown and validate at usage
+          pickup_coordinates: unknown
           destination_address: string
-          destination_coordinates: any
+          // [lng, lat] pair or similar; keep as unknown and validate at usage
+          destination_coordinates: unknown
           status: "pending" | "accepted" | "in-progress" | "completed" | "cancelled"
           estimated_fare: number
           actual_fare: number | null
@@ -172,9 +177,11 @@ export interface Database {
           driver_id?: string | null
           driver_name?: string | null
           pickup_address: string
-          pickup_coordinates: any
+          // [lng, lat] pair or similar; keep as unknown and validate at usage
+          pickup_coordinates: unknown
           destination_address: string
-          destination_coordinates: any
+          // [lng, lat] pair or similar; keep as unknown and validate at usage
+          destination_coordinates: unknown
           status?: "pending" | "accepted" | "in-progress" | "completed" | "cancelled"
           estimated_fare: number
           actual_fare?: number | null
@@ -196,9 +203,11 @@ export interface Database {
           driver_id?: string | null
           driver_name?: string | null
           pickup_address?: string
-          pickup_coordinates?: any
+          // [lng, lat] pair or similar; keep as unknown and validate at usage
+          pickup_coordinates?: unknown
           destination_address?: string
-          destination_coordinates?: any
+          // [lng, lat] pair or similar; keep as unknown and validate at usage
+          destination_coordinates?: unknown
           status?: "pending" | "accepted" | "in-progress" | "completed" | "cancelled"
           estimated_fare?: number
           actual_fare?: number | null

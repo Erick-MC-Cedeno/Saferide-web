@@ -122,8 +122,8 @@ export function useDriverStatus(driverId?: string) {
           return
         }
 
-        // data comes from PostgREST and may be typed as unknown; guard and coerce safely
-        const isOnlineValue = (data as any)?.is_online ?? false
+  // data comes from PostgREST and may be typed as unknown; guard and coerce safely
+  const isOnlineValue = (data as { is_online?: unknown } | null)?.is_online ?? false
         setIsOnline(!!isOnlineValue)
 
         // Si el conductor está online, iniciar actualización periódica de ubicación
@@ -131,7 +131,7 @@ export function useDriverStatus(driverId?: string) {
           updateDriverLocation()
           startLocationUpdates()
         }
-      } catch (error) {
+      } catch (error: unknown) {
         console.error("Error loading driver status:", error)
         // Ensure we set loading false even on unexpected errors
         setIsOnline(false)
@@ -195,9 +195,9 @@ export function useDriverStatus(driverId?: string) {
       
       setIsOnline(online)
       return { success: true }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error updating driver status:", error)
-      return { success: false, error: error.message }
+      return { success: false, error: error instanceof Error ? error.message : String(error) }
     }
   }
 

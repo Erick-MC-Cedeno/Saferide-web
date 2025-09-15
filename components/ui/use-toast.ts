@@ -25,6 +25,9 @@ const actionTypes = {
   REMOVE_TOAST: "REMOVE_TOAST",
 } as const
 
+// referenced as a value in some cases; use void to avoid "assigned a value but only used as a type" warnings
+void actionTypes
+
 let count = 0
 
 function genId() {

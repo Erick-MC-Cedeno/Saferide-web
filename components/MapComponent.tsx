@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client"
 
 import { useEffect, useRef, useState } from "react"
@@ -16,7 +17,7 @@ declare global {
 
 interface MapComponentProps {
   userType: "passenger" | "driver"
-  onLocationSelect?: (location: { lat: number; lng: number; address: string }) => void
+  // onLocationSelect removed (not used)
   pickupLocation?: { lat: number; lng: number }
   destinationLocation?: { lat: number; lng: number }
   driverLocations?: Array<{ id: string; lat: number; lng: number; name: string }>
@@ -25,7 +26,6 @@ interface MapComponentProps {
 
 export function MapComponent({
   userType,
-  onLocationSelect,
   pickupLocation,
   destinationLocation,
   driverLocations = [],
@@ -39,23 +39,7 @@ export function MapComponent({
   const markersRef = useRef<Array<any>>([])
   const directionsRendererRef = useRef<any | null>(null)
 
-  // Espera activa hasta que google.maps.Map esté disponible
-  const waitForGoogleMapsReady = (): Promise<void> => {
-    return new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => reject(new Error("Timeout esperando Google Maps")), 5000)
-
-      const check = () => {
-        if (window.google?.maps?.Map) {
-          clearTimeout(timeout)
-          resolve()
-        } else {
-          requestAnimationFrame(check)
-        }
-      }
-
-      check()
-    })
-  }
+  // helper removed: waitForGoogleMapsReady (not used)
 
   // Referencia para el ID del seguimiento de ubicación
   const watchIdRef = useRef<number | null>(null)
@@ -64,7 +48,7 @@ export function MapComponent({
   useEffect(() => {
     if (!isLoaded || !mapRef.current || isInitialized) {
       if (isLoading) {
-        
+        // still loading
       }
       return
     }
@@ -109,8 +93,8 @@ export function MapComponent({
               // notify parent that map is ready with user location
               try {
                 onMapReady?.(userLoc)
-              } catch (e) {
-                console.debug("onMapReady callback failed:", e)
+              } catch (err: unknown) {
+                console.debug("onMapReady callback failed:", err)
               }
             },
             (error) => {
@@ -129,17 +113,17 @@ export function MapComponent({
               setUserLocation(userLoc)
               try {
                 onMapReady?.(userLoc)
-              } catch (e) {
-                console.debug("onMapReady callback failed (watch):", e)
+              } catch (err: unknown) {
+                console.debug("onMapReady callback failed (watch):", err)
               }
             },
             (error) => {
-              console.error("Error en seguimiento de ubicación:", error)
-            },
+                console.error("Error en seguimiento de ubicación:", error)
+              },
             { enableHighAccuracy: true, maximumAge: 10000, timeout: 5000 }
           )
         }
-      } catch (error) {
+      } catch (error: unknown) {
         console.error("Error inicializando el mapa:", error)
       }
     }
@@ -153,42 +137,22 @@ export function MapComponent({
         watchIdRef.current = null
       }
     }
-  }, [isLoaded, isInitialized])
+  }, [isLoaded, isInitialized, isLoading, onMapReady])
 
-  const reverseGeocode = async (lat: number, lng: number): Promise<string> => {
-    try {
-      const geocoder = new (window as any).google.maps.Geocoder()
-        const response = await geocoder.geocode({ location: { lat, lng } })
-      if (response.results?.length > 0) {
-        return response.results[0].formatted_address
-      }
-      return `${lat.toFixed(6)}, ${lng.toFixed(6)}`
-    } catch (error) {
-      console.error("Error en geocoding, usando Geoapify como fallback:", error)
-      try {
-        const apiKey = process.env.NEXT_PUBLIC_GEOAPIFY_API_KEY
-        if (!apiKey) return `${lat.toFixed(6)}, ${lng.toFixed(6)}`
-        const response = await fetch(
-          `https://api.geoapify.com/v1/geocode/reverse?lat=${lat}&lon=${lng}&apiKey=${apiKey}`
-        )
-        const data = await response.json()
-        return data.features?.[0]?.properties?.formatted || `${lat.toFixed(6)}, ${lng.toFixed(6)}`
-      } catch (e) {
-        return `${lat.toFixed(6)}, ${lng.toFixed(6)}`
-      }
-    }
-  }
+  // reverseGeocode removed (not used in this component)
 
   const clearMarkers = () => {
     markersRef.current.forEach((marker) => {
-      if (marker instanceof (window as any).google?.maps?.Marker) {
-        marker.setMap(null)
-      } else if (marker instanceof (window as any).google?.maps?.marker?.AdvancedMarkerElement) {
-        marker.map = null
-      } else if (marker && typeof marker.setMap === "function") {
+      if (marker && typeof (marker as any).setMap === "function") {
         try {
-          marker.setMap(null)
-        } catch (e) {
+          ;(marker as any).setMap(null)
+        } catch {
+          // ignore
+        }
+      } else if (marker && typeof (marker as any).map !== "undefined") {
+        try {
+          ;(marker as any).map = null
+        } catch {
           // ignore
         }
       }
@@ -209,9 +173,13 @@ export function MapComponent({
     clearMarkers()
 
     // Crear o actualizar el marcador de ubicación del usuario
-    if (userLocation) {
+  if (userLocation) {
       if (userLocationMarkerRef.current) {
-        userLocationMarkerRef.current.position = userLocation
+        try {
+          ;(userLocationMarkerRef.current as any).position = userLocation
+        } catch {
+          // ignore
+        }
       } else {
         // Crear un pin personalizado para la ubicación del usuario
         const pinElement = new (window as any).google.maps.marker.PinElement({
@@ -231,7 +199,7 @@ export function MapComponent({
       }
     }
 
-    if (pickupLocation) {
+  if (pickupLocation) {
       // Crear un pin personalizado para el punto de recogida
       const pickupPinElement = new (window as any).google.maps.marker.PinElement({
         background: "#10B981", // Verde
@@ -269,11 +237,11 @@ export function MapComponent({
       markersRef.current.push(destinationMarker)
     }
 
-    if (userType === "passenger" && driverLocations.length > 0) {
+  if (userType === "passenger" && driverLocations.length > 0) {
       // To ensure visibility across browsers/environments use classic google.maps.Marker
       // Also apply a tiny jitter when multiple drivers are very close so pins don't overlap.
       const seen: Record<string, number> = {}
-      driverLocations.forEach((driver, idx) => {
+  driverLocations.forEach((driver, idx) => {
         try {
           const key = `${driver.lat.toFixed(6)}:${driver.lng.toFixed(6)}`
           const count = (seen[key] || 0) + 1
@@ -348,7 +316,7 @@ export function MapComponent({
         },
       })
 
-      directionsRenderer.setMap(map)
+  directionsRenderer.setMap(map as any)
       directionsRendererRef.current = directionsRenderer
 
       directionsService.route(
@@ -357,27 +325,22 @@ export function MapComponent({
           destination: destinationLocation,
     travelMode: (window as any).google.maps.TravelMode.DRIVING,
         },
-        (result, status) => {
+        (result: any, status: any) => {
           if (status === (window as any).google.maps.DirectionsStatus.OK && result) {
             directionsRenderer.setDirections(result)
             const bounds = new (window as any).google.maps.LatLngBounds()
             bounds.extend(pickupLocation)
             bounds.extend(destinationLocation)
-            map.fitBounds(bounds, { padding: 50 })
+            ;(map as any).fitBounds(bounds, { padding: 50 })
           } else {
             console.error("Falló solicitud de direcciones:", status)
           }
         }
       )
     }
-  }, [map, pickupLocation, destinationLocation, driverLocations, userType, isLoaded])
+  }, [map, pickupLocation, destinationLocation, driverLocations, userType, isLoaded, userLocation])
 
-  const centerOnUser = () => {
-    if (map && userLocation) {
-      map.setCenter(userLocation)
-      map.setZoom(15)
-    }
-  }
+  // centerOnUser removed (not used)
 
   if (error) return <MapFallback error={error} userType={userType} onRetry={retry} />
   if (isLoading || !isLoaded) return <MapFallback userType={userType} />

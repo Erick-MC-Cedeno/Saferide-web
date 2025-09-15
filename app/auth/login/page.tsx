@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Shield, Car, Users, Eye, EyeOff, Loader2, AlertCircle, Wifi, WifiOff, Sparkles } from "lucide-react"
+import { Car, Users, Eye, EyeOff, Loader2, AlertCircle, Sparkles } from "lucide-react"
 import Link from "next/link"
 import { loginUser } from "@/lib/auth"
 import { useAuth } from "@/lib/auth-context"
@@ -23,12 +23,11 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
   const router = useRouter()
-    const { isSupabaseReady } = useAuth()
+    const { isSupabaseReady, user, userType: ctxUserType, loading: authLoading } = useAuth()
 
 
 
   // VERIFICA SI EL USUARIO ESTÁ AUTENTICADO Y REDIRIGE AL DASHBOARD CORRESPONDIENTE
-  const { user, userData, userType: ctxUserType, loading: authLoading } = useAuth()
 
   useEffect(() => {
     if (authLoading) return
@@ -65,7 +64,8 @@ export default function LoginPage() {
       } else {
         setError(result.error || "Error al iniciar sesión")
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
+      console.error("Login handler unexpected error:", error)
       setError("Error inesperado. Por favor intenta de nuevo.")
     } finally {
       setLoading(false)

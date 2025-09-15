@@ -6,8 +6,9 @@ import { getUserData } from "./auth"
 import { supabase } from "./supabase"
 
 interface AuthContextType {
-  user: any | null
-  userData: any | null
+  // user: partial supabase user with uid and any other properties as unknown
+  user: ({ uid: string } & Record<string, unknown>) | null
+  userData: Record<string, unknown> | null
   userType: "passenger" | "driver" | null
   loading: boolean
   signOut: () => Promise<void>
@@ -18,8 +19,8 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<any | null>(null)
-  const [userData, setUserData] = useState<any | null>(null)
+  const [user, setUser] = useState<({ uid: string } & Record<string, unknown>) | null>(null)
+  const [userData, setUserData] = useState<Record<string, unknown> | null>(null)
   const [userType, setUserType] = useState<"passenger" | "driver" | null>(null)
   const [loading, setLoading] = useState(true)
   const [supabaseReady, setSupabaseReady] = useState(!!(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY))
@@ -33,8 +34,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     isLoadingUserData.current = true
+    // use the `source` param in a no-op to satisfy the linter when it's only used for diagnostics
+    void source
 
-    try {
+  try {
       let data = await getUserData(userId, "passenger")
       let type: "passenger" | "driver" = "passenger"
 
@@ -45,7 +48,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       setUserData(data)
       setUserType(type)
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("Error loading user data:", error)
     } finally {
       isLoadingUserData.current = false
@@ -66,7 +69,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     let mounted = true
 
     const initializeAuth = async () => {
-      try {
+  try {
         // INICIALIZA EL ESTADO DE AUTENTICACIÓN: VERIFICA LA DISPONIBILIDAD DE SUPABASE, CARGA LA SESIÓN ACTIVA SI EXISTE
         // Y CONFIGURA UN LISTENER PARA CAMBIOS EN EL ESTADO DE AUTENTICACIÓN.
         setSupabaseReady(!!(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY))
@@ -95,7 +98,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               setUserType(null)
               isLoadingUserData.current = false
             }
-          } catch (error) {
+          } catch (error: unknown) {
             console.error("Error handling supabase auth state change:", error)
           } finally {
             if (mounted) setLoading(false)
@@ -107,7 +110,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
 
         if (mounted) setLoading(false)
-      } catch (error) {
+      } catch (error: unknown) {
         console.error("Error initializing auth:", error)
         if (mounted) setLoading(false)
       }

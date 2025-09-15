@@ -98,19 +98,21 @@ export const registerUser = async (userData: Omit<UserData, "uid">, password: st
     }
 
     return { success: true, user }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Registration error:", error)
 
     let errorMessage = "Error al crear la cuenta. "
 
-    if (error?.code === "auth/email-already-in-use" || error?.message?.includes("duplicate")) {
+    const err = error as { code?: string; message?: string } | undefined
+
+    if (err?.code === "auth/email-already-in-use" || err?.message?.includes("duplicate")) {
       errorMessage = "Este correo electrónico ya está registrado."
-    } else if (error?.code === "auth/weak-password") {
+    } else if (err?.code === "auth/weak-password") {
       errorMessage = "La contraseña debe tener al menos 6 caracteres."
-    } else if (error?.code === "auth/invalid-email") {
+    } else if (err?.code === "auth/invalid-email") {
       errorMessage = "El correo electrónico no es válido."
     } else {
-      errorMessage += error.message
+      errorMessage += err?.message ?? String(error)
     }
 
     return { success: false, error: errorMessage }
@@ -138,23 +140,24 @@ export const loginUser = async (email: string, password: string) => {
     }
 
     return { success: true, user: data.user }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Login error:", error)
 
     let errorMessage = "Error al iniciar sesión. "
+    const err = error as { code?: string; message?: string } | undefined
 
-    if (error?.code === "auth/user-not-found" || error?.message?.toLowerCase().includes("not found")) {
+    if (err?.code === "auth/user-not-found" || err?.message?.toLowerCase().includes("not found")) {
       errorMessage = "No existe una cuenta con este correo electrónico."
-    } else if (error?.code === "auth/wrong-password" || error?.message?.toLowerCase().includes("invalid password")) {
+    } else if (err?.code === "auth/wrong-password" || err?.message?.toLowerCase().includes("invalid password")) {
       errorMessage = "Contraseña incorrecta."
-    } else if (error?.code === "auth/invalid-email") {
+    } else if (err?.code === "auth/invalid-email") {
       errorMessage = "El correo electrónico no es válido."
-    } else if (error?.code === "auth/too-many-requests") {
+    } else if (err?.code === "auth/too-many-requests") {
       errorMessage = "Demasiados intentos fallidos. Intenta más tarde."
-    } else if (error?.code === "auth/invalid-credential") {
+    } else if (err?.code === "auth/invalid-credential") {
       errorMessage = "Credenciales inválidas. Verifica tu correo y contraseña."
     } else {
-      errorMessage += error.message
+      errorMessage += err?.message ?? String(error)
     }
 
     return { success: false, error: errorMessage }
@@ -173,9 +176,9 @@ export const logoutUser = async () => {
     }
 
     return { success: true }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Logout error:", error)
-    return { success: false, error: error.message }
+    return { success: false, error: error instanceof Error ? error.message : String(error) }
   }
 }
 
@@ -196,7 +199,7 @@ export const getUserData = async (uid: string, userType: "passenger" | "driver")
     }
 
     return data || null
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Get user data error:", error)
     return null
   }

@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -61,7 +61,7 @@ interface UserStats {
 }
 
 function ProfileContent() {
-  const { user, userData, userType, refreshUserData, loading: authLoading } = useAuth()
+  const { user, userType, refreshUserData, loading: authLoading } = useAuth()
   const { toast } = useToast()
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [stats, setStats] = useState<UserStats | null>(null)
@@ -85,7 +85,7 @@ function ProfileContent() {
   const hasLoadedProfile = useRef(false)
   const isLoadingAll = useRef(false)
 
-  const loadUserProfile = async (showRetryToast = false) => {
+  const loadUserProfile = useCallback(async (showRetryToast = false) => {
     // Don't try to load if auth is still loading or no user
     if (authLoading || !user?.uid || !userType || !supabase) {
       return
@@ -154,16 +154,16 @@ function ProfileContent() {
     } finally {
       isLoadingProfile.current = false
     }
-  }
+  }, [authLoading, user?.uid, user?.email, userType, toast])
 
-  const loadUserStats = async () => {
+  const loadUserStats = useCallback(async () => {
     if (authLoading || !user?.uid || !userType || !supabase) {
       return
     }
 
     try {
       const column = userType === "driver" ? "driver_id" : "passenger_id"
-      const { data: rides, error } = await supabase
+      const { data: rides } = await supabase
         .from("rides")
         .select("*")
         .eq(column, user.uid)
@@ -212,13 +212,13 @@ function ProfileContent() {
           monthlyTrips,
         })
       }
-    } catch (error) {
-      console.error("Error loading stats:", error)
+    } catch (err) {
+      console.error("Error loading stats:", err)
     }
-  }
+  }, [authLoading, user?.uid, userType])
 
   // Combined load function to coordinate both loads
-  const loadAllData = async (showRetryToast = false) => {
+  const loadAllData = useCallback(async (showRetryToast = false) => {
     // Prevent duplicate calls to loadAllData
     if (isLoadingAll.current && !showRetryToast) {
       return
@@ -240,12 +240,12 @@ function ProfileContent() {
       setLoading(false)
       isLoadingAll.current = false
     }
-  }
+  }, [authLoading, user?.uid, userType, loadUserProfile, loadUserStats])
 
   // Initial load effect - only trigger when we have all required data
   useEffect(() => {
     loadAllData()
-  }, [user?.uid, userType, authLoading]) // Only depend on essential values
+  }, [loadAllData]) // loadAllData is memoized with useCallback
 
   const handleRetry = async () => {
     setRetryCount((prev) => prev + 1)

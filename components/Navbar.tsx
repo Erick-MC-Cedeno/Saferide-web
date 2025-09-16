@@ -52,12 +52,12 @@ export function Navbar() {
       await new Promise(resolve => setTimeout(resolve, 100))
 
       // NAVEGACIÓN CLIENTE A LA PÁGINA PRINCIPAL Y CIERRE DEL MENÚ MÓVIL
-      router.replace("/")
+      router.replace("/auth/login")
       setMobileMenuOpen(false)
     } catch (error) {
       console.error("Error al cerrar sesión:", error)
       // EN CASO DE ERROR, REDIRECCIONAR A LA RAÍZ COMO RECOVERY
-      router.replace("/")
+      router.replace("/auth/login")
     }
   }
 

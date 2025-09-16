@@ -5,6 +5,7 @@ import "./globals.css"
 import { AuthProvider } from "@/lib/auth-context"
 import { Navbar } from "@/components/Navbar"
 import { ErrorBoundary } from "@/components/ErrorBoundary"
+import { PWARegister } from '@/components/PWARegister'
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -34,11 +35,17 @@ export default function RootLayout({
 }) {
   return (
     <html lang="es">
+      <head>
+        <link rel="manifest" href="/manifest.json" />
+        <meta name="theme-color" content="#0ea5a4" />
+        <link rel="apple-touch-icon" href="/placeholder-logo.png" />
+      </head>
   <body suppressHydrationWarning className={inter.className}>
         <ErrorBoundary>
           <AuthProvider>
             <Navbar />
             <main>{children}</main>
+            <PWARegister />
           </AuthProvider>
         </ErrorBoundary>
       </body>

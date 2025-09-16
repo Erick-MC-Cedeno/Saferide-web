@@ -34,11 +34,24 @@ self.addEventListener('fetch', (event) => {
   event.respondWith(
     fetch(event.request)
       .then((response) => {
-        // Put a copy in cache
-        const responseClone = response.clone();
-        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseClone));
-        return response;
-      })
+          // Put a copy in cache only for http(s) requests and successful responses
+          try {
+            const responseClone = response.clone();
+            const reqUrl = new URL(event.request.url);
+            if ((reqUrl.protocol === 'http:' || reqUrl.protocol === 'https:') && response && response.ok) {
+              caches.open(CACHE_NAME).then((cache) => {
+                try {
+                  cache.put(event.request, responseClone);
+                } catch (e) {
+                  // ignore errors during cache.put (e.g., unsupported schemes)
+                }
+              });
+            }
+          } catch (err) {
+            // ignore URL parsing errors
+          }
+          return response;
+        })
       .catch(() => caches.match(event.request).then((cached) => cached || caches.match(OFFLINE_URL)))
   );
 });

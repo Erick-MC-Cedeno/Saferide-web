@@ -6,6 +6,7 @@ import { AuthProvider } from "@/lib/auth-context"
 import { Navbar } from "@/components/Navbar"
 import { ErrorBoundary } from "@/components/ErrorBoundary"
 import { PWARegister } from '@/components/PWARegister'
+import { PWAInstallPrompt } from '@/components/PWAInstallPrompt'
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -42,10 +43,12 @@ export default function RootLayout({
       </head>
   <body suppressHydrationWarning className={inter.className}>
         <ErrorBoundary>
+          <PWARegister />
+            <PWAInstallPrompt />
           <AuthProvider>
             <Navbar />
             <main>{children}</main>
-            <PWARegister />
+           
           </AuthProvider>
         </ErrorBoundary>
       </body>

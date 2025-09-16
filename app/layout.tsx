@@ -38,7 +38,7 @@ export default function RootLayout({
     <html lang="es">
       <head>
         <link rel="manifest" href="/manifest.json" />
-        <meta name="theme-color" content="#0ea5a4" />
+        <meta name="theme-color" content="#1d58fc" />
         <link rel="apple-touch-icon" href="/placeholder-logo.png" />
       </head>
   <body suppressHydrationWarning className={inter.className}>

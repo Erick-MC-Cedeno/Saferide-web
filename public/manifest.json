@@ -2,7 +2,7 @@
   "name": "SafeRide",
   "short_name": "SafeRide",
   "description": "La plataforma de transporte más segura. Viajes seguros, conductores verificados.",
-  "start_url": "/",
+  "start_url": "/auth/login",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#0ea5a4",

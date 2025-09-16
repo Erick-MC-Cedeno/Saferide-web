@@ -175,7 +175,7 @@ export function PWAInstallPrompt() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="text-sm font-semibold text-slate-900 dark:text-slate-100 truncate">Instalar Saferide</div>
-                  <div className="text-xs text-slate-600 dark:text-slate-300 truncate">Añade la app a la pantalla principal para una experiencia optimizada.</div>
+                  <div className="text-xs text-slate-600 dark:text-slate-300 truncate">Añade la app a la pantalla principal</div>
                 </div>
               </div>
 

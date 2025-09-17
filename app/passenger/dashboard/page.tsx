@@ -707,7 +707,6 @@ function PassengerDashboardContent() {
   }
 
 
-  // (resetRideForm removed — handled inline where needed)
 
 
   // CALCULATE ESTIMATED FARE

@@ -1066,8 +1066,8 @@ function PassengerDashboardContent() {
             )}
 
             {/* Enhanced Recent Trips - Redesigned */}
-            <Card className="border-0 shadow-xl bg-white/90 backdrop-blur-sm max-w-full">
-              <CardHeader className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-2">
+            <Card className="border-0 shadow-xl bg-white/90 backdrop-blur-sm max-w-full rounded-lg overflow-hidden">
+              <CardHeader className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-2 rounded-t-lg">
                 <CardTitle className="flex items-center space-x-2 text-base">
                   <div className="bg-white/20 p-1.5 rounded-lg">
                     <Clock className="h-4 w-4" />

@@ -39,7 +39,8 @@ export default function RootLayout({
       <head>
         <link rel="manifest" href="/manifest.json" />
         <meta name="theme-color" content="#1d58fc" />
-        <link rel="apple-touch-icon" href="/placeholder-logo.png" />
+        <link rel="icon" href="/saferide-icon.svg" />
+        <link rel="apple-touch-icon" href="/saferide-icon.svg" />
       </head>
   <body suppressHydrationWarning className={inter.className}>
         <ErrorBoundary>

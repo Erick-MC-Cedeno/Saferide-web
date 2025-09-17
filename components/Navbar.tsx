@@ -1,6 +1,8 @@
 "use client"
+import React from 'react'
 import { useState, useEffect, useRef } from "react"
 import Link from "next/link"
+import Image from 'next/image'
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -21,15 +23,13 @@ export function Navbar() {
   const router = useRouter()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [profileImage, setProfileImage] = useState<string | null>(null)
-  const hasInitialLoad = useRef(false)
+  const hasInitialLoad = useRef<boolean>(false)
 
   // ACTUALIZA LA IMAGEN DE PERFIL CUANDO CAMBIAN LOS DATOS DEL USUARIO
   useEffect(() => {
-    if (userData?.profile_image) {
-      setProfileImage(userData.profile_image)
-    } else {
-      setProfileImage(null)
-    }
+    const ud = userData as Record<string, any> | null
+    const img = ud && typeof ud.profile_image === 'string' ? ud.profile_image : null
+    setProfileImage(img)
   }, [userData])
 
   // REFRESCA LOS DATOS DEL USUARIO SOLO EN LA CARGA INICIAL SI HAY USUARIO PERO NO HAY userData
@@ -62,16 +62,30 @@ export function Navbar() {
   }
 
   const getUserInitials = () => {
-    if (userData?.name) {
-      return userData.name
+    const ud = userData as Record<string, any> | null
+    const name = ud?.name
+    if (typeof name === 'string' && name.length > 0) {
+      return name
         .split(" ")
         .map((n: string) => n[0])
         .join("")
         .toUpperCase()
         .slice(0, 2)
     }
-    return user?.email?.[0].toUpperCase() || "U"
+    const email = (user as Record<string, any> | null)?.email
+    const emailFirst = typeof email === 'string' && email.length > 0 ? email[0].toUpperCase() : 'U'
+    return emailFirst || 'U'
   }
+
+  // Compute safe display values for JSX (avoid passing unknown to ReactNode)
+  const displayName = (() => {
+    const ud = userData as Record<string, any> | null
+    return typeof ud?.name === 'string' ? ud!.name : 'Usuario'
+  })()
+  const userEmail = (() => {
+    const u = user as Record<string, any> | null
+    return typeof u?.email === 'string' ? u!.email : ''
+  })()
 
   const navigation = [
     { name: "Inicio", href: "/" },
@@ -87,13 +101,13 @@ export function Navbar() {
           {/* LOGOTIPO */}
           <Link href="/" className="flex items-center space-x-3">
             <div className="bg-gradient-to-r from-blue-600 to-blue-700 p-2 rounded-lg">
-              <Shield className="h-6 w-6 text-white" />
+              <Image src="/saferide-icon.svg" alt="SafeRide" width={27} height={24} className="object-contain" />
             </div>
             <div>
               <span className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent">
                 SafeRide
               </span>
-              <div className="text-xs text-gray-500 -mt-1">Transporte Seguro</div>
+              
             </div>
           </Link>
 
@@ -141,8 +155,8 @@ export function Navbar() {
                   <DropdownMenuContent className="w-56" align="end" forceMount>
                     <DropdownMenuLabel className="font-normal">
                       <div className="flex flex-col space-y-1">
-                        <p className="text-sm font-medium leading-none">{userData?.name || "Usuario"}</p>
-                        <p className="text-xs leading-none text-muted-foreground">{user.email}</p>
+                        <p className="text-sm font-medium leading-none">{displayName}</p>
+                        <p className="text-xs leading-none text-muted-foreground">{userEmail}</p>
                       </div>
                     </DropdownMenuLabel>
                     <DropdownMenuSeparator />
@@ -240,8 +254,8 @@ export function Navbar() {
                           </AvatarFallback>
                         </Avatar>
                         <div className="flex flex-col space-y-1">
-                          <p className="text-sm font-medium leading-none">{userData?.name || "Usuario"}</p>
-                          <p className="text-xs leading-none text-muted-foreground">{user.email}</p>
+                          <p className="text-sm font-medium leading-none">{displayName}</p>
+                          <p className="text-xs leading-none text-muted-foreground">{userEmail}</p>
                         </div>
                       </div>
                       <Badge

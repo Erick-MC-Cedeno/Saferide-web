@@ -114,14 +114,27 @@ function ProfileContent() {
       }
 
       if (data) {
+        // sanitize unknown-typed data from Supabase
+        const d = data as Record<string, any>
+        const toNumber = (v: any) => {
+          if (typeof v === "number") return v
+          if (typeof v === "string" && v.trim() !== "" && !isNaN(Number(v))) return Number(v)
+          return 0
+        }
+
         const profileData: UserProfile = {
-          name: data.name || "Usuario",
-          email: data.email || user.email || "",
-          phone: data.phone || "",
-          rating: data.rating || 0,
-          totalTrips: data.total_trips || 0,
-          memberSince: data.created_at || "",
-          profileImage: data.profile_image || "",
+          name: typeof d.name === "string" ? d.name : "Usuario",
+          email:
+            typeof d.email === "string"
+              ? d.email
+              : typeof user?.email === "string"
+              ? user.email
+              : "",
+          phone: typeof d.phone === "string" ? d.phone : "",
+          rating: toNumber(d.rating),
+          totalTrips: toNumber(d.total_trips),
+          memberSince: typeof d.created_at === "string" ? d.created_at : "",
+          profileImage: typeof d.profile_image === "string" ? d.profile_image : "",
         }
         setProfile(profileData)
         setEditForm({
@@ -170,20 +183,31 @@ function ProfileContent() {
         .eq("status", "completed")
 
       if (rides) {
-        const totalSpent = rides.reduce((sum, ride) => sum + (ride.actual_fare || ride.estimated_fare || 0), 0)
-        const totalTrips = rides.length
+        const rr = rides as Array<Record<string, any>>
+        const toNumber = (v: any) => {
+          if (typeof v === "number") return v
+          if (typeof v === "string" && v.trim() !== "" && !isNaN(Number(v))) return Number(v)
+          return 0
+        }
+
+        const totalSpent = rr.reduce((sum, ride) => {
+          return sum + toNumber(ride.actual_fare ?? ride.estimated_fare ?? 0)
+        }, 0)
+
+        const totalTrips = rr.length
+
         const averageRating =
-          rides.reduce((sum, ride) => {
+          rr.reduce((sum, ride) => {
             const rating = userType === "driver" ? ride.driver_rating : ride.passenger_rating
-            return sum + (rating || 0)
+            return sum + toNumber(rating)
           }, 0) / (totalTrips || 1)
 
         // Calculate favorite destination
-        const destinations = rides.map((ride) => ride.destination_address)
+        const destinations = rr.map((ride) => String(ride.destination_address ?? "No disponible"))
         const destinationCounts = destinations.reduce((acc: Record<string, number>, dest) => {
           acc[dest] = (acc[dest] || 0) + 1
           return acc
-        }, {})
+        }, {} as Record<string, number>)
         const favoriteDestination = Object.keys(destinationCounts).reduce(
           (a, b) => (destinationCounts[a] > destinationCounts[b] ? a : b),
           "No disponible",
@@ -195,12 +219,16 @@ function ProfileContent() {
         // Calculate monthly trips
         const currentMonth = new Date().getMonth()
         const currentYear = new Date().getFullYear()
-        const monthlyTrips = rides.filter((ride) => {
-          const rideDate = new Date(ride.created_at)
-          return rideDate.getMonth() === currentMonth && rideDate.getFullYear() === currentYear
+        const monthlyTrips = rr.filter((ride) => {
+          const createdAt = ride.created_at
+          if (typeof createdAt === "string" || typeof createdAt === "number" || createdAt instanceof Date) {
+            const rideDate = new Date(createdAt as any)
+            return rideDate.getMonth() === currentMonth && rideDate.getFullYear() === currentYear
+          }
+          return false
         }).length
 
-        const completionRate = totalTrips > 0 ? (rides.length / totalTrips) * 100 : 100
+        const completionRate = totalTrips > 0 ? (rr.length / totalTrips) * 100 : 100
 
         setStats({
           totalTrips,

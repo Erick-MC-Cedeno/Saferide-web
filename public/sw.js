@@ -4,8 +4,8 @@ const OFFLINE_URL = '/offline.html';
 const PRECACHE_ASSETS = [
   '/',
   '/offline.html',
-  '/placeholder-logo.png',
-  '/placeholder.svg',
+  '/saferide-icon.svg',
+  // removed placeholder.svg - using saferide-icon.svg everywhere
 ];
 
 self.addEventListener('install', (event) => {

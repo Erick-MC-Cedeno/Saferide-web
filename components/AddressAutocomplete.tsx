@@ -11,6 +11,8 @@ interface AddressAutocompleteProps {
   value: string
   onChange: (value: string) => void
   suppressSuggestions?: boolean
+  id?: string
+  name?: string
 }
 
   interface Suggestion {
@@ -29,7 +31,7 @@ declare global {
   }
 }
 
-export function AddressAutocomplete({ placeholder, onAddressSelect, value, onChange, suppressSuggestions }: AddressAutocompleteProps) {
+export function AddressAutocomplete({ placeholder, onAddressSelect, value, onChange, suppressSuggestions, id, name }: AddressAutocompleteProps) {
   const [suggestions, setSuggestions] = useState<Suggestion[]>([])
   const [showSuggestions, setShowSuggestions] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
@@ -143,6 +145,8 @@ export function AddressAutocomplete({ placeholder, onAddressSelect, value, onCha
           placeholder={placeholder}
           value={value}
           onChange={(e) => onChange(e.target.value)}
+          id={id}
+          name={name}
           className="pl-10"
           onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
           onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}

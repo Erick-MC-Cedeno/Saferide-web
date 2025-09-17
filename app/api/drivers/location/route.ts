@@ -6,13 +6,26 @@ import { updateDriverLocation } from "@/lib/rides"
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { driverId, location } = body
+    const { driverId, location } = body as { driverId?: unknown; location?: unknown }
 
-    if (!driverId || !location || !Array.isArray(location) || location.length !== 2) {
+    if (typeof driverId !== "string") {
+      return NextResponse.json({ error: "Missing or invalid driverId" }, { status: 400 })
+    }
+
+    if (!location || !Array.isArray(location) || location.length !== 2) {
       return NextResponse.json({ error: "Missing required fields or invalid location" }, { status: 400 })
     }
 
-    const result = await updateDriverLocation(driverId, location)
+    // Convert and validate each coordinate to number
+    const lon = Number(location[0])
+    const lat = Number(location[1])
+    if (!isFinite(lon) || !isFinite(lat)) {
+      return NextResponse.json({ error: "Location values must be valid numbers" }, { status: 400 })
+    }
+
+    const locTuple: [number, number] = [lon, lat]
+
+    const result = await updateDriverLocation(driverId, locTuple)
 
     if (result.success) {
       return NextResponse.json({ success: true })

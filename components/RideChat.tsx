@@ -58,7 +58,8 @@ export function RideChat({ rideId, driverName, passengerName, onClose }: RideCha
       if (error) throw error
 
       if (mountedRef.current) {
-        setMessages(data || [])
+        // Supabase returns a loosely-typed array (unknown[]). Cast to Message[] after null check.
+        setMessages((data ?? []) as unknown as Message[])
       }
     } catch (err: unknown) {
       console.error("Error loading messages:", err)

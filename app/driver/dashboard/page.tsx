@@ -103,9 +103,13 @@ function DriverDashboardContent() {
       if (!supabase || !driverId) return
       try {
         // OBTENER DATOS DEL CONDUCTOR (SÓLO RATING; TOTAL_TRIPS SE CALCULA A PARTIR DE LOS VIAJES)
-        const { data: driverData } = await supabase.from("drivers").select("rating").eq("uid", driverId).single()
+        const { data: driverData } = await supabase
+          .from("drivers")
+          .select("rating")
+          .eq("uid", driverId)
+          .single()
 
-  // OBTENER TODOS LOS VIAJES COMPLETADOS DE ESTE CONDUCTOR (NO SOLO LOS RECIENTES)
+        // OBTENER TODOS LOS VIAJES COMPLETADOS DE ESTE CONDUCTOR (NO SOLO LOS RECIENTES)
         const { data: allCompletedRides } = await supabase
           .from("rides")
           .select("actual_fare, estimated_fare, completed_at")
@@ -113,35 +117,32 @@ function DriverDashboardContent() {
           .eq("status", "completed")
           .order("completed_at", { ascending: false })
 
-        if (allCompletedRides) {
+        const completed = (allCompletedRides ?? []) as unknown as RideRow[]
+
+        if (completed.length > 0) {
           const today = new Date().toDateString()
           const thisWeek = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
           const thisMonth = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
 
-          const todayRides = allCompletedRides.filter((ride) => new Date(ride.completed_at).toDateString() === today)
-          const weeklyRides = allCompletedRides.filter((ride) => new Date(ride.completed_at) >= thisWeek)
-          const monthlyRides = allCompletedRides.filter((ride) => new Date(ride.completed_at) >= thisMonth)
+          const todayRides = completed.filter((ride) => ride.completed_at && new Date(ride.completed_at).toDateString() === today)
+          const weeklyRides = completed.filter((ride) => ride.completed_at && new Date(ride.completed_at) >= thisWeek)
+          const monthlyRides = completed.filter((ride) => ride.completed_at && new Date(ride.completed_at) >= thisMonth)
 
           setDriverStats({
             todayTrips: todayRides.length,
-            todayEarnings: todayRides.reduce((sum, ride) => sum + (ride.actual_fare || ride.estimated_fare), 0),
-              todayHours: todayRides.length * 0.5, // ESTIMADO: 30 MIN POR VIAJE
-            weeklyEarnings: weeklyRides.reduce((sum, ride) => sum + (ride.actual_fare || ride.estimated_fare), 0),
-            monthlyEarnings: monthlyRides.reduce((sum, ride) => sum + (ride.actual_fare || ride.estimated_fare), 0),
-            totalTrips: allCompletedRides.length, // Calculate from actual completed rides
-            totalTrips: allCompletedRides.length, // CALCULADO A PARTIR DE LOS VIAJES COMPLETADOS
-          // ACTUALIZAR LA TABLA 'drivers' CON EL RECUENTO CORRECTO DE 'total_trips'
-          // NO SE ENCONTRARON VIAJES COMPLETADOS: INICIALIZAR ESTADÍSTICAS A CERO
-  // OBTENER VIAJES RECIENTES PARA MOSTRAR EN LA INTERFAZ
-            rating: driverData?.rating || 0,
+            todayEarnings: todayRides.reduce((sum, ride) => sum + Number(ride.actual_fare ?? ride.estimated_fare ?? 0), 0),
+            todayHours: todayRides.length * 0.5, // ESTIMADO: 30 MIN POR VIAJE
+            weeklyEarnings: weeklyRides.reduce((sum, ride) => sum + Number(ride.actual_fare ?? ride.estimated_fare ?? 0), 0),
+            monthlyEarnings: monthlyRides.reduce((sum, ride) => sum + Number(ride.actual_fare ?? ride.estimated_fare ?? 0), 0),
+            totalTrips: completed.length,
+            rating: (driverData as { rating?: number } | null)?.rating ?? 0,
           })
-
 
           // ACTUALIZAR LA TABLA 'drivers' CON EL RECUENTO CORRECTO DE 'total_trips'
           await supabase
             .from("drivers")
             .update({
-              total_trips: allCompletedRides.length,
+              total_trips: completed.length,
             })
             .eq("uid", driverId)
         } else {
@@ -153,11 +154,11 @@ function DriverDashboardContent() {
             weeklyEarnings: 0,
             monthlyEarnings: 0,
             totalTrips: 0,
-            rating: driverData?.rating || 0,
+            rating: (driverData as { rating?: number } | null)?.rating ?? 0,
           })
         }
 
-  // OBTENER VIAJES RECIENTES PARA MOSTRAR EN LA INTERFAZ
+        // OBTENER VIAJES RECIENTES PARA MOSTRAR EN LA INTERFAZ
         const { data: recent } = await supabase
           .from("rides")
           .select("*")
@@ -231,7 +232,8 @@ function DriverDashboardContent() {
     try {
   // OBTENER NOMBRE DEL CONDUCTOR PARA REGISTRAR EN LA ACCIÓN DE ACEPTAR
       const { data: driverData } = await supabase.from("drivers").select("name").eq("uid", driverId).single()
-      const result = await acceptRide(rideId, driverData?.name || "Conductor")
+      const driverName = (driverData as { name?: string } | null)?.name ?? "Conductor"
+      const result = await acceptRide(rideId, driverName)
       if (!result.success) {
         toast({
           title: "Error",
@@ -280,7 +282,11 @@ function DriverDashboardContent() {
   // ACTUALIZAR EL ESTADO DEL VIAJE: CAMBIOS DE ESTADO Y REFRESCO DE LA LISTA
   const handleStatusUpdate = async (rideId: string, status: string) => {
     try {
-      const result = await updateRideStatus(rideId, status)
+  const allowed = ["pending", "accepted", "in-progress", "completed", "cancelled"] as const
+  // Tipar allowed como RideRow['status'][] y castear status antes de usarlo
+  const allowedStatuses = allowed as ReadonlyArray<RideRow["status"]>
+  if (!allowedStatuses.includes(status as RideRow["status"])) throw new Error("Estado inválido")
+  const result = await updateRideStatus(rideId, status as RideRow["status"])
       if (!result.success) {
         toast({
           title: "Error",
@@ -295,9 +301,14 @@ function DriverDashboardContent() {
         await refreshRides()
   // SI EL USUARIO TENÍA UN VIAJE SELECCIONADO, ACTUALIZAR ESA SELECCIÓN CON LA VERSIÓN MÁS RECIENTE DESDE LA BD
         if (selectedActiveRide && selectedActiveRide.id === rideId) {
-          const { data: freshRide, error: rideErr } = await supabase.from("rides").select("*").eq("id", rideId).single()
+          const { data: freshRide, error: rideErr } = await supabase
+            .from("rides")
+            .select("*")
+            .eq("id", rideId)
+            .single()
           if (!rideErr && freshRide) {
-            setSelectedActiveRide(freshRide)
+            const typed = freshRide as unknown as RideRow
+            setSelectedActiveRide(typed)
           }
         }
       } catch (e) {
@@ -350,7 +361,7 @@ function DriverDashboardContent() {
           .not("driver_rating", "is", null)
 
         if (passengerRides && passengerRides.length > 0) {
-          const avgRating = passengerRides.reduce((sum, ride) => sum + (ride.driver_rating ?? 0), 0) / passengerRides.length
+          const avgRating = passengerRides.reduce((sum, ride) => sum + Number(ride.driver_rating ?? 0), 0) / passengerRides.length
           await supabase.from("passengers").update({ rating: avgRating }).eq("uid", completedRide.passenger_id)
         }
       }
@@ -1046,14 +1057,13 @@ function DriverDashboardContent() {
             <DialogTitle className="text-xl font-bold">Chat con Pasajero</DialogTitle>
           </DialogHeader>
           {activeRide && (
-            <RideChat
-              rideId={activeRide.id}
-              driverId={activeRide.driver_id}
-              driverName={activeRide.driver_name}
-              passengerId={activeRide.passenger_id}
-              passengerName={activeRide.passenger_name}
-              onClose={() => setShowChatDialog(false)}
-            />
+              <RideChat
+                rideId={activeRide.id}
+                driverName={activeRide.driver_name ?? ""
+                }
+                passengerName={activeRide.passenger_name}
+                onClose={() => setShowChatDialog(false)}
+              />
           )}
         </DialogContent>
       </Dialog>

@@ -1,35 +1,23 @@
 "use client"
 
 import React from 'react'
+import Image from 'next/image'
 
 // COMPONENTE DE INSTALACIÓN PWA
 // MUESTRA UN BANNER PARA SUGERIR LA INSTALACIÓN DE LA PWA.
 // - SOPORTA ANDROID (beforeinstallprompt) Y MUESTRA INSTRUCCIONES PARA IOS.
 // - DISEÑADO PARA SER RESPONSIVE Y OPTIMIZADO PARA DISPOSITIVOS MÓVILES.
 
-const STORAGE_KEY = 'pwa_install_rejected_v1'
-
-// FUNCIÓN AUXILIAR: DETERMINA SI EL DISPOSITIVO ES MÓVIL (INCLUYE IPADOS)
-function isMobileDevice() {
-  if (typeof navigator === 'undefined') return false
-  const ua = navigator.userAgent || ''
-  // LOS NAVEGADORES MODERNOS PUEDEN EXPONER userAgentData.mobile (CHROMIUM)
-  const uaDataMobile = (navigator as any).userAgentData && (navigator as any).userAgentData.mobile
-  // DETECCIÓN BÁSICA DE MÓVILES: TELÉFONOS, TABLETS E INCLUIR ANDROID
-  // DETECTAR IPADOS QUE REPORTA MacIntel PERO TIENE PUNTOS TÁCTILES
-  const platform = (navigator as any).userAgentData?.platform || navigator.platform || ''
-  const isIpadOs = platform === 'MacIntel' && (navigator as any).maxTouchPoints > 1
-  return Boolean(
-    uaDataMobile ||
-      /Mobi|Android|iPhone|iPad|iPod|Silk|Mobile|Tablet/i.test(ua) ||
-      /Android/i.test(platform) ||
-      isIpadOs
-  )
+// Definir el tipo para el evento beforeinstallprompt
+type BeforeInstallPromptEvent = Event & {
+  prompt?: () => void
+  userChoice?: Promise<{ outcome: 'accepted' | 'dismissed' }>
+  preventDefault?: () => void
 }
 
 export function PWAInstallPrompt() {
   // ESTADOS LOCALES
-  const [deferredPrompt, setDeferredPrompt] = React.useState<any>(null) // EVENTO beforeinstallprompt ALMACENADO
+  const [deferredPrompt, setDeferredPrompt] = React.useState<BeforeInstallPromptEvent | null>(null) // EVENTO beforeinstallprompt ALMACENADO
   const [visible, setVisible] = React.useState(false) // SI EL BANNER ESTÁ VISIBLE
   const [isIos, setIsIos] = React.useState(false) // FLAG: SE DETECTÓ iOS / iPadOS
   const [isAndroid, setIsAndroid] = React.useState(false) // FLAG: SE DETECTÓ ANDROID
@@ -43,19 +31,20 @@ export function PWAInstallPrompt() {
     // UTILIZA userAgent, userAgentData.platform Y navigator.platform PARA DETERMINAR IOS/ANDROID/DESKTOP
     const detectPlatform = () => {
       const ua = navigator.userAgent || ''
-      const uaData = (navigator as any).userAgentData || {}
+      const uaData = (navigator as unknown as { userAgentData?: { platform?: string; mobile?: boolean } }).userAgentData || {}
       const platform = uaData.platform || navigator.platform || ''
 
       // SUBBLOQUE: DETECCIÓN iOS / IPADOS
       const isiOSUA = /iPhone|iPad|iPod/i.test(ua)
-      const isiPadOS = platform === 'MacIntel' && (navigator as any).maxTouchPoints > 1
+      const maxTouchPoints = (navigator as unknown as { maxTouchPoints?: number }).maxTouchPoints ?? 0
+      const isiPadOS = platform === 'MacIntel' && maxTouchPoints > 1
       const isiOS = isiOSUA || isiPadOS || /iPad|iPhone|iPod/i.test(platform)
 
       // SUBBLOQUE: DETECCIÓN ANDROID
       const isAndroid = /Android/i.test(ua) || /Android/i.test(platform) || (uaData.platform && /Android/i.test(uaData.platform))
 
       // SUBBLOQUE: HEURÍSTICA MÓVIL GENERAL (CASO GENÉRICO)
-      const isMobileGeneric = /Mobi|Mobile|Tablet|Silk/i.test(ua) || (navigator as any).maxTouchPoints > 0 && (isiOS || isAndroid)
+      const isMobileGeneric = /Mobi|Mobile|Tablet|Silk/i.test(ua) || maxTouchPoints > 0 && (isiOS || isAndroid)
 
       // DETERMINAR SI ES DESKTOP (NO IOS, NO ANDROID, NO MÓVIL GENÉRICO)
       const isDesktop = !isiOS && !isAndroid && !isMobileGeneric
@@ -72,17 +61,38 @@ export function PWAInstallPrompt() {
     // BLOQUE: MANEJO DEL EVENTO `beforeinstallprompt`
     // CAPTURAMOS EL EVENTO, LLAMAMOS A preventDefault() Y LO ALMACENAMOS EN `deferredPrompt`
     // ASÍ EL BOTÓN 'INSTALAR' PUEDE LLAMAR A prompt() EN RESPUESTA AL GESTO DEL USUARIO.
-    const onBeforeInstallPrompt = (e: any) => {
+    const onBeforeInstallPrompt = (e: BeforeInstallPromptEvent) => {
+      // Log for debug if requested
+      if ((typeof window !== 'undefined') && new URLSearchParams(window.location.search).get('pwa_debug') === '1') {
+        console.info('PWAInstallPrompt: beforeinstallprompt recibido')
+      }
+
+      // Only call preventDefault when we know we want to show a custom install flow (Android is primary target).
+      // Calling preventDefault() and then never calling prompt() can trigger browser warnings. By restricting
+      // preventDefault() to Android we reduce false-positive warnings while still allowing a custom flow there.
       try {
-        e.preventDefault()
-      } catch (err) {
+        if (isAndroid && typeof e.preventDefault === 'function') {
+          e.preventDefault()
+        }
+      } catch {
         // IGNORAR SI preventDefault NO ESTÁ DISPONIBLE
       }
-      if ((typeof window !== 'undefined') && new URLSearchParams(window.location.search).get('pwa_debug') === '1') {
-        console.info('PWAInstallPrompt: beforeinstallprompt recibido; SE ALMACENA PARA USO POSTERIOR')
-      }
+
       setDeferredPrompt(e)
       setVisible(true)
+
+      // If the stored event is not used within a reasonable timeframe, clear it to avoid keeping a prevented
+      // event around (which may surface warnings in devtools). This also avoids holding stale references.
+      try {
+        const CLEAR_MS = 5 * 60 * 1000 // 5 minutes
+        const timer = window.setTimeout(() => {
+          setDeferredPrompt((prev) => (prev === e ? null : prev))
+        }, CLEAR_MS)
+        // store timer id on the event object if available (best-effort) so cleanup can cancel it if needed
+        ;(e as any).__clearTimer = timer
+      } catch {
+        // ignore timer setup errors
+      }
     }
 
     window.addEventListener('beforeinstallprompt', onBeforeInstallPrompt as EventListener)
@@ -120,7 +130,7 @@ export function PWAInstallPrompt() {
     try {
       const params = new URLSearchParams(window.location.search)
       if (params.get('pwa_debug') === '1') setShowDebug(true)
-    } catch (e) {
+    } catch {
       // IGNORAR ERRORES AL PARSEAR LA URL
     }
   }, [])
@@ -128,10 +138,13 @@ export function PWAInstallPrompt() {
   // HANDLER: AL HACER CLICK EN EL BOTÓN 'INSTALAR' O 'CÓMO INSTALAR'
   // SI TENEMOS `deferredPrompt` LLAMAMOS A prompt(), SI NO MOSTRAMOS INSTRUCCIONES SEGÚN PLATAFORMA
   const handleInstallClick = async () => {
-    if (deferredPrompt && (deferredPrompt as any).prompt) {
+    if (deferredPrompt && deferredPrompt.prompt) {
       try {
-        ;(deferredPrompt as any).prompt()
-        const choiceResult = await (deferredPrompt as any).userChoice
+        // If a timer was set to clear this event, cancel it now
+        try { if ((deferredPrompt as any).__clearTimer) window.clearTimeout((deferredPrompt as any).__clearTimer) } catch {}
+
+        deferredPrompt.prompt()
+        const choiceResult = await deferredPrompt.userChoice
         // EL RESULTADO userChoice PUEDE SER 'accepted' O 'dismissed'
         if (choiceResult && choiceResult.outcome === 'accepted') {
           setVisible(false)
@@ -142,6 +155,7 @@ export function PWAInstallPrompt() {
       } catch (err) {
         console.error('PWA install prompt error', err)
       } finally {
+        try { if ((deferredPrompt as any).__clearTimer) window.clearTimeout((deferredPrompt as any).__clearTimer) } catch {}
         setDeferredPrompt(null)
       }
     } else if (isIos) {
@@ -171,7 +185,7 @@ export function PWAInstallPrompt() {
           <div className="rounded-xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-lg border border-slate-200 dark:border-slate-800 shadow-lg px-4 py-3 flex flex-col sm:flex-row items-start sm:items-center gap-4 justify-between">
               <div className="flex items-center gap-3 w-full sm:w-auto">
                 <div className="flex-shrink-0">
-                  <img src="/placeholder-logo.png" alt="app" className="h-12 w-12 rounded-lg shadow-sm" />
+                  <Image src="/placeholder-logo.png" alt="app" width={48} height={48} className="rounded-lg shadow-sm" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="text-sm font-semibold text-slate-900 dark:text-slate-100 truncate">Instalar Saferide</div>
@@ -185,17 +199,17 @@ export function PWAInstallPrompt() {
                   {isIos ? (
                     <div>
                       <div className="font-medium">Instalación en iOS</div>
-                      <div className="mt-1">1. Pulsa el botón Compartir (ícono ⬆︎). 2. Selecciona "Añadir a pantalla de inicio". 3. Confirma.</div>
+                      <div className="mt-1">1. Pulsa el botón Compartir (ícono ⬆︎). 2. Selecciona &quot;Añadir a pantalla de inicio&quot;. 3. Confirma.</div>
                     </div>
                   ) : isAndroid ? (
                     <div>
                       <div className="font-medium">Instalación en Android</div>
-                      <div className="mt-1">1. Abre el menú del navegador (⋮) en la esquina superior. 2. Selecciona "Añadir a la pantalla de inicio" o "Instalar app". 3. Sigue las indicaciones.</div>
+                      <div className="mt-1">1. Abre el menú del navegador (⋮) en la esquina superior. 2. Selecciona &quot;Añadir a la pantalla de inicio&quot; o &quot;Instalar app&quot;. 3. Sigue las indicaciones.</div>
                     </div>
                   ) : (
                     <div>
                       <div className="font-medium">Instalación en Desktop</div>
-                      <div className="mt-1">En navegadores compatibles (Chrome/Edge) puedes encontrar "Instalar" en el menú de la barra de direcciones o en las opciones del navegador.</div>
+                      <div className="mt-1">En navegadores compatibles (Chrome/Edge) puedes encontrar &quot;Instalar&quot; en el menú de la barra de direcciones o en las opciones del navegador.</div>
                     </div>
                   )}
                   <div className="mt-3 flex gap-2 flex-col sm:flex-row">
@@ -205,13 +219,13 @@ export function PWAInstallPrompt() {
                 </div>
               ) : (
                 <>
-                  {isIos ? (
+                      {isIos ? (
                     <button onClick={handleInstallClick} className="inline-flex items-center gap-2 justify-center px-4 py-3 rounded-md text-sm font-semibold text-white bg-gradient-to-r from-cyan-500 to-emerald-400 shadow-md hover:from-cyan-600 hover:to-emerald-500 w-full sm:w-auto">
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 3v12" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><path d="M5 12l7-7 7 7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
                       Cómo instalar
                     </button>
-                  ) : (
-                    (deferredPrompt && (deferredPrompt as any).prompt) ? (
+                      ) : (
+                    (deferredPrompt && deferredPrompt?.prompt) ? (
                       <button onClick={handleInstallClick} className="inline-flex items-center gap-2 justify-center px-4 py-3 rounded-md text-sm font-semibold text-white bg-gradient-to-r from-cyan-500 to-emerald-400 shadow-md hover:from-cyan-600 hover:to-emerald-500 w-full sm:w-auto">
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 3v12" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><path d="M5 12l7-7 7 7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
                         Instalar
@@ -222,7 +236,7 @@ export function PWAInstallPrompt() {
                         Cómo instalar
                       </button>
                     )
-                  )}
+                      )}
                   <button onClick={handleDismiss} className="px-3 py-3 rounded-md text-sm font-medium text-slate-700 dark:text-slate-300 border border-slate-100 dark:border-slate-800 w-full sm:w-auto">Cerrar</button>
                 </>
               )}

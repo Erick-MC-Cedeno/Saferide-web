@@ -51,9 +51,12 @@ export function useRealTimeRides(driverId?: string, passengerId?: string) {
         const { data, error } = await q.order("requested_at", { ascending: false })
         if (error) throw error
 
-        ridesCache.set(cacheKey, { data: data ?? [], timestamp: Date.now() })
+        // supabase returns loosely-typed data (unknown[]). Cast explicitly to Ride[]
+        const ridesData = (data ?? []) as unknown as Ride[]
+
+        ridesCache.set(cacheKey, { data: ridesData, timestamp: Date.now() })
         if (mountedRef.current) {
-          setRides(data ?? [])
+          setRides(ridesData)
           setLastUpdate(new Date())
         }
       } catch (e: unknown) {

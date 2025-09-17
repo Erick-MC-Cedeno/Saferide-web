@@ -120,7 +120,7 @@ function PassengerDashboardContent() {
           .select("total_trips, rating")
           .eq("uid", user.uid)
           .single()
-        const passengerInfo: { total_trips?: number; rating?: number } | null = passengerRow ?? null
+        const passengerInfo = (passengerRow ?? null) as unknown as { total_trips?: number; rating?: number } | null
 
         // GET COMPLETED RIDES FOR SPENDING CALCULATION
         const { data: completedRides } = await supabase
@@ -130,7 +130,7 @@ function PassengerDashboardContent() {
           .eq("status", "completed")
           .order("completed_at", { ascending: false })
 
-        if (completedRides) {
+  if (completedRides) {
           type RideRow = {
             actual_fare?: number | string | null
             estimated_fare?: number | string | null
@@ -144,7 +144,7 @@ function PassengerDashboardContent() {
             destination_address?: string | null
           }
 
-          const completed = completedRides as RideRow[]
+          const completed = (completedRides ?? []) as unknown as RideRow[]
           const totalSpent = completed.reduce((sum, ride) => sum + Number(ride.actual_fare ?? ride.estimated_fare ?? 0), 0)
           // Calculate average rating from driver ratings
           const ratedRides = completed.filter((ride) => ride.driver_rating != null)
@@ -429,7 +429,7 @@ function PassengerDashboardContent() {
     try {
       const rideData: NewRidePayload = {
         passenger_id: user.uid,
-        passenger_name: userData.name,
+  passenger_name: String(((userData as { name?: string } | null) ?? {})?.name ?? user?.email ?? ""),
         pickup_address: pickup,
         pickup_coordinates: [pickupCoords.lng, pickupCoords.lat],
         destination_address: destination,
@@ -807,17 +807,8 @@ function PassengerDashboardContent() {
               <CardContent className="p-0">
                 <MapComponent
                   userType="passenger"
-                  pickupLocation={pickupCoords}
-                  destinationLocation={destinationCoords}
-                  onLocationSelect={({ lat, lng, address }) => {
-                    if (!pickupCoords) {
-                      setPickupCoords({ lat, lng })
-                      setPickup(address)
-                    } else if (!destinationCoords) {
-                      setDestinationCoords({ lat, lng })
-                      setDestination(address)
-                    }
-                  }}
+                  pickupLocation={pickupCoords ?? undefined}
+                  destinationLocation={destinationCoords ?? undefined}
                   driverLocations={driversForMap}
                   onMapReady={(userLoc) => {
                     // auto-load nearby drivers when we have a user location
@@ -969,7 +960,7 @@ function PassengerDashboardContent() {
                   <CardContent className="p-3 space-y-3">
                     <div className="space-y-3">
                       <div className="flex items-center justify-between">
-                        <Label htmlFor="pickup" className="text-sm font-semibold text-gray-700">
+                        <Label htmlFor="pickup-main" className="text-sm font-semibold text-gray-700">
                           Punto de Recogida
                         </Label>
                         <button
@@ -986,6 +977,8 @@ function PassengerDashboardContent() {
                         placeholder="Tu ubicación actual"
                         value={pickup}
                         onChange={setPickup}
+                        id="pickup-main"
+                        name="pickup-main"
                         onAddressSelect={(address, coords) => {
                           setPickup(address)
                           setPickupCoords(coords)
@@ -994,13 +987,15 @@ function PassengerDashboardContent() {
                       />
                     </div>
                     <div className="space-y-3">
-                      <Label htmlFor="destination" className="text-sm font-semibold text-gray-700">
+                      <Label htmlFor="destination-main" className="text-sm font-semibold text-gray-700">
                         Destino
                       </Label>
                       <AddressAutocomplete
                         placeholder="¿A dónde vas?"
                         value={destination}
                         onChange={setDestination}
+                        id="destination-main"
+                        name="destination-main"
                         onAddressSelect={(address, coords) => {
                           setDestination(address)
                           setDestinationCoords(coords)
@@ -1051,10 +1046,10 @@ function PassengerDashboardContent() {
                       className="w-full h-14 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-xl font-bold text-lg"
                       onClick={handleRequestRide}
                       disabled={
-                        !pickup || !destination || !pickupCoords || !destinationCoords || rideStatus === "searching"
+                        !pickup || !destination || !pickupCoords || !destinationCoords || (rideStatus as string) === "searching"
                       }
                     >
-                      {rideStatus === "searching" ? (
+                      {(rideStatus as string) === "searching" ? (
                         <>
                           <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-3"></div>
                           Buscando conductor...
@@ -1197,7 +1192,7 @@ function PassengerDashboardContent() {
                 <CardContent className="p-3 space-y-3">
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
-                      <Label htmlFor="pickup" className="text-sm font-semibold text-gray-700">
+                      <Label htmlFor="pickup-dialog" className="text-sm font-semibold text-gray-700">
                         Punto de Recogida
                       </Label>
                       <button
@@ -1210,10 +1205,12 @@ function PassengerDashboardContent() {
                         <span>Mi ubicación</span>
                       </button>
                     </div>
-                    <AddressAutocomplete
+                      <AddressAutocomplete
                       placeholder="Tu ubicación actual"
                       value={pickup}
                       onChange={setPickup}
+                        id="pickup-dialog"
+                        name="pickup-dialog"
                       onAddressSelect={(address, coords) => {
                         setPickup(address)
                         setPickupCoords(coords)
@@ -1221,13 +1218,15 @@ function PassengerDashboardContent() {
                     />
                   </div>
                   <div className="space-y-3">
-                    <Label htmlFor="destination" className="text-sm font-semibold text-gray-700">
+                    <Label htmlFor="destination-dialog" className="text-sm font-semibold text-gray-700">
                       Destino
                     </Label>
                     <AddressAutocomplete
                       placeholder="¿A dónde vas?"
                       value={destination}
                       onChange={setDestination}
+                      id="destination-dialog"
+                      name="destination-dialog"
                       onAddressSelect={(address, coords) => {
                         setDestination(address)
                         setDestinationCoords(coords)
@@ -1279,10 +1278,10 @@ function PassengerDashboardContent() {
                     className="w-full h-14 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-xl font-bold text-lg"
                     onClick={handleRequestRide}
                     disabled={
-                      !pickup || !destination || !pickupCoords || !destinationCoords || rideStatus === "searching"
+                      !pickup || !destination || !pickupCoords || !destinationCoords || (rideStatus as string) === "searching"
                     }
                   >
-                      {rideStatus === "searching" ? (
+                      {(rideStatus as string) === "searching" ? (
                       <>
                         <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-3"></div>
                         Buscando conductor...
@@ -1398,10 +1397,8 @@ function PassengerDashboardContent() {
           {currentRide && currentRide.driver_id && (
             <RideChat
               rideId={currentRide.id}
-              driverId={currentRide.driver_id}
-              driverName={currentRide.driver_name || "Conductor"}
-              passengerId={currentRide.passenger_id}
-              passengerName={currentRide.passenger_name}
+              driverName={String(currentRide.driver_name ?? "Conductor")}
+              passengerName={String(currentRide.passenger_name ?? "")}
               onClose={() => setShowChatDialog(false)}
             />
           )}

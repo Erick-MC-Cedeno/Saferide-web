@@ -112,13 +112,68 @@ function SettingsContent() {
       setInitialLoading(false)
       return
     }
+    // Read localStorage first so UI reflects any explicit user override immediately
+    let localOverride: boolean | null = null
+    try {
+      const local = localStorage.getItem("saferide_sound_enabled")
+      if (local !== null) {
+        const parsed = JSON.parse(local)
+        localOverride = Boolean(parsed)
+        // apply a quick optimistic state so the UI doesn't flicker
+        setSettings((prev) => ({
+          ...prev,
+          notifications: {
+            ...prev.notifications,
+            push: Boolean(parsed),
+          },
+          preferences: {
+            ...prev.preferences,
+            soundEnabled: Boolean(parsed),
+          },
+        }))
+      }
+    } catch (e) {
+      console.warn("Could not read saferide_sound_enabled from localStorage before load:", e)
+    }
 
     try {
       const { data, error } = await supabase.from("user_settings").select("settings").eq("uid", user.uid).single()
 
       if (data?.settings) {
         const serverSettings = (data.settings ?? {}) as Partial<UserSettings>
-        setSettings({ ...defaultSettings, ...serverSettings })
+        const merged = { ...defaultSettings, ...serverSettings }
+
+        // If a localStorage preference exists, prefer it and do not overwrite it.
+        try {
+          const local = localOverride !== null ? localOverride : (() => {
+            const v = localStorage.getItem("saferide_sound_enabled")
+            return v !== null ? JSON.parse(v) : null
+          })()
+            if (local !== null) {
+            // mirror local value into merged settings so UI reflects it and server won't overwrite
+            merged.notifications = {
+              ...merged.notifications,
+              push: Boolean(local),
+            }
+            merged.preferences = {
+              ...merged.preferences,
+              soundEnabled: Boolean(local),
+            }
+          
+          } else {
+            // no local override -> initialize localStorage from server value
+            const pushVal = Boolean(merged.notifications?.push)
+            try {
+              localStorage.setItem("saferide_sound_enabled", JSON.stringify(pushVal))
+            } catch (e) {
+              console.warn("Could not initialize saferide_sound_enabled in localStorage:", e)
+            }
+          }
+        } catch (e) {
+          console.warn("Could not read/write saferide_sound_enabled in localStorage on load:", e)
+        }
+
+        setSettings(merged)
       } else if (error && error.code === "PGRST116") {
         // No settings found, create default ones
         await createDefaultSettings()
@@ -178,13 +233,64 @@ function SettingsContent() {
   }
 
   const updateNotificationSetting = (key: keyof UserSettings["notifications"], value: boolean) => {
-    setSettings((prev) => ({
-      ...prev,
-      notifications: {
-        ...prev.notifications,
-        [key]: value,
-      },
-    }))
+    setSettings((prev) => {
+      const next = {
+        ...prev,
+        notifications: {
+          ...prev.notifications,
+          [key]: value,
+        },
+      }
+      // If push notifications toggle changed, use it to control sound as requested
+      if (key === "push") {
+        // Attempt to unlock audio via user gesture and preload the tone
+        try {
+          const AudioCtx = (window as any).AudioContext || (window as any).webkitAudioContext
+          if (AudioCtx) {
+            try {
+              const ctx = new AudioCtx()
+              if (typeof ctx.resume === 'function') ctx.resume().catch(() => {})
+              try {
+                const buffer = ctx.createBuffer(1, 1, 22050)
+                const src = ctx.createBufferSource()
+                src.buffer = buffer
+                src.connect(ctx.destination)
+                src.start(0)
+                src.stop(0)
+              } catch (e) {}
+            } catch (e) {}
+          }
+          // fetch and attempt a short play of the tone to ensure permission
+          ;(async () => {
+            try {
+              const res = await fetch('/api/sounds/saferidetone')
+              const j = await res.json()
+              if (j?.base64) {
+                const audio = new Audio(`data:audio/mpeg;base64,${j.base64}`)
+                audio.preload = 'auto'
+                audio.play().catch(() => {})
+              }
+            } catch (e) {
+              // ignore
+            }
+          })()
+        } catch (e) {
+          console.warn('Audio unlock attempt failed on settings toggle:', e)
+        }
+
+        try {
+          localStorage.setItem("saferide_sound_enabled", JSON.stringify(Boolean(value)))
+        } catch (e) {
+          console.warn("Could not write saferide_sound_enabled to localStorage:", e)
+        }
+        // Mirror the push value into preferences.soundEnabled for consistency
+        next.preferences = {
+          ...next.preferences,
+          soundEnabled: Boolean(value),
+        }
+      }
+      return next
+    })
   }
 
   const updatePrivacySetting = (key: keyof UserSettings["privacy"], value: boolean) => {

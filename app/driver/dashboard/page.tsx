@@ -96,6 +96,97 @@ function DriverDashboardContent() {
   // - EN CASO CONTRARIO, NO MOSTRAR NINGUNO HASTA QUE SE SELECCIONE
   const activeRide = selectedActiveRide ?? (activeRides.length === 1 ? activeRides[0] : null)
 
+  // ---- Sound notification state ----
+  const prevPendingRef = useRef<number>(0)
+  const audioRef = useRef<HTMLAudioElement | null>(null)
+  const [soundEnabled, setSoundEnabled] = useState<boolean | null>(null)
+
+  // Load user settings (soundEnabled) from user_settings table
+  useEffect(() => {
+    let mounted = true
+    const loadSettings = async () => {
+      if (!user?.uid || !supabase) return
+      try {
+        const { data } = await supabase.from("user_settings").select("settings").eq("uid", user.uid).single()
+        const d: any = data
+        const s = d?.settings
+        // prefer localStorage if available (mirrors profile toggle)
+        let enabled = s?.preferences?.soundEnabled ?? true
+        try {
+          const local = localStorage.getItem("saferide_sound_enabled")
+          if (local !== null) {
+            enabled = JSON.parse(local)
+          }
+        } catch (e) {
+          console.warn("Could not read sound setting from localStorage:", e)
+        }
+        if (mounted) setSoundEnabled(Boolean(enabled))
+      } catch (err) {
+        console.error("Could not load user settings for sound:", err)
+        if (mounted) setSoundEnabled(true)
+      }
+    }
+    loadSettings()
+    // Listen for changes from other tabs (profile toggle)
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === "saferide_sound_enabled") {
+        try {
+          const val = JSON.parse(String(e.newValue))
+          console.log(`[dashboard] storage event saferide_sound_enabled changed: ${val}`)
+          setSoundEnabled(Boolean(val))
+        } catch (err) {
+          console.warn("Error parsing storage event value:", err)
+        }
+      }
+    }
+    window.addEventListener("storage", onStorage)
+    return () => {
+      mounted = false
+      window.removeEventListener("storage", onStorage)
+    }
+  }, [user?.uid])
+
+  // Initialize audio element once
+  useEffect(() => {
+    if (!audioRef.current) {
+      audioRef.current = new Audio()
+      audioRef.current.preload = "auto"
+      // fetch base64 audio and set as data url
+      fetch('/api/sounds/saferidetone')
+        .then((r) => r.json())
+        .then((j) => {
+          if (j?.base64) {
+            audioRef.current!.src = `data:audio/mpeg;base64,${j.base64}`
+          }
+        })
+        .catch((e) => console.warn('Could not load saferidetone:', e))
+    }
+  }, [])
+
+  // Play sound when pendingRides increases and user has enabled sound
+  useEffect(() => {
+    const prev = prevPendingRef.current
+    const current = pendingRides.length
+    if (current > prev) {
+      // pending increased
+      if (soundEnabled === null || soundEnabled === true) {
+        // try to play (may be blocked by browser if not interacted)
+        try {
+          audioRef.current?.play().catch((e) => {
+            console.warn("Audio play blocked or failed:", e)
+          })
+        } catch (e) {
+          console.warn("Audio play error:", e)
+        }
+      }
+      else {
+        // sound disabled by user
+      }
+    }
+    prevPendingRef.current = current
+  }, [pendingRides.length, soundEnabled])
+
+  
 
   // CARGAR ESTADÍSTICAS DEL CONDUCTOR Y VIAJES RECIENTES (EFECTO DE INICIALIZACIÓN)
   useEffect(() => {
@@ -505,7 +596,14 @@ function DriverDashboardContent() {
               className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-indigo-500 data-[state=active]:text-white rounded-lg font-medium"
             >
               <Zap className="h-4 w-4 mr-2" />
-              Solicitudes
+              <span className="flex items-center">
+                <span>Solicitudes</span>
+                {pendingRides.length > 0 && (
+                  <span className="ml-2 -mt-0.5 inline-flex items-center justify-center px-2 py-0.5 text-xs font-bold leading-none text-white bg-red-600 rounded-full">
+                    {pendingRides.length}
+                  </span>
+                )}
+              </span>
             </TabsTrigger>
             <TabsTrigger
               value="trips"

@@ -36,6 +36,7 @@ import { supabase } from "@/lib/supabase"
 import { ProtectedRoute } from "@/components/ProtectedRoute"
 import { useToast } from "@/hooks/use-toast"
 import { ImageCropModal } from "@/components/ImageCropModal"
+import { Switch } from "@/components/ui/switch"
 
 interface UserProfile {
   name: string
@@ -395,6 +396,124 @@ function ProfileContent() {
     return { isValid: true }
   }
 
+  // ---- Sound toggle in profile (uses user_settings.preferences.soundEnabled) ----
+  const [soundEnabled, setSoundEnabled] = useState<boolean | null>(null)
+  useEffect(() => {
+    let mounted = true
+    const loadSoundSetting = async () => {
+      if (!user?.uid || !supabase) return
+
+      // Prefer localStorage if present so user toggle persists across refreshes
+      try {
+        const local = localStorage.getItem("saferide_sound_enabled")
+        if (local !== null) {
+          const parsed = JSON.parse(local)
+          if (mounted) setSoundEnabled(Boolean(parsed))
+          return
+        }
+      } catch (e) {
+        console.warn("Could not read saferide_sound_enabled from localStorage in profile:", e)
+      }
+
+      try {
+        const { data } = await supabase.from("user_settings").select("settings").eq("uid", user.uid).single()
+        const d: any = data
+        const enabled = d?.settings?.preferences?.soundEnabled
+        if (mounted) setSoundEnabled(typeof enabled === "boolean" ? enabled : true)
+      } catch (err) {
+        console.error("Error loading sound setting:", err)
+        if (mounted) setSoundEnabled(true)
+      }
+    }
+    loadSoundSetting()
+    // storage event listener to sync across tabs
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === "saferide_sound_enabled") {
+        try {
+          const val = e.newValue ? JSON.parse(e.newValue) : null
+          setSoundEnabled(val === null ? true : Boolean(val))
+        } catch (err) {
+          console.warn("Error parsing storage event for saferide_sound_enabled:", err)
+        }
+      }
+    }
+    window.addEventListener("storage", onStorage)
+    return () => {
+      mounted = false
+      window.removeEventListener("storage", onStorage)
+    }
+  }, [user?.uid])
+
+  const toggleSound = async (val: boolean) => {
+    if (!user?.uid || !supabase) return
+    // First, attempt to unlock audio with a user gesture (required by some browsers)
+    try {
+      try {
+        const AudioCtx = (window as any).AudioContext || (window as any).webkitAudioContext
+        if (AudioCtx) {
+          const ctx = new AudioCtx()
+          if (typeof ctx.resume === 'function') {
+            ctx.resume().catch(() => {})
+          }
+          // play a tiny silent buffer to unlock the audio system
+          try {
+            const buffer = ctx.createBuffer(1, 1, 22050)
+            const src = ctx.createBufferSource()
+            src.buffer = buffer
+            src.connect(ctx.destination)
+            src.start(0)
+            src.stop(0)
+          } catch (e) {
+            // ignore
+          }
+        }
+      } catch (e) {
+        // ignore audio unlock errors
+      }
+
+      // Try to fetch and play the notification tone so future plays are allowed
+      (async () => {
+        try {
+          const res = await fetch('/api/sounds/saferidetone')
+          const j = await res.json()
+          if (j?.base64) {
+            const audio = new Audio(`data:audio/mpeg;base64,${j.base64}`)
+            audio.preload = 'auto'
+            // attempt to play (may still fail in some browsers, but we tried to unlock above)
+            audio.play().catch((err) => console.warn('Profile toggle playback failed:', err))
+          }
+        } catch (e) {
+          console.warn('Could not preload/play saferidetone after toggle:', e)
+        }
+      })()
+
+      // upsert into user_settings merging with existing settings
+      const { data } = await supabase.from("user_settings").select("settings").eq("uid", user.uid).single()
+      const d: any = data
+      const current: any = d?.settings ?? {}
+      const updated = {
+        ...current,
+        preferences: {
+          ...(current?.preferences ?? {}),
+          soundEnabled: val,
+        },
+      }
+      const { error } = await supabase.from("user_settings").upsert({ uid: user.uid, settings: updated }, { onConflict: "uid" })
+      if (error) throw error
+      setSoundEnabled(val)
+      try {
+        // persist to localStorage for fast client-side access
+        localStorage.setItem("saferide_sound_enabled", JSON.stringify(val))
+      } catch (e) {
+        console.warn("Could not write sound setting to localStorage:", e)
+      }
+      toast({ title: "Preferencia guardada", description: `Sonido de notificaciones ${val ? 'activado' : 'desactivado'}` })
+    } catch (err) {
+      console.error("Error saving sound setting:", err)
+      toast({ title: "Error", description: "No se pudo guardar la preferencia de sonido", variant: "destructive" })
+    }
+  }
+
   const handleImageSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     if (!file || !user?.uid) {
@@ -654,6 +773,24 @@ function ProfileContent() {
 
           {/* Main Content */}
           <div className="lg:col-span-2 space-y-6">
+            {/* Sound notification toggle card (allows enabling/disabling saferidetone) */}
+            <Card className="shadow-lg">
+              <CardHeader className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center space-x-2">
+                    <Mail className="h-5 w-5 text-blue-600" />
+                    <span>Sonido de notificaciones</span>
+                  </CardTitle>
+                  <CardDescription>Activa o desactiva el sonido cuando recibes nuevas solicitudes</CardDescription>
+                </div>
+                <div>
+                  <Switch checked={!!soundEnabled} onCheckedChange={(v) => toggleSound(Boolean(v))} />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-gray-600">Cuando esté activado, se reproducirá el tono de SafeRide al recibir solicitudes de viaje.</p>
+              </CardContent>
+            </Card>
             {/* Personal Information */}
             <Card className="shadow-lg">
               <CardHeader className="flex flex-row items-center justify-between">

@@ -84,6 +84,13 @@ function DriverDashboardContent() {
   const suppressAutoOpenRef = useRef(false)
 
   const pendingRides = rides.filter((ride) => ride.status === "pending")
+  // Rides specifically assigned to this driver (passenger selected this driver)
+  // NOTE: when a passenger selects a driver the passenger flow currently inserts the ride
+  // with status 'accepted' and driver_id set. We want to notify the driver in that case
+  // as well — so include both 'pending' and 'accepted' statuses for assigned notifications.
+  const assignedIncomingRides = rides.filter(
+    (ride) => ride.driver_id === driverId && ["pending", "accepted"].includes(ride.status),
+  )
     // SOPORTE PARA MÚLTIPLES VIAJES ACTIVOS ASIGNADOS A ESTE CONDUCTOR (ACEPTADOS O EN PROGRESO)
   const activeRides = rides.filter(
     (ride) => ride.driver_id === driverId && ["accepted", "in-progress"].includes(ride.status),
@@ -98,6 +105,8 @@ function DriverDashboardContent() {
 
   // ---- Sound notification state ----
   const prevPendingRef = useRef<number>(0)
+  const prevAssignedRef = useRef<number>(0)
+  const playUnlockAttachedRef = useRef<boolean>(false)
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const [soundEnabled, setSoundEnabled] = useState<boolean | null>(null)
 
@@ -163,6 +172,56 @@ function DriverDashboardContent() {
     }
   }, [])
 
+
+  
+  // Helper: try to play audio immediately; if blocked by autoplay policy,
+  // register a one-time user-interaction handler to unlock audio and retry.
+  const playAudioWithUnlock = async () => {
+    if (!audioRef.current) return
+    try {
+      await audioRef.current.play()
+      return
+    } catch (err: any) {
+      // If play is blocked due to lack of user interaction, attach a one-time listener
+      const isNotAllowed = err && (err.name === "NotAllowedError" || String(err.message).includes("didn't interact"))
+      if (!isNotAllowed) {
+        console.warn("Audio play failed:", err)
+        return
+      }
+
+      if (playUnlockAttachedRef.current) return
+      playUnlockAttachedRef.current = true
+
+      const tryUnlock = async () => {
+        try {
+          // Try to resume WebAudio if available
+          try {
+            // @ts-ignore
+            const ctx = (window as any).audioContext || new (window.AudioContext || (window as any).webkitAudioContext)()
+            if (ctx && typeof ctx.resume === "function") {
+              await ctx.resume()
+              ;(window as any).audioContext = ctx
+            }
+          } catch (e) {
+            // ignore
+          }
+          // retry play
+          await audioRef.current!.play()
+        } catch (e) {
+          console.warn("Retry audio play after user interaction failed:", e)
+        } finally {
+          window.removeEventListener("pointerdown", tryUnlock)
+          window.removeEventListener("keydown", tryUnlock)
+          playUnlockAttachedRef.current = false
+        }
+      }
+
+      window.addEventListener("pointerdown", tryUnlock, { once: true })
+      window.addEventListener("keydown", tryUnlock, { once: true })
+      return
+    }
+  }
+
   // Play sound when pendingRides increases and user has enabled sound
   useEffect(() => {
     const prev = prevPendingRef.current
@@ -170,23 +229,25 @@ function DriverDashboardContent() {
     if (current > prev) {
       // pending increased
       if (soundEnabled === null || soundEnabled === true) {
-        // try to play (may be blocked by browser if not interacted)
-        try {
-          audioRef.current?.play().catch((e) => {
-            console.warn("Audio play blocked or failed:", e)
-          })
-        } catch (e) {
-          console.warn("Audio play error:", e)
-        }
-      }
-      else {
-        // sound disabled by user
+        playAudioWithUnlock()
       }
     }
     prevPendingRef.current = current
   }, [pendingRides.length, soundEnabled])
 
-  
+  // Play sound when a ride assigned specifically to this driver arrives
+  useEffect(() => {
+    const prev = prevAssignedRef.current
+    const current = assignedIncomingRides.length
+    if (current > prev) {
+      if (soundEnabled === null || soundEnabled === true) {
+        playAudioWithUnlock()
+      }
+    }
+    prevAssignedRef.current = current
+  }, [assignedIncomingRides.length, soundEnabled])
+
+
 
   // CARGAR ESTADÍSTICAS DEL CONDUCTOR Y VIAJES RECIENTES (EFECTO DE INICIALIZACIÓN)
   useEffect(() => {
@@ -589,7 +650,14 @@ function DriverDashboardContent() {
               className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-indigo-500 data-[state=active]:text-white rounded-lg font-medium"
             >
               <BarChart3 className="h-4 w-4 mr-2" />
-              Dashboard
+              <span className="flex items-center">
+                <span>Dashboard</span>
+                {assignedIncomingRides.length > 0 ? (
+                  <span className="ml-2 -mt-0.5 inline-flex items-center justify-center px-2 py-0.5 text-xs font-bold leading-none text-white bg-red-600 rounded-full">
+                    {assignedIncomingRides.length}
+                  </span>
+                ) : null}
+              </span>
             </TabsTrigger>
             <TabsTrigger
               value="requests"
@@ -598,11 +666,11 @@ function DriverDashboardContent() {
               <Zap className="h-4 w-4 mr-2" />
               <span className="flex items-center">
                 <span>Solicitudes</span>
-                {pendingRides.length > 0 && (
+                {pendingRides.length > 0 ? (
                   <span className="ml-2 -mt-0.5 inline-flex items-center justify-center px-2 py-0.5 text-xs font-bold leading-none text-white bg-red-600 rounded-full">
                     {pendingRides.length}
                   </span>
-                )}
+                ) : null}
               </span>
             </TabsTrigger>
             <TabsTrigger

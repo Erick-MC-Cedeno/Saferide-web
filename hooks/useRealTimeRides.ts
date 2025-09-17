@@ -43,7 +43,11 @@ export function useRealTimeRides(driverId?: string, passengerId?: string) {
       try {
         let q = supabase.from("rides").select("*")
         if (driverId) {
-          q = q.or(`status.eq.pending,and(driver_id.eq.${driverId})`)
+          // Return either global pending rides OR rides assigned to this driver.
+          // The previous string was malformed (contained an `and(...)` inside the or) which
+          // caused the query to return unexpected results. Use comma-separated clauses
+          // for supabase's `or` API: 'cond1,cond2'.
+          q = q.or(`status.eq.pending,driver_id.eq.${driverId}`)
         } else if (passengerId) {
           q = q.eq("passenger_id", passengerId)
         }

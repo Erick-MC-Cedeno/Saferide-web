@@ -117,7 +117,8 @@ function SettingsContent() {
       const { data, error } = await supabase.from("user_settings").select("settings").eq("uid", user.uid).single()
 
       if (data?.settings) {
-        setSettings({ ...defaultSettings, ...data.settings })
+        const serverSettings = (data.settings ?? {}) as Partial<UserSettings>
+        setSettings({ ...defaultSettings, ...serverSettings })
       } else if (error && error.code === "PGRST116") {
         // No settings found, create default ones
         await createDefaultSettings()

@@ -19,6 +19,7 @@ import {
   Smartphone,
   Mail,
   MessageSquare,
+  MessageCircle,
   Eye,
   Lock,
   Trash2,
@@ -35,6 +36,7 @@ interface UserSettings {
     push: boolean
     email: boolean
     sms: boolean
+    chatNotifications: boolean
     rideUpdates: boolean
     promotions: boolean
     safety: boolean
@@ -59,6 +61,7 @@ const defaultSettings: UserSettings = {
     push: true,
     email: true,
     sms: false,
+    chatNotifications: true,
     rideUpdates: true,
     promotions: false,
     safety: true,
@@ -107,33 +110,71 @@ function SettingsContent() {
     }
   }, [user?.uid])
 
+  // HELPER TO EMIT A STORAGEEVENT SO THE CURRENT TAB CAN REACT TO LOCALSTORAGE CHANGES
+  const emitStorageEvent = (key: string, value: string) => {
+    try {
+      const event = new StorageEvent("storage", { key, newValue: value, oldValue: null, url: window.location.href })
+      window.dispatchEvent(event)
+    } catch (e) {
+      // FALLBACK: IF STORAGEEVENT DISPATCH IS NOT SUPPORTED, DEPEND ON DIRECT STATE READS
+      console.warn("Could not emit StorageEvent:", e)
+    }
+  }
+
+  const emitPrefChanged = (key: string, value: string) => {
+    try {
+      window.dispatchEvent(new CustomEvent('saferide:pref-changed', { detail: { key, value } }))
+      } catch (e) {
+      // IGNORE NON-CRITICAL ERRORS FROM ASYNC OPERATIONS
+    }
+  }
+
   const loadUserSettings = useCallback(async () => {
     if (!user?.uid || !supabase) {
       setInitialLoading(false)
       return
     }
-    // Read localStorage first so UI reflects any explicit user override immediately
-    let localOverride: boolean | null = null
+
+
+
+  // INITIALIZE FROM LOCALSTORAGE FIRST SO UI REFLECTS ANY USER OVERRIDES BEFORE SERVER SETTINGS
+    let localOverrideSound: boolean | null = null
+    let localOverrideChat: boolean | null = null
     try {
-      const local = localStorage.getItem("saferide_sound_enabled")
-      if (local !== null) {
-        const parsed = JSON.parse(local)
-        localOverride = Boolean(parsed)
-        // apply a quick optimistic state so the UI doesn't flicker
-        setSettings((prev) => ({
-          ...prev,
-          notifications: {
-            ...prev.notifications,
-            push: Boolean(parsed),
-          },
-          preferences: {
-            ...prev.preferences,
-            soundEnabled: Boolean(parsed),
-          },
-        }))
+      if (user?.uid) {
+        const soundKey = `saferide_sound_enabled_${user.uid}`
+        const chatKey = `saferide_chat_notification_${user.uid}`
+        const localSound = localStorage.getItem(soundKey)
+        if (localSound !== null) {
+          const parsed = JSON.parse(localSound)
+          localOverrideSound = Boolean(parsed)
+          setSettings((prev) => ({
+            ...prev,
+            notifications: {
+              ...prev.notifications,
+              push: Boolean(parsed),
+            },
+            preferences: {
+              ...prev.preferences,
+              soundEnabled: Boolean(parsed),
+            },
+          }))
+        }
+        const localChat = localStorage.getItem(chatKey)
+        if (localChat !== null) {
+          const parsed = JSON.parse(localChat)
+          localOverrideChat = Boolean(parsed)
+          setSettings((prev) => ({
+            ...prev,
+            notifications: {
+              ...prev.notifications,
+              chatNotifications: Boolean(parsed),
+            },
+          }))
+        }
       }
     } catch (e) {
-      console.warn("Could not read saferide_sound_enabled from localStorage before load:", e)
+      console.warn("Could not read sound/chat settings from localStorage before load:", e)
     }
 
     try {
@@ -143,39 +184,44 @@ function SettingsContent() {
         const serverSettings = (data.settings ?? {}) as Partial<UserSettings>
         const merged = { ...defaultSettings, ...serverSettings }
 
-        // If a localStorage preference exists, prefer it and do not overwrite it.
         try {
-          const local = localOverride !== null ? localOverride : (() => {
-            const v = localStorage.getItem("saferide_sound_enabled")
+          const localSound = localOverrideSound !== null ? localOverrideSound : (() => {
+            if (!user?.uid) return null
+            const v = localStorage.getItem(`saferide_sound_enabled_${user.uid}`)
             return v !== null ? JSON.parse(v) : null
           })()
-            if (local !== null) {
-            // mirror local value into merged settings so UI reflects it and server won't overwrite
-            merged.notifications = {
-              ...merged.notifications,
-              push: Boolean(local),
-            }
-            merged.preferences = {
-              ...merged.preferences,
-              soundEnabled: Boolean(local),
-            }
-          
+          if (localSound !== null) {
+            merged.notifications = { ...merged.notifications, push: Boolean(localSound) }
+            merged.preferences = { ...merged.preferences, soundEnabled: Boolean(localSound) }
           } else {
-            // no local override -> initialize localStorage from server value
             const pushVal = Boolean(merged.notifications?.push)
+            try { if (user?.uid) { const key = `saferide_sound_enabled_${user.uid}`; localStorage.setItem(key, JSON.stringify(pushVal)); emitStorageEvent(key, JSON.stringify(pushVal)); } } catch (e) { console.warn("Could not initialize saferide_sound_enabled in localStorage:", e) }
+          }
+
+          const localChat = localOverrideChat !== null ? localOverrideChat : (() => {
+            if (!user?.uid) return null
+            const v = localStorage.getItem(`saferide_chat_notification_${user.uid}`)
+            return v !== null ? JSON.parse(v) : null
+          })()
+          if (localChat !== null) {
+            merged.notifications = { ...merged.notifications, chatNotifications: Boolean(localChat) }
+          } else {
+            const chatVal = Boolean(merged.notifications?.chatNotifications)
             try {
-              localStorage.setItem("saferide_sound_enabled", JSON.stringify(pushVal))
-            } catch (e) {
-              console.warn("Could not initialize saferide_sound_enabled in localStorage:", e)
-            }
+              if (user?.uid) {
+                const key = `saferide_chat_notification_${user.uid}`
+                localStorage.setItem(key, JSON.stringify(chatVal))
+                emitStorageEvent(key, JSON.stringify(chatVal))
+              }
+            } catch (e) { console.warn("Could not initialize saferide_chat_notification in localStorage:", e) }
           }
         } catch (e) {
-          console.warn("Could not read/write saferide_sound_enabled in localStorage on load:", e)
+          console.warn("Could not read/write sound/chat settings in localStorage on load:", e)
         }
 
         setSettings(merged)
       } else if (error && error.code === "PGRST116") {
-        // No settings found, create default ones
+        // NO SERVER SETTINGS FOUND: CREATE A DEFAULT SETTINGS RECORD FOR THIS USER
         await createDefaultSettings()
       }
     } catch (error) {
@@ -232,6 +278,8 @@ function SettingsContent() {
     }
   }
 
+
+  // UPDATE USER NOTIFICATION SETTINGS
   const updateNotificationSetting = (key: keyof UserSettings["notifications"], value: boolean) => {
     setSettings((prev) => {
       const next = {
@@ -241,9 +289,9 @@ function SettingsContent() {
           [key]: value,
         },
       }
-      // If push notifications toggle changed, use it to control sound as requested
+
       if (key === "push") {
-        // Attempt to unlock audio via user gesture and preload the tone
+  // ATTEMPT TO UNLOCK AUDIO CONTEXT AND PRELOAD/PLAY A SHORT TONE TO ALLOW AUTOPLAY
         try {
           const AudioCtx = (window as any).AudioContext || (window as any).webkitAudioContext
           if (AudioCtx) {
@@ -260,7 +308,6 @@ function SettingsContent() {
               } catch (e) {}
             } catch (e) {}
           }
-          // fetch and attempt a short play of the tone to ensure permission
           ;(async () => {
             try {
               const res = await fetch('/api/sounds/saferidetone')
@@ -271,28 +318,29 @@ function SettingsContent() {
                 audio.play().catch(() => {})
               }
             } catch (e) {
-              // ignore
+              // IGNORE ERRORS FROM AUDIO FETCH/PLAY ATTEMPT (NON-CRITICAL)
             }
           })()
         } catch (e) {
           console.warn('Audio unlock attempt failed on settings toggle:', e)
         }
 
-        try {
-          localStorage.setItem("saferide_sound_enabled", JSON.stringify(Boolean(value)))
-        } catch (e) {
-          console.warn("Could not write saferide_sound_enabled to localStorage:", e)
-        }
-        // Mirror the push value into preferences.soundEnabled for consistency
-        next.preferences = {
-          ...next.preferences,
-          soundEnabled: Boolean(value),
-        }
+  try { if (user?.uid) { const key = `saferide_sound_enabled_${user.uid}`; const valStr = JSON.stringify(Boolean(value)); localStorage.setItem(key, valStr); emitStorageEvent(key, valStr); emitPrefChanged(key, valStr); } } catch (e) { console.warn("Could not write saferide_sound_enabled to localStorage:", e) }
+        next.preferences = { ...next.preferences, soundEnabled: Boolean(value) }
       }
+
+      if (key === "chatNotifications") {
+            try { if (user?.uid) { const key = `saferide_chat_notification_${user.uid}`; const valStr = JSON.stringify(Boolean(value)); localStorage.setItem(key, valStr); emitStorageEvent(key, valStr); emitPrefChanged(key, valStr); } } catch (e) { console.warn("Could not write saferide_chat_notification to localStorage:", e) }
+            // NOTE: CHAT NOTIFICATION PREFERENCES ARE STORED ONLY IN LOCALSTORAGE
+            // THIS IS INTENTIONAL: CHAT TOGGLES MUST NOT BE WRITTEN TO THE SERVER
+      }
+
       return next
     })
   }
 
+
+  // UPDATE USER PRIVACY SETTINGS
   const updatePrivacySetting = (key: keyof UserSettings["privacy"], value: boolean) => {
     setSettings((prev) => ({
       ...prev,
@@ -303,6 +351,8 @@ function SettingsContent() {
     }))
   }
 
+  
+  // UPDATE USER UI AND BEHAVIOR SETTINGS
   const updatePreferenceSetting = (key: keyof UserSettings["preferences"], value: string | boolean) => {
     setSettings((prev) => ({
       ...prev,
@@ -316,12 +366,13 @@ function SettingsContent() {
   const exportData = async () => {
     if (!user?.uid || !supabase) return
 
+    setLoading(true)
     try {
-      // Get user data
+  // FETCH USER ROW FROM DATABASE TO INCLUDE IN EXPORT
       const table = userType === "driver" ? "drivers" : "passengers"
       const { data: userInfo } = await supabase.from(table).select("*").eq("uid", user.uid).single()
 
-      // Get ride history
+  // FETCH RIDE HISTORY FOR THE USER TO INCLUDE IN EXPORT
       const column = userType === "driver" ? "driver_id" : "passenger_id"
       const { data: rides } = await supabase.from("rides").select("*").eq(column, user.uid)
 
@@ -332,7 +383,7 @@ function SettingsContent() {
         exportDate: new Date().toISOString(),
       }
 
-      // Create and download file
+  // CREATE A JSON FILE WITH USER DATA, RIDES AND SETTINGS AND TRIGGER A DOWNLOAD
       const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: "application/json" })
       const url = URL.createObjectURL(blob)
       const a = document.createElement("a")
@@ -354,6 +405,8 @@ function SettingsContent() {
         description: "No se pudieron exportar los datos.",
         variant: "destructive",
       })
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -361,8 +414,8 @@ function SettingsContent() {
     if (!user?.uid || !supabase) return
 
     try {
-      // This would typically involve calling a server function
-      // For now, we'll just show a message
+  // ACCOUNT DELETION WOULD NORMALLY CALL A SERVER ENDPOINT OR ADMIN WORKFLOW
+  // PLACEHOLDER: SHOW A MESSAGE EXPLAINING ADMINISTRATIVE DELETION REQUIREMENT
       toast({
         title: "Función no disponible",
         description: "La eliminación de cuenta debe ser procesada por el administrador.",
@@ -393,14 +446,14 @@ function SettingsContent() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header */}
+  {/* HEADER: PAGE TITLE AND DESCRIPTION */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Configuración</h1>
           <p className="text-gray-600">Personaliza tu experiencia en SafeRide</p>
         </div>
 
         <div className="space-y-6">
-          {/* Notifications */}
+          {/* NOTIFICATIONS SECTION: USER NOTIFICATION PREFERENCES */}
           <Card className="shadow-lg">
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
@@ -491,12 +544,25 @@ function SettingsContent() {
                       onCheckedChange={(value) => updateNotificationSetting("safety", value)}
                     />
                   </div>
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label className="flex items-center space-x-2">
+                        <MessageCircle className="h-4 w-4" />
+                        <span>Sonido de chat</span>
+                      </Label>
+                      <p className="text-sm text-gray-600">Reproducir tono cuando recibes mensajes de chat</p>
+                    </div>
+                    <Switch
+                      checked={settings.notifications.chatNotifications}
+                      onCheckedChange={(value) => updateNotificationSetting("chatNotifications", value)}
+                    />
+                  </div>
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          {/* Privacy */}
+          {/* PRIVACY SECTION: USER PRIVACY SETTINGS */}
           <Card className="shadow-lg">
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
@@ -550,7 +616,7 @@ function SettingsContent() {
             </CardContent>
           </Card>
 
-          {/* Preferences */}
+          {/* PREFERENCES SECTION: UI AND BEHAVIOR PREFERENCES */}
           <Card className="shadow-lg">
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
@@ -673,7 +739,7 @@ function SettingsContent() {
             </CardContent>
           </Card>
 
-          {/* Data & Security */}
+          {/* DATA AND SECURITY SECTION: EXPORT, DELETE, AND SECURITY SETTINGS */}
           <Card className="shadow-lg">
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
@@ -725,7 +791,7 @@ function SettingsContent() {
             </CardContent>
           </Card>
 
-          {/* Save Button */}
+          {/* SAVE BUTTON: PERSIST SETTINGS TO SERVER */}
           <div className="flex justify-end">
             <Button
               onClick={saveSettings}

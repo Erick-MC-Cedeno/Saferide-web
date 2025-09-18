@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useMemo, useCallback } from "react"
+import { useState, useEffect, useMemo, useCallback, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
@@ -94,6 +94,12 @@ function PassengerDashboardContent() {
 
 // QUIK DESTINATIONS REMOVED
   const [showChatDialog, setShowChatDialog] = useState(false)
+  const [chatUnread, setChatUnread] = useState(0)
+  const [chatLastMessage, setChatLastMessage] = useState<string | null>(null)
+  const chatChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null)
+  const audioChatRef = useRef<HTMLAudioElement | null>(null)
+  const playChatUnlockAttachedRef = useRef<boolean>(false)
+  const [chatNotificationEnabled, setChatNotificationEnabled] = useState<boolean | null>(null)
   const { rides, cancelRide, refreshRides } = useRealTimeRides(undefined, user?.uid)
   const currentRide = rides.find((ride) => ["pending", "accepted", "in-progress"].includes(ride.status))
   const [driversForMap, setDriversForMap] = useState<Array<{ id: string; uid?: string; name: string; lat: number; lng: number }>>([])
@@ -106,6 +112,161 @@ function PassengerDashboardContent() {
     }
     // rideStatus intentionally included
   }, [currentRide, rideStatus])
+
+  // Chat notifications (passenger listens for messages from driver)
+  useEffect(() => {
+    let mounted = true
+    const setup = async () => {
+      if (chatChannelRef.current) {
+        try {
+          await supabase.removeChannel(chatChannelRef.current)
+        } catch {}
+        chatChannelRef.current = null
+      }
+      if (!currentRide) return
+      try {
+        const channel = supabase
+          .channel(`ride-chat-notify-passenger-${currentRide.id}`)
+          .on(
+            "postgres_changes",
+            { event: "INSERT", schema: "public", table: "ride_messages", filter: `ride_id=eq.${currentRide.id}` },
+            (payload) => {
+              if (!mounted) return
+              const msg = payload.new as any
+              setChatLastMessage(String(msg.message ?? ""))
+              // if message comes from driver, increment unread for passenger
+              if (msg.sender_type === "driver") {
+                setChatUnread((c) => c + 1)
+                // Use in-memory state which is kept in sync via storage events and the toggle
+                if (chatNotificationEnabled === null || chatNotificationEnabled === true) {
+                  playChatAudioWithUnlock().catch(() => {})
+                }
+              }
+            },
+          )
+          .subscribe()
+        chatChannelRef.current = channel
+      } catch (err) {
+        console.error("Error subscribing to chat notifications (passenger):", err)
+      }
+    }
+    setup()
+    return () => {
+      mounted = false
+      if (chatChannelRef.current) {
+        supabase.removeChannel(chatChannelRef.current).catch(() => {})
+        chatChannelRef.current = null
+      }
+    }
+  }, [currentRide?.id])
+
+
+
+  // PRELOAD CHAT AUDIO AND HELPER TO UNLOCK/PLAY ON INTERACTION
+  useEffect(() => {
+    if (!audioChatRef.current) {
+      audioChatRef.current = new Audio()
+      audioChatRef.current.preload = "auto"
+      fetch('/api/sounds/saferidechattone')
+        .then((r) => r.json())
+        .then((j) => {
+          if (j?.base64) audioChatRef.current!.src = `data:audio/mpeg;base64,${j.base64}`
+        })
+        .catch((e) => console.warn('Could not load saferidechattone:', e))
+    }
+  }, [])
+
+  
+
+  // LOAD CHAT NOTIFICATION PREFERENCE FROM LOCAL STORAGE
+  useEffect(() => {
+    try {
+      if (user?.uid) {
+        const chatKey = `saferide_chat_notification_${user.uid}`
+        const local = localStorage.getItem(chatKey)
+        if (local !== null) setChatNotificationEnabled(JSON.parse(local))
+        else setChatNotificationEnabled(true)
+      } else {
+        setChatNotificationEnabled(true)
+      }
+    } catch (e) {
+      console.warn('Could not read saferide_chat_notification from localStorage (passenger):', e)
+      setChatNotificationEnabled(true)
+    }
+    const onStorage = (e: StorageEvent) => {
+      try {
+        if (!user?.uid) return
+        const chatKey = `saferide_chat_notification_${user.uid}`
+        if (e.key === chatKey) {
+          try { setChatNotificationEnabled(e.newValue ? JSON.parse(e.newValue) : null) } catch (err) { console.warn('Error parsing storage event for chat toggle (passenger)', err) }
+        }
+      } catch (err) {
+        // ignore
+      }
+    }
+
+
+    // LOAD CHAT NOTIFICATION SETTINGS FROM LOCAL STORAGE
+    const onPrefChanged = (ev: Event) => {
+      try {
+        if (!user?.uid) return
+        // @ts-ignore
+        const detail = (ev as CustomEvent).detail
+        const key: string = detail?.key
+        const value: string = detail?.value
+        const chatKey = `saferide_chat_notification_${user.uid}`
+        if (key === chatKey) {
+          try { setChatNotificationEnabled(value ? JSON.parse(value) : null) } catch (err) { console.warn('Error parsing pref-changed value for chat toggle (passenger)', err) }
+        }
+      } catch (err) {
+        // ignore
+      }
+    }
+    window.addEventListener('storage', onStorage)
+    window.addEventListener('saferide:pref-changed', onPrefChanged)
+    return () => window.removeEventListener('storage', onStorage)
+  }, [])
+
+
+
+  // HELPER: TRY TO PLAY AUDIO IMMEDIATELY; IF BLOCKED BY AUTOPLAY POLICY,
+  const playChatAudioWithUnlock = async () => {
+    if (!audioChatRef.current) return
+    try {
+      await audioChatRef.current.play()
+      return
+    } catch (err: any) {
+      const isNotAllowed = err && (err.name === "NotAllowedError" || String(err.message).includes("didn't interact"))
+      if (!isNotAllowed) {
+        console.warn("Chat audio play failed:", err)
+        return
+      }
+      if (playChatUnlockAttachedRef.current) return
+      playChatUnlockAttachedRef.current = true
+      const tryUnlock = async () => {
+        try {
+          try {
+            // @ts-ignore
+            const ctx = (window as any).audioContext || new (window.AudioContext || (window as any).webkitAudioContext)()
+            if (ctx && typeof ctx.resume === "function") {
+              await ctx.resume()
+              ;(window as any).audioContext = ctx
+            }
+          } catch (e) {}
+          await audioChatRef.current!.play()
+        } catch (e) {
+          console.warn("Retry chat audio play after user interaction failed:", e)
+        } finally {
+          window.removeEventListener("pointerdown", tryUnlock)
+          window.removeEventListener("keydown", tryUnlock)
+          playChatUnlockAttachedRef.current = false
+        }
+      }
+      window.addEventListener("pointerdown", tryUnlock, { once: true })
+      window.addEventListener("keydown", tryUnlock, { once: true })
+      return
+    }
+  }
 
 
 
@@ -271,7 +432,7 @@ function PassengerDashboardContent() {
         })
       }
 
-  // Only include drivers that are currently online
+  // ONLY INCLUDE DRIVERS THAT ARE CURRENTLY ONLINE
   nearby = nearby.filter((d: DriverApi) => Boolean(d.is_online))
 
       // normalize for map: id/uid, name, lat, lng
@@ -896,6 +1057,8 @@ function PassengerDashboardContent() {
                     </div>
                   </CardContent>
                 </Card>
+                {/* removed chat summary card as requested; unread counter will appear on the Chat button below */}
+
                 {/* Enhanced Chat and Cancel Options for In-Progress Rides */}
                 {currentRide.status === "in-progress" && (
                   <Card className="border-0 shadow-xl bg-gradient-to-r from-orange-50 to-amber-50 border-l-4 border-l-orange-500">
@@ -918,11 +1081,16 @@ function PassengerDashboardContent() {
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           <Button
                             variant="outline"
-                            className="bg-white/80 border-orange-300 text-orange-700 hover:bg-orange-100 font-semibold py-3"
-                            onClick={() => setShowChatDialog(true)}
+                            className="bg-white/80 border-orange-300 text-orange-700 hover:bg-orange-100 font-semibold py-3 flex items-center justify-center space-x-2"
+                            onClick={() => { setShowChatDialog(true); setChatUnread(0); }}
                           >
-                            <MessageCircle className="h-4 w-4 mr-2" />
-                            Chat con Conductor
+                            <MessageCircle className="h-4 w-4" />
+                            <span>Chat con Conductor</span>
+                            {chatUnread > 0 && (
+                              <span className="inline-flex items-center justify-center ml-2 px-2 py-0.5 text-xs font-bold leading-none text-white bg-red-600 rounded-full">
+                                {chatUnread}
+                              </span>
+                            )}
                           </Button>
                           <Button
                             variant="destructive"

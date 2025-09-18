@@ -74,6 +74,9 @@ function DriverDashboardContent() {
   const [passengerRating, setPassengerRating] = useState(0)
   const [ratingComment, setRatingComment] = useState("")
   const [showChatDialog, setShowChatDialog] = useState(false)
+  const [chatUnread, setChatUnread] = useState(0)
+  const [chatLastMessage, setChatLastMessage] = useState<string | null>(null)
+  const chatChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null)
   const autoOpenedSelectRef = useRef(false)
   // SI EL USUARIO CIERRA MANUALMENTE EL DIÁLOGO DE SELECCIÓN, EVITAR QUE SE VUELVA A ABRIR AUTOMÁTICAMENTE
   const manualClosedSelectRef = useRef(false)
@@ -107,10 +110,16 @@ function DriverDashboardContent() {
   const prevPendingRef = useRef<number>(0)
   const prevAssignedRef = useRef<number>(0)
   const playUnlockAttachedRef = useRef<boolean>(false)
+  const audioChatRef = useRef<HTMLAudioElement | null>(null)
+  const playChatUnlockAttachedRef = useRef<boolean>(false)
+  const [showChatUnlockPrompt, setShowChatUnlockPrompt] = useState(false)
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const [soundEnabled, setSoundEnabled] = useState<boolean | null>(null)
+  const [chatNotificationEnabled, setChatNotificationEnabled] = useState<boolean | null>(null)
 
-  // Load user settings (soundEnabled) from user_settings table
+
+
+  // LOAD USER SETTINGS FROM USER_SETTINGS TABLE
   useEffect(() => {
     let mounted = true
     const loadSettings = async () => {
@@ -122,9 +131,12 @@ function DriverDashboardContent() {
         // prefer localStorage if available (mirrors profile toggle)
         let enabled = s?.preferences?.soundEnabled ?? true
         try {
-          const local = localStorage.getItem("saferide_sound_enabled")
-          if (local !== null) {
-            enabled = JSON.parse(local)
+          if (user?.uid) {
+            const soundKey = `saferide_sound_enabled_${user.uid}`
+            const local = localStorage.getItem(soundKey)
+            if (local !== null) {
+              enabled = JSON.parse(local)
+            }
           }
         } catch (e) {
           console.warn("Could not read sound setting from localStorage:", e)
@@ -138,20 +150,48 @@ function DriverDashboardContent() {
     loadSettings()
     // Listen for changes from other tabs (profile toggle)
     const onStorage = (e: StorageEvent) => {
-      if (e.key === "saferide_sound_enabled") {
-        try {
-          const val = JSON.parse(String(e.newValue))
-          console.log(`[dashboard] storage event saferide_sound_enabled changed: ${val}`)
-          setSoundEnabled(Boolean(val))
-        } catch (err) {
-          console.warn("Error parsing storage event value:", err)
+      try {
+        if (!user?.uid) return
+        const soundKey = `saferide_sound_enabled_${user.uid}`
+        if (e.key === soundKey) {
+          try {
+            const val = JSON.parse(String(e.newValue))
+            console.log(`[dashboard] storage event ${soundKey} changed: ${val}`)
+            setSoundEnabled(Boolean(val))
+          } catch (err) {
+            console.warn("Error parsing storage event value:", err)
+          }
         }
+      } catch (err) {
+        // ignore
+      }
+    }
+    const onPrefChanged = (ev: Event) => {
+      try {
+        if (!user?.uid) return
+        // @ts-ignore
+        const detail = (ev as CustomEvent).detail
+        const key: string = detail?.key
+        const value: string = detail?.value
+        const soundKey = `saferide_sound_enabled_${user.uid}`
+        if (key === soundKey) {
+          try {
+            const val = JSON.parse(String(value))
+            setSoundEnabled(Boolean(val))
+          } catch (err) {
+            console.warn("Error parsing pref-changed value for sound:", err)
+          }
+        }
+      } catch (err) {
+        // ignore
       }
     }
     window.addEventListener("storage", onStorage)
+    window.addEventListener("saferide:pref-changed", onPrefChanged)
     return () => {
       mounted = false
       window.removeEventListener("storage", onStorage)
+      window.removeEventListener("saferide:pref-changed", onPrefChanged)
     }
   }, [user?.uid])
 
@@ -170,12 +210,69 @@ function DriverDashboardContent() {
         })
         .catch((e) => console.warn('Could not load saferidetone:', e))
     }
+    if (!audioChatRef.current) {
+      audioChatRef.current = new Audio()
+      audioChatRef.current.preload = "auto"
+      fetch('/api/sounds/saferidechattone')
+        .then((r) => r.json())
+        .then((j) => {
+          if (j?.base64) {
+            audioChatRef.current!.src = `data:audio/mpeg;base64,${j.base64}`
+          }
+        })
+        .catch((e) => console.warn('Could not load saferidechattone:', e))
+    }
+  }, [])
+
+
+
+  // LOAD CHAT NOTIFICATION SETTINGS FROM LOCAL STORAGE
+  useEffect(() => {
+    try {
+      if (user?.uid) {
+        const chatKey = `saferide_chat_notification_${user.uid}`
+        const local = localStorage.getItem(chatKey)
+        if (local !== null) {
+          setChatNotificationEnabled(JSON.parse(local))
+        }
+      }
+    } catch (e) {
+      console.warn('Could not read saferide_chat_notification from localStorage:', e)
+    }
+    const onStorage = (e: StorageEvent) => {
+      try {
+        if (!user?.uid) return
+        const chatKey = `saferide_chat_notification_${user.uid}`
+        if (e.key === chatKey) {
+          try { setChatNotificationEnabled(e.newValue ? JSON.parse(e.newValue) : null) } catch (err) { console.warn('Error parsing storage event for chat toggle', err) }
+        }
+      } catch (err) {
+        // ignore
+      }
+    }
+    const onPrefChangedChat = (ev: Event) => {
+      try {
+        if (!user?.uid) return
+        // @ts-ignore
+        const detail = (ev as CustomEvent).detail
+        const key: string = detail?.key
+        const value: string = detail?.value
+        const chatKey = `saferide_chat_notification_${user.uid}`
+        if (key === chatKey) {
+          try { setChatNotificationEnabled(value ? JSON.parse(value) : null) } catch (err) { console.warn('Error parsing pref-changed value for chat toggle', err) }
+        }
+      } catch (err) {
+        // ignore
+      }
+    }
+    window.addEventListener('storage', onStorage)
+    window.addEventListener('saferide:pref-changed', onPrefChangedChat)
+    return () => window.removeEventListener('storage', onStorage)
   }, [])
 
 
   
-  // Helper: try to play audio immediately; if blocked by autoplay policy,
-  // register a one-time user-interaction handler to unlock audio and retry.
+  // HELPER: TRY TO PLAY AUDIO IMMEDIATELY; IF BLOCKED BY AUTOPLAY POLICY,
   const playAudioWithUnlock = async () => {
     if (!audioRef.current) return
     try {
@@ -219,6 +316,64 @@ function DriverDashboardContent() {
       window.addEventListener("pointerdown", tryUnlock, { once: true })
       window.addEventListener("keydown", tryUnlock, { once: true })
       return
+    }
+  }
+
+  const playChatAudioWithUnlock = async () => {
+    if (!audioChatRef.current) return
+    try {
+      await audioChatRef.current.play()
+      return
+    } catch (err: any) {
+      const isNotAllowed = err && (err.name === "NotAllowedError" || String(err.message).includes("didn't interact"))
+      if (!isNotAllowed) {
+        console.warn("Chat audio play failed:", err)
+        return
+      }
+      // show small prompt so user can actively enable sounds
+      setShowChatUnlockPrompt(true)
+      if (playChatUnlockAttachedRef.current) return
+      playChatUnlockAttachedRef.current = true
+      const tryUnlock = async () => {
+        try {
+          try {
+            // @ts-ignore
+            const ctx = (window as any).audioContext || new (window.AudioContext || (window as any).webkitAudioContext)()
+            if (ctx && typeof ctx.resume === "function") {
+              await ctx.resume()
+              ;(window as any).audioContext = ctx
+            }
+          } catch (e) {}
+          await audioChatRef.current!.play()
+        } catch (e) {
+          console.warn("Retry chat audio play after user interaction failed:", e)
+        } finally {
+          window.removeEventListener("pointerdown", tryUnlock)
+          window.removeEventListener("keydown", tryUnlock)
+          playChatUnlockAttachedRef.current = false
+        }
+      }
+      window.addEventListener("pointerdown", tryUnlock, { once: true })
+      window.addEventListener("keydown", tryUnlock, { once: true })
+      return
+    }
+  }
+
+  const unlockChatAudioNow = async () => {
+    try {
+      try {
+        // @ts-ignore
+        const ctx = (window as any).audioContext || new (window.AudioContext || (window as any).webkitAudioContext)()
+        if (ctx && typeof ctx.resume === "function") {
+          await ctx.resume()
+          ;(window as any).audioContext = ctx
+        }
+      } catch (e) {}
+      await audioChatRef.current?.play()
+    } catch (e) {
+      console.warn("unlockChatAudioNow failed:", e)
+    } finally {
+      setShowChatUnlockPrompt(false)
     }
   }
 
@@ -351,8 +506,56 @@ function DriverDashboardContent() {
     }
   }, [rides, driverId])
 
+  // Chat notifications (driver listens for messages from passenger)
+  useEffect(() => {
+    let mounted = true
+    const setup = async () => {
+      // cleanup old channel
+      if (chatChannelRef.current) {
+        try {
+          await supabase.removeChannel(chatChannelRef.current)
+        } catch {}
+        chatChannelRef.current = null
+      }
+      if (!activeRide) return
+      try {
+        const channel = supabase
+          .channel(`ride-chat-notify-${activeRide.id}`)
+          .on(
+            "postgres_changes",
+            { event: "INSERT", schema: "public", table: "ride_messages", filter: `ride_id=eq.${activeRide.id}` },
+            (payload) => {
+              if (!mounted) return
+              const msg = payload.new as any
+              setChatLastMessage(String(msg.message ?? ""))
+              // if message comes from passenger, increment unread for driver
+              if (msg.sender_type === "passenger") {
+                setChatUnread((c) => c + 1)
+                // try to play chat audio only if chat notifications enabled
+                if (chatNotificationEnabled === null || chatNotificationEnabled === true) {
+                  playChatAudioWithUnlock().catch(() => {})
+                }
+              }
+            },
+          )
+          .subscribe()
+        chatChannelRef.current = channel
+      } catch (err) {
+        console.error("Error subscribing to chat notifications (driver):", err)
+      }
+    }
+    setup()
+    return () => {
+      mounted = false
+      if (chatChannelRef.current) {
+        supabase.removeChannel(chatChannelRef.current).catch(() => {})
+        chatChannelRef.current = null
+      }
+    }
+  }, [activeRide?.id])
 
 
+  
   // SI HAY MÚLTIPLES VIAJES ACTIVOS PARA ESTE CONDUCTOR, ABRIR AUTOMÁTICAMENTE EL DIÁLOGO DE SELECCIÓN
   useEffect(() => {
   // ABRIR EL DIÁLOGO DE SELECCIÓN AUTOMÁTICAMENTE SOLO UNA VEZ POR MONTAJE PARA EVITAR RENDERIZADOS DUPLICADOS
@@ -796,6 +999,7 @@ function DriverDashboardContent() {
                   <div className="space-y-6">
                     {/* BOTÓN DE SELECCIÓN MOVIDO SOBRE EL MAPA PARA VISIBILIDAD */}
                     <RideTracker ride={activeRide} userType="driver" onStatusUpdate={handleStatusUpdate} />
+                    {/* removed chat summary card; unread counter moved into the Chat button below */}
                     {/* OPCIONES DE CHAT Y CANCELACIÓN MEJORADAS PARA VIAJES EN PROGRESO */}
                     {activeRide.status === "in-progress" && (
                       <Card className="border-0 shadow-xl bg-gradient-to-r from-orange-50 to-amber-50">
@@ -815,14 +1019,26 @@ function DriverDashboardContent() {
                             </Badge>
                           </div>
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <Button
-                              variant="outline"
-                              className="bg-white/80 border-orange-200 hover:bg-orange-100 text-orange-700 font-medium"
-                              onClick={() => setShowChatDialog(true)}
-                            >
-                              <MessageCircle className="h-4 w-4 mr-2" />
-                              Chat con Pasajero
-                            </Button>
+                            <div className="flex items-center space-x-2">
+                              <Button
+                                variant="outline"
+                                className="bg-white/80 border-orange-200 hover:bg-orange-100 text-orange-700 font-medium flex items-center justify-center space-x-2"
+                                onClick={() => { setShowChatDialog(true); setChatUnread(0); }}
+                              >
+                                <MessageCircle className="h-4 w-4" />
+                                <span>Chat con Pasajero</span>
+                                {chatUnread > 0 && (
+                                  <span className="inline-flex items-center justify-center ml-2 px-2 py-0.5 text-xs font-bold leading-none text-white bg-red-600 rounded-full">
+                                    {chatUnread}
+                                  </span>
+                                )}
+                              </Button>
+                              {showChatUnlockPrompt && (
+                                <Button size="sm" variant="ghost" onClick={() => unlockChatAudioNow()}>
+                                  Activar sonidos
+                                </Button>
+                              )}
+                            </div>
                             <Button
                               variant="destructive"
                               className="bg-red-500 hover:bg-red-600 font-medium"

@@ -86,6 +86,8 @@ function ProfileContent() {
   const hasLoadedProfile = useRef(false)
   const isLoadingAll = useRef(false)
 
+
+
   const loadUserProfile = useCallback(async (showRetryToast = false) => {
     // Don't try to load if auth is still loading or no user
     if (authLoading || !user?.uid || !userType || !supabase) {
@@ -122,7 +124,9 @@ function ProfileContent() {
           if (typeof v === "string" && v.trim() !== "" && !isNaN(Number(v))) return Number(v)
           return 0
         }
-
+        
+        
+        // SANITIZE UNKNOWN-TYPED DATA FROM SUPABASE
         const profileData: UserProfile = {
           name: typeof d.name === "string" ? d.name : "Usuario",
           email:
@@ -276,6 +280,14 @@ function ProfileContent() {
     loadAllData()
   }, [loadAllData]) // loadAllData is memoized with useCallback
 
+  const emitPrefChanged = (key: string, value: string) => {
+    try {
+      window.dispatchEvent(new CustomEvent('saferide:pref-changed', { detail: { key, value } }))
+    } catch (e) {
+      // ignore
+    }
+  }
+
   const handleRetry = async () => {
     setRetryCount((prev) => prev + 1)
     setLoading(true)
@@ -398,6 +410,7 @@ function ProfileContent() {
 
   // ---- Sound toggle in profile (uses user_settings.preferences.soundEnabled) ----
   const [soundEnabled, setSoundEnabled] = useState<boolean | null>(null)
+  const [chatNotificationEnabled, setChatNotificationEnabled] = useState<boolean | null>(null)
   useEffect(() => {
     let mounted = true
     const loadSoundSetting = async () => {
@@ -405,11 +418,14 @@ function ProfileContent() {
 
       // Prefer localStorage if present so user toggle persists across refreshes
       try {
-        const local = localStorage.getItem("saferide_sound_enabled")
-        if (local !== null) {
-          const parsed = JSON.parse(local)
-          if (mounted) setSoundEnabled(Boolean(parsed))
-          return
+        if (user?.uid) {
+          const soundKey = `saferide_sound_enabled_${user.uid}`
+          const local = localStorage.getItem(soundKey)
+          if (local !== null) {
+            const parsed = JSON.parse(local)
+            if (mounted) setSoundEnabled(Boolean(parsed))
+            return
+          }
         }
       } catch (e) {
         console.warn("Could not read saferide_sound_enabled from localStorage in profile:", e)
@@ -420,21 +436,55 @@ function ProfileContent() {
         const d: any = data
         const enabled = d?.settings?.preferences?.soundEnabled
         if (mounted) setSoundEnabled(typeof enabled === "boolean" ? enabled : true)
+        const chatEnabled = d?.settings?.notifications?.chatNotifications
+        // prefer localStorage for chat toggle too
+        try {
+          if (user?.uid) {
+            const chatKey = `saferide_chat_notification_${user.uid}`
+            const localChat = localStorage.getItem(chatKey)
+            if (localChat !== null) {
+              const parsed = JSON.parse(localChat)
+              if (mounted) setChatNotificationEnabled(Boolean(parsed))
+            } else {
+              if (mounted) setChatNotificationEnabled(typeof chatEnabled === "boolean" ? chatEnabled : true)
+            }
+          } else {
+            if (mounted) setChatNotificationEnabled(typeof chatEnabled === "boolean" ? chatEnabled : true)
+          }
+        } catch (e) {
+          if (mounted) setChatNotificationEnabled(typeof chatEnabled === "boolean" ? chatEnabled : true)
+        }
       } catch (err) {
         console.error("Error loading sound setting:", err)
         if (mounted) setSoundEnabled(true)
+        if (mounted) setChatNotificationEnabled(true)
       }
     }
     loadSoundSetting()
     // storage event listener to sync across tabs
     const onStorage = (e: StorageEvent) => {
-      if (e.key === "saferide_sound_enabled") {
-        try {
-          const val = e.newValue ? JSON.parse(e.newValue) : null
-          setSoundEnabled(val === null ? true : Boolean(val))
-        } catch (err) {
-          console.warn("Error parsing storage event for saferide_sound_enabled:", err)
+      try {
+        if (!user?.uid) return
+        const soundKey = `saferide_sound_enabled_${user.uid}`
+        const chatKey = `saferide_chat_notification_${user.uid}`
+        if (e.key === soundKey) {
+          try {
+            const val = e.newValue ? JSON.parse(e.newValue) : null
+            setSoundEnabled(val === null ? true : Boolean(val))
+          } catch (err) {
+            console.warn("Error parsing storage event for saferide_sound_enabled:", err)
+          }
         }
+        if (e.key === chatKey) {
+          try {
+            const val = e.newValue ? JSON.parse(e.newValue) : null
+            setChatNotificationEnabled(val === null ? true : Boolean(val))
+          } catch (err) {
+            console.warn("Error parsing storage event for saferide_chat_notification:", err)
+          }
+        }
+      } catch (err) {
+        // ignore
       }
     }
     window.addEventListener("storage", onStorage)
@@ -443,6 +493,15 @@ function ProfileContent() {
       window.removeEventListener("storage", onStorage)
     }
   }, [user?.uid])
+
+  const emitStorageEvent = (key: string, value: string) => {
+    try {
+      const event = new StorageEvent("storage", { key, newValue: value, oldValue: null, url: window.location.href })
+      window.dispatchEvent(event)
+    } catch (e) {
+      console.warn("Could not emit StorageEvent:", e)
+    }
+  }
 
   const toggleSound = async (val: boolean) => {
     if (!user?.uid || !supabase) return
@@ -502,8 +561,12 @@ function ProfileContent() {
       if (error) throw error
       setSoundEnabled(val)
       try {
-        // persist to localStorage for fast client-side access
-        localStorage.setItem("saferide_sound_enabled", JSON.stringify(val))
+        // persist to localStorage for fast client-side access (namespaced by uid)
+        if (user?.uid) {
+          const key = `saferide_sound_enabled_${user.uid}`
+          localStorage.setItem(key, JSON.stringify(val))
+          emitStorageEvent(key, JSON.stringify(val))
+        }
       } catch (e) {
         console.warn("Could not write sound setting to localStorage:", e)
       }
@@ -511,6 +574,28 @@ function ProfileContent() {
     } catch (err) {
       console.error("Error saving sound setting:", err)
       toast({ title: "Error", description: "No se pudo guardar la preferencia de sonido", variant: "destructive" })
+    }
+  }
+
+  const toggleChatNotification = async (val: boolean) => {
+    // Only persist chat notification preference locally (no server writes)
+    try {
+      setChatNotificationEnabled(val)
+  try {
+    if (user?.uid) {
+      const key = `saferide_chat_notification_${user.uid}`
+      const v = JSON.stringify(val)
+      localStorage.setItem(key, v)
+      emitStorageEvent(key, v)
+      emitPrefChanged(key, v)
+    }
+  } catch (e) {
+    console.warn("Could not write chat setting to localStorage:", e)
+  }
+      toast({ title: "Preferencia guardada", description: `Notificaciones de chat ${val ? 'activadas' : 'desactivadas'}` })
+    } catch (err) {
+      console.error("Error saving chat setting locally:", err)
+      toast({ title: "Error", description: "No se pudo guardar la preferencia de chat", variant: "destructive" })
     }
   }
 

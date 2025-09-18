@@ -100,8 +100,16 @@ export function Navbar() {
         <div className="flex justify-between items-center h-14 md:h-16">
           {/* LOGOTIPO */}
           <Link href="/" className="flex items-center space-x-3">
-            <div className="bg-gradient-to-r from-blue-600 to-blue-700 p-2 rounded-lg">
-              <Image src="/saferide-icon.svg" alt="SafeRide" width={27} height={24} className="object-contain" />
+              <div className="bg-gradient-to-r from-blue-600 to-blue-700 p-2 rounded-lg">
+              {/* usar <img> nativo para evitar advertencias en dev server sobre dimensionado */}
+              <img
+                src="/saferide-icon.svg"
+                alt="SafeRide"
+                width={27}
+                height={24}
+                className="object-contain"
+                style={{ width: 'auto', height: 'auto', maxWidth: '27px', maxHeight: '24px' }}
+              />
             </div>
             <div>
               <span className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent">

@@ -181,11 +181,20 @@ export function PWAInstallPrompt() {
   return (
     <>
       {visible && (
-        <div className="fixed inset-x-4 bottom-6 z-50 mx-auto max-w-3xl">
+        // mover ligeramente a la izquierda y reducir anchura
+        <div className="fixed left-4 bottom-6 z-50 max-w-xl">
           <div className="rounded-xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-lg border border-slate-200 dark:border-slate-800 shadow-lg px-4 py-3 flex flex-col sm:flex-row items-start sm:items-center gap-4 justify-between">
               <div className="flex items-center gap-2 w-full sm:w-auto">
                 <div className="flex-shrink-0">
-                  <Image src="/saferide-icon.svg" alt="app" width={36} height={36} className="rounded-md shadow-sm object-contain" />
+                  {/* usar <img> nativo para evitar advertencias en dev server sobre dimensionado */}
+                  <img
+                    src="/saferide-icon.svg"
+                    alt="app"
+                    width={36}
+                    height={36}
+                    className="rounded-md shadow-sm object-contain"
+                    style={{ width: 'auto', height: 'auto', maxWidth: '36px', maxHeight: '36px' }}
+                  />
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="text-sm font-semibold text-slate-900 dark:text-slate-100 truncate">Instalar Saferide</div>

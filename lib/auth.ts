@@ -169,15 +169,35 @@ export const logoutUser = async () => {
   try {
     if (!supabase) return { success: false, error: "Servicios de autenticación no están disponibles." }
 
+    // Primero verificar si hay sesión activa en el cliente
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session) {
+      // No hay sesión activa: tratar como logout exitoso y limpiar localStorage relacionado
+      try { localStorage.removeItem('supabase.auth.token') } catch (e) {}
+      return { success: true }
+    }
+
     const { error } = await supabase.auth.signOut()
     if (error) {
       console.error("Error en Supabase signOut:", error)
+      const msg = String((error as any)?.message || '')
+      const status = (error as any)?.status
+      if (msg.includes('Auth session missing') || msg.includes('AuthSessionMissingError') || status === 403) {
+        // Si el servidor indica que la sesión ya no existe, tratar como éxito localmente
+        try { localStorage.removeItem('supabase.auth.token') } catch (e) {}
+        return { success: true }
+      }
       return { success: false, error: error.message }
     }
 
     return { success: true }
   } catch (error: unknown) {
     console.error("Logout error:", error)
+    const m = String((error as any)?.message || '')
+    if (m.includes('Auth session missing') || m.includes('AuthSessionMissingError')) {
+      try { localStorage.removeItem('supabase.auth.token') } catch (e) {}
+      return { success: true }
+    }
     return { success: false, error: error instanceof Error ? error.message : String(error) }
   }
 }

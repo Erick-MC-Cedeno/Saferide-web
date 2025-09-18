@@ -140,10 +140,44 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!supabase) return
 
     try {
-      // Llamar a Supabase para cerrar la sesión primero
+      // Verificar si hay sesión activa antes de llamar a signOut
+      const { data: { session } } = await supabase.auth.getSession()
+
+      if (!session) {
+        // No hay sesión activa en el cliente: puede ocurrir si el token/cookie se eliminó en otra pestaña.
+        // En este caso no intentamos la petición de logout al servidor (evita 403/errores) y hacemos limpieza local.
+        console.warn('No active Supabase session found during signOut; performing local cleanup.')
+        setUser(null)
+        setUserData(null)
+        setUserType(null)
+        isLoadingUserData.current = false
+        // Intentar limpiar las claves locales relacionadas con auth (si existen)
+        try {
+          localStorage.removeItem('supabase.auth.token')
+          // limpiar otros keys conocidos si aplica
+        } catch (e) {
+          // ignore
+        }
+        return
+      }
+
+      // Llamar a Supabase para cerrar la sesión en el servidor
       const { error } = await supabase.auth.signOut()
       if (error) {
         console.error('Error signing out from supabase:', error)
+        // Si el servidor responde que la sesión falta/expiró (p. ej. AuthSessionMissingError o 403),
+        // tratarlo como signOut exitoso en el cliente para evitar que el usuario quede bloqueado.
+        const msg = String((error as any)?.message || '')
+        const status = (error as any)?.status
+        if (msg.includes('Auth session missing') || msg.includes('AuthSessionMissingError') || status === 403) {
+          console.warn('Server reports missing session; proceeding with local cleanup.')
+          setUser(null)
+          setUserData(null)
+          setUserType(null)
+          isLoadingUserData.current = false
+          try { localStorage.removeItem('supabase.auth.token') } catch (e) {}
+          return
+        }
         throw error
       }
 
@@ -155,14 +189,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       // Limpieza adicional: eliminar keys específicas en storage si se usan (no forzar globalmente)
       try {
-        // Por seguridad, sólo limpiar claves conocidas. Añadir aquí si existen:
-        // localStorage.removeItem('some_app_key')
+        localStorage.removeItem('supabase.auth.token')
       } catch (e) {
         // ignore storage cleanup errors
       }
     } catch (err) {
       console.error('Error during signOut:', err)
-      // Re-lanzar para que el componente UI pueda manejarlo (ej. mostrar toast)
+      // Si el error indica que la sesión ya no existe, tratar como éxito y limpiar el estado local.
+      const m = String((err as any)?.message || '')
+      if (m.includes('Auth session missing') || m.includes('AuthSessionMissingError')) {
+        setUser(null)
+        setUserData(null)
+        setUserType(null)
+        isLoadingUserData.current = false
+        try { localStorage.removeItem('supabase.auth.token') } catch (e) {}
+        return
+      }
+      // Re-lanzar para que el componente UI pueda manejar otros errores (ej. mostrar toast)
       throw err
     }
   }

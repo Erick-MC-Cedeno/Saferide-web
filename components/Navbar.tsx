@@ -17,6 +17,7 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Shield, User, Settings, History, CreditCard, LogOut, Menu, X } from 'lucide-react'
 import { useAuth } from "@/lib/auth-context"
+import { useToast } from '@/hooks/use-toast'
 
 export function Navbar() {
   const { user, userData, userType, signOut, refreshUserData } = useAuth()
@@ -43,21 +44,35 @@ export function Navbar() {
   }, [user?.uid, userData, refreshUserData])
 
   // MANEJA EL CIERRE DE SESIÓN: RESETEA FLAGS, LLAMA A signOut, ESPERA BREVE Y NAVEGA A LA RAÍZ
+  const { toast } = useToast()
+
   const handleSignOut = async () => {
+    // notificar al usuario que el proceso de cierre de sesión inicia
+    let pendingToastId: string | undefined
     try {
       hasInitialLoad.current = false
+      const pending = toast({ title: 'Cerrando sesión...', description: 'Espere un momento.' })
+      pendingToastId = pending.id
+
       await signOut()
 
-      // ESPERA CORTA PARA ASEGURAR LA CONSISTENCIA ANTES DE REDIRIGIR
+      // confirmación visual
+      if (pendingToastId) {
+        toast({ title: 'Sesión cerrada', description: 'Has cerrado sesión correctamente.' })
+      }
+
+      // pequeña espera para que el estado se estabilice
       await new Promise(resolve => setTimeout(resolve, 100))
 
-      // NAVEGACIÓN CLIENTE A LA PÁGINA PRINCIPAL Y CIERRE DEL MENÚ MÓVIL
-      router.replace("/auth/login")
+      router.replace('/auth/login')
+    } catch (error: any) {
+      console.error('Error al cerrar sesión:', error)
+      toast({ title: 'Error', description: error?.message || 'No se pudo cerrar sesión', variant: 'destructive' })
+      // fallback: intentar redirigir igualmente
+      try { router.replace('/auth/login') } catch {}
+    } finally {
+      // cerrar menú móvil independientemente del resultado
       setMobileMenuOpen(false)
-    } catch (error) {
-      console.error("Error al cerrar sesión:", error)
-      // EN CASO DE ERROR, REDIRECCIONAR A LA RAÍZ COMO RECOVERY
-      router.replace("/auth/login")
     }
   }
 

@@ -13,7 +13,7 @@ export async function GET() {
         'Cache-Control': 'no-cache'
       }
     })
-  } catch (err) {
+  } catch {
     return new NextResponse('/* sw not found */', { status: 404, headers: { 'Content-Type': 'application/javascript' } })
   }
 }

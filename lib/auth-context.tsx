@@ -134,27 +134,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [userType])
 
+  
+  // CIERRA LA SESSION ACTUAL Y LIMPIA EL ESTADO LOCAL
   const signOut = async () => {
+    if (!supabase) return
+
     try {
-      if (supabase) {
-        // Primero limpiar el estado local para una respuesta inmediata en la UI
-        setUser(null)
-        setUserData(null)
-        setUserType(null)
-        isLoadingUserData.current = false
-
-      
-
-        // Luego realizar el cierre de sesión en Supabase
-        const { error } = await supabase.auth.signOut()
-        if (error) {
-          throw error
-        }
+      // Llamar a Supabase para cerrar la sesión primero
+      const { error } = await supabase.auth.signOut()
+      if (error) {
+        console.error('Error signing out from supabase:', error)
+        throw error
       }
-    } catch (error) {
-      console.error("Error signing out:", error)
-      // Propagar el error para que pueda ser manejado por el componente que llama a esta función
-      throw error
+
+      // Limpiar estado local sólo después de confirmar el sign out
+      setUser(null)
+      setUserData(null)
+      setUserType(null)
+      isLoadingUserData.current = false
+
+      // Limpieza adicional: eliminar keys específicas en storage si se usan (no forzar globalmente)
+      try {
+        // Por seguridad, sólo limpiar claves conocidas. Añadir aquí si existen:
+        // localStorage.removeItem('some_app_key')
+      } catch (e) {
+        // ignore storage cleanup errors
+      }
+    } catch (err) {
+      console.error('Error during signOut:', err)
+      // Re-lanzar para que el componente UI pueda manejarlo (ej. mostrar toast)
+      throw err
     }
   }
 

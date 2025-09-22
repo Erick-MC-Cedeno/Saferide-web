@@ -21,6 +21,7 @@ interface MapComponentProps {
   pickupLocation?: { lat: number; lng: number }
   destinationLocation?: { lat: number; lng: number }
   driverLocations?: Array<{ id: string; lat: number; lng: number; name: string }>
+  onMarkerClick?: (id: string) => void
   onMapReady?: (userLocation?: { lat: number; lng: number } | null) => void
 }
 
@@ -29,6 +30,7 @@ export function MapComponent({
   pickupLocation,
   destinationLocation,
   driverLocations = [],
+  onMarkerClick,
   onMapReady,
 }: MapComponentProps) {
   const mapRef = useRef<HTMLDivElement>(null)
@@ -237,7 +239,10 @@ export function MapComponent({
       markersRef.current.push(destinationMarker)
     }
 
-  if (userType === "passenger" && driverLocations.length > 0) {
+  // Show driver markers for passengers AND drivers when driverLocations provided.
+  // For passengers it represents nearby drivers; for drivers it represents assigned rides
+  // (i.e., passenger-selected driver or accepted rides) passed via driverLocations.
+  if (driverLocations.length > 0) {
       // To ensure visibility across browsers/environments use classic google.maps.Marker
       // Also apply a tiny jitter when multiple drivers are very close so pins don't overlap.
       const seen: Record<string, number> = {}
@@ -285,6 +290,21 @@ export function MapComponent({
               zIndex: 500,
             })
 
+            // attach click listener to the rendered element if caller provided handler
+            try {
+              if (el && typeof el.addEventListener === "function" && typeof onMarkerClick === "function") {
+                el.addEventListener("click", () => {
+                  try {
+                    onMarkerClick(driver.id)
+                  } catch (e) {
+                    console.warn("onMarkerClick handler failed:", e)
+                  }
+                })
+              }
+            } catch (e) {
+              // ignore
+            }
+
             markersRef.current.push(advMarker)
             console.debug("Driver advanced marker created:", driver.id || driver.name, markerPos)
           } else {
@@ -296,6 +316,21 @@ export function MapComponent({
               zIndex: 500,
             })
 
+            // attach click listener to classic marker
+            try {
+              if (typeof marker.addListener === "function" && typeof onMarkerClick === "function") {
+                marker.addListener("click", () => {
+                  try {
+                    onMarkerClick(driver.id)
+                  } catch (e) {
+                    console.warn("onMarkerClick handler failed:", e)
+                  }
+                })
+              }
+            } catch (e) {
+              // ignore
+            }
+
             markersRef.current.push(marker)
             console.debug("Driver marker created (fallback):", driver.id || driver.name, markerPos)
           }
@@ -303,7 +338,7 @@ export function MapComponent({
           console.warn("Error creando marcador de conductor:", err, driver)
         }
       })
-    }
+  }
 
     if (pickupLocation && destinationLocation) {
       const directionsService = new (window as any).google.maps.DirectionsService()
@@ -346,10 +381,10 @@ export function MapComponent({
   if (isLoading || !isLoaded) return <MapFallback userType={userType} />
 
   return (
-    <div className="relative">
+    <div className="relative h-full">
       <div
         ref={mapRef}
-  className="rounded-lg w-full h-60 sm:h-72 md:h-96 bg-gray-200 relative overflow-hidden"
+        className="rounded-lg w-full h-full bg-gray-200 relative overflow-hidden"
       />
 
       {/* Overlays intentionally removed for a clean map UI; map functionality remains unchanged */}

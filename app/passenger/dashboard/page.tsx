@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useMemo, useCallback, useRef } from "react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
@@ -13,14 +12,15 @@ import {
   MapPin,
   Star,
   Car,
-  Clock,
-  DollarSign,
-  Navigation,
-  Calendar,
-  X,
-  Users,
   Activity,
   MessageCircle,
+  Settings,
+  LogOut,
+  Plus,
+  Minus,
+  Share,
+  Menu,
+  History,
 } from "lucide-react"
 import { useRealTimeRides } from "@/hooks/useRealTimeRides"
 import { useAuth } from "@/lib/auth-context"
@@ -28,13 +28,13 @@ import { supabase } from "@/lib/supabase"
 import { MapComponent } from "@/components/MapComponent"
 import { AddressAutocomplete } from "@/components/AddressAutocomplete"
 import { ProtectedRoute } from "@/components/ProtectedRoute"
-import { ScrollArea } from "@/components/ui/scroll-area"
 import { useToast } from "@/hooks/use-toast"
 import { RideChat } from "@/components/RideChat"
-
+import { useRouter } from "next/navigation" // Import useRouter
 
 // DASHBOARD PASSENGER CONTENT
 function PassengerDashboardContent() {
+  const router = useRouter() // Initialize useRouter
   const { user, userData } = useAuth()
   const { toast } = useToast()
   // Types
@@ -91,8 +91,7 @@ function PassengerDashboardContent() {
     averageRating: 0,
   })
 
-
-// QUIK DESTINATIONS REMOVED
+  // QUIK DESTINATIONS REMOVED
   const [showChatDialog, setShowChatDialog] = useState(false)
   const [chatUnread, setChatUnread] = useState(0)
   const [chatLastMessage, setChatLastMessage] = useState<string | null>(null)
@@ -102,16 +101,17 @@ function PassengerDashboardContent() {
   const [chatNotificationEnabled, setChatNotificationEnabled] = useState<boolean | null>(null)
   const { rides, cancelRide, refreshRides } = useRealTimeRides(undefined, user?.uid)
   const currentRide = rides.find((ride) => ["pending", "accepted", "in-progress"].includes(ride.status))
-  const [driversForMap, setDriversForMap] = useState<Array<{ id: string; uid?: string; name: string; lat: number; lng: number }>>([])
+  const [driversForMap, setDriversForMap] = useState<
+    Array<{ id: string; uid?: string; name: string; lat: number; lng: number }>
+  >([])
 
-  
   // RESET RIDE STATUS WHEN NO CURRENT RIDE
   useEffect(() => {
     if (!currentRide && rideStatus !== "idle") {
       setRideStatus("idle")
     }
     // rideStatus intentionally included
-  }, [currentRide, rideStatus])
+  }, [!!currentRide, rideStatus])
 
   // Chat notifications (passenger listens for messages from driver)
   useEffect(() => {
@@ -158,25 +158,21 @@ function PassengerDashboardContent() {
         chatChannelRef.current = null
       }
     }
-  }, [currentRide?.id])
-
-
+  }, [currentRide, chatNotificationEnabled]) // Changed dependency from currentRide.id to currentRide
 
   // PRELOAD CHAT AUDIO AND HELPER TO UNLOCK/PLAY ON INTERACTION
   useEffect(() => {
     if (!audioChatRef.current) {
       audioChatRef.current = new Audio()
       audioChatRef.current.preload = "auto"
-      fetch('/api/sounds/saferidechattone')
+      fetch("/api/sounds/saferidechattone")
         .then((r) => r.json())
         .then((j) => {
           if (j?.base64) audioChatRef.current!.src = `data:audio/mpeg;base64,${j.base64}`
         })
-        .catch((e) => console.warn('Could not load saferidechattone:', e))
+        .catch((e) => console.warn("Could not load saferidechattone:", e))
     }
   }, [])
-
-  
 
   // LOAD CHAT NOTIFICATION PREFERENCE FROM LOCAL STORAGE
   useEffect(() => {
@@ -190,7 +186,7 @@ function PassengerDashboardContent() {
         setChatNotificationEnabled(true)
       }
     } catch (e) {
-      console.warn('Could not read saferide_chat_notification from localStorage (passenger):', e)
+      console.warn("Could not read saferide_chat_notification from localStorage (passenger):", e)
       setChatNotificationEnabled(true)
     }
     const onStorage = (e: StorageEvent) => {
@@ -198,13 +194,16 @@ function PassengerDashboardContent() {
         if (!user?.uid) return
         const chatKey = `saferide_chat_notification_${user.uid}`
         if (e.key === chatKey) {
-          try { setChatNotificationEnabled(e.newValue ? JSON.parse(e.newValue) : null) } catch (err) { console.warn('Error parsing storage event for chat toggle (passenger)', err) }
+          try {
+            setChatNotificationEnabled(e.newValue ? JSON.parse(e.newValue) : null)
+          } catch (err) {
+            console.warn("Error parsing storage event for chat toggle (passenger)", err)
+          }
         }
       } catch (err) {
         // ignore
       }
     }
-
 
     // LOAD CHAT NOTIFICATION SETTINGS FROM LOCAL STORAGE
     const onPrefChanged = (ev: Event) => {
@@ -216,18 +215,23 @@ function PassengerDashboardContent() {
         const value: string = detail?.value
         const chatKey = `saferide_chat_notification_${user.uid}`
         if (key === chatKey) {
-          try { setChatNotificationEnabled(value ? JSON.parse(value) : null) } catch (err) { console.warn('Error parsing pref-changed value for chat toggle (passenger)', err) }
+          try {
+            setChatNotificationEnabled(value ? JSON.parse(value) : null)
+          } catch (err) {
+            console.warn("Error parsing pref-changed value for chat toggle (passenger)", err)
+          }
         }
       } catch (err) {
         // ignore
       }
     }
-    window.addEventListener('storage', onStorage)
-    window.addEventListener('saferide:pref-changed', onPrefChanged)
-    return () => window.removeEventListener('storage', onStorage)
-  }, [])
-
-
+    window.addEventListener("storage", onStorage)
+    window.addEventListener("saferide:pref-changed", onPrefChanged)
+    return () => {
+      window.removeEventListener("storage", onStorage)
+      window.removeEventListener("saferide:pref-changed", onPrefChanged)
+    }
+  }, [user?.uid])
 
   // HELPER: TRY TO PLAY AUDIO IMMEDIATELY; IF BLOCKED BY AUTOPLAY POLICY,
   const playChatAudioWithUnlock = async () => {
@@ -247,7 +251,8 @@ function PassengerDashboardContent() {
         try {
           try {
             // @ts-ignore
-            const ctx = (window as any).audioContext || new (window.AudioContext || (window as any).webkitAudioContext)()
+            const ctx =
+              (window as any).audioContext || new (window.AudioContext || (window as any).webkitAudioContext)()
             if (ctx && typeof ctx.resume === "function") {
               await ctx.resume()
               ;(window as any).audioContext = ctx
@@ -268,8 +273,6 @@ function PassengerDashboardContent() {
     }
   }
 
-
-
   // LOAD PASSENGER STATISTICS AND RECENT TRIPS
   useEffect(() => {
     const loadPassengerData = async () => {
@@ -286,12 +289,14 @@ function PassengerDashboardContent() {
         // GET COMPLETED RIDES FOR SPENDING CALCULATION
         const { data: completedRides } = await supabase
           .from("rides")
-          .select("*")
+          .select(
+            "id, driver_name, passenger_rating, driver_rating, actual_fare, estimated_fare, estimated_duration, completed_at, pickup_address, destination_address"
+          )
           .eq("passenger_id", user.uid)
           .eq("status", "completed")
           .order("completed_at", { ascending: false })
 
-  if (completedRides) {
+        if (completedRides) {
           type RideRow = {
             actual_fare?: number | string | null
             estimated_fare?: number | string | null
@@ -306,7 +311,10 @@ function PassengerDashboardContent() {
           }
 
           const completed = (completedRides ?? []) as unknown as RideRow[]
-          const totalSpent = completed.reduce((sum, ride) => sum + Number(ride.actual_fare ?? ride.estimated_fare ?? 0), 0)
+          const totalSpent = completed.reduce(
+            (sum, ride) => sum + Number(ride.actual_fare ?? ride.estimated_fare ?? 0),
+            0,
+          )
           // Calculate average rating from driver ratings
           const ratedRides = completed.filter((ride) => ride.driver_rating != null)
           let averageRating =
@@ -333,54 +341,51 @@ function PassengerDashboardContent() {
     loadPassengerData()
   }, [user?.uid])
 
-
-
   // DEFAULT RADIUS (KM) READ FROM ENV FOR CLIENT SIDE
   const DEFAULT_RADIUS_KM = useMemo(() => {
     try {
       const v = typeof process !== "undefined" ? process.env.NEXT_PUBLIC_RADIO : undefined
-      const parsed = v ? parseFloat(v) : 1
+      const parsed = v ? Number.parseFloat(v) : 1
       return isNaN(parsed) ? 1 : parsed
     } catch {
       return 1
     }
   }, [])
 
-
-
   // FUNCION PARA OPTENER LOS DATOS DE EL DRIVER
-  const driverData = useCallback(async (lat?: number | null, lng?: number | null, radiusKm?: number) => {
-    try {
-      const params = new URLSearchParams()
-      const rad = typeof radiusKm === 'number' ? radiusKm : DEFAULT_RADIUS_KM
-      if (typeof lat === "number" && typeof lng === "number") {
-        params.set("lat", String(lat))
-        params.set("lng", String(lng))
-        params.set("radiusKm", String(rad))
-      }
-
-      const url = "/api/drivers/all" + (params.toString() ? `?${params.toString()}` : "")
-      const response = await fetch(url)
-      const result = await response.json()
-
-      // Manejo especial: si el servidor responde que no hay rangos configurados,
-      // devolver un objeto con flag para que el UI lo maneje sin lanzar excepción.
-      if (!result.success) {
-        console.error("Error en driverData:", result.error)
-        if (result.error === "Aún no hay rangos configurados") {
-          return { success: false, noRangesConfigured: true, error: result.error }
+  const driverData = useCallback(
+    async (lat?: number | null, lng?: number | null, radiusKm?: number) => {
+      try {
+        const params = new URLSearchParams()
+        const rad = typeof radiusKm === "number" ? radiusKm : DEFAULT_RADIUS_KM
+        if (typeof lat === "number" && typeof lng === "number") {
+          params.set("lat", String(lat))
+          params.set("lng", String(lng))
+          params.set("radiusKm", String(rad))
         }
-        throw new Error(result.error || "Error al obtener conductores")
+
+        const url = "/api/drivers/all" + (params.toString() ? `?${params.toString()}` : "")
+        const response = await fetch(url)
+        const result = await response.json()
+
+        // Manejo especial: si el servidor responde que no hay rangos configurados,
+        // devolver un objeto con flag para que el UI lo maneje sin lanzar excepción.
+        if (!result.success) {
+          console.error("Error en driverData:", result.error)
+          if (result.error === "Aún no hay rangos configurados") {
+            return { success: false, noRangesConfigured: true, error: result.error }
+          }
+          throw new Error(result.error || "Error al obtener conductores")
+        }
+
+        return { success: true, ...result }
+      } catch (error) {
+        console.error("Error en driverData:", error)
+        throw error
       }
-
-      return { success: true, ...result }
-    } catch (error) {
-      console.error("Error en driverData:", error)
-      throw error
-    }
-  }, [DEFAULT_RADIUS_KM])
-
-
+    },
+    [DEFAULT_RADIUS_KM],
+  )
 
   // HAVERSINE DISTANCE FUNCTION
   const haversineDistance = useCallback((lat1: number, lng1: number, lat2: number, lng2: number) => {
@@ -388,79 +393,89 @@ function PassengerDashboardContent() {
     const R = 6371 // km
     const dLat = toRad(lat2 - lat1)
     const dLon = toRad(lng2 - lng1)
-    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
       Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) * Math.sin(dLon / 2)
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
     return R * c
-
   }, [])
-// SHOW NEARBY DRIVERS CALLS  /api/drivers/all, maps coordinates, filters by configured radius
-  const showNearbyDriversInMap = useCallback(async (userLat?: number | null, userLng?: number | null) => {
-    try {
-      // If we have user coords, prefer server-side filtering for robustness
-      const res = typeof userLat === "number" && typeof userLng === "number" ? await driverData(userLat, userLng, DEFAULT_RADIUS_KM) : await driverData()
-      // Manejo cuando el servidor indica que no hay rangos configurados
-      if (res && res.noRangesConfigured) {
-        toast({ title: "Rangos no configurados", description: "Aún no hay rangos configurados en el servidor", variant: "destructive" })
+  // SHOW NEARBY DRIVERS CALLS  /api/drivers/all, maps coordinates, filters by configured radius
+  const showNearbyDriversInMap = useCallback(
+    async (userLat?: number | null, userLng?: number | null) => {
+      try {
+        // If we have user coords, prefer server-side filtering for robustness
+        const res =
+          typeof userLat === "number" && typeof userLng === "number"
+            ? await driverData(userLat, userLng, DEFAULT_RADIUS_KM)
+            : await driverData()
+        // Manejo cuando el servidor indica que no hay rangos configurados
+        if (res && res.noRangesConfigured) {
+          toast({
+            title: "Rangos no configurados",
+            description: "Aún no hay rangos configurados en el servidor",
+            variant: "destructive",
+          })
+          setDriversForMap([])
+          setNoDriversNearby("Aún no hay rangos configurados")
+          return []
+        }
+
+        const mapped = (res.data || []).map((d: DriverApi) => {
+          // assumption: driver current_location.coordinates = [lng, lat]
+          const coords = d?.current_location?.coordinates || d?.location?.coordinates || d?.coordinates
+          let lat = 0
+          let lng = 0
+          if (Array.isArray(coords) && coords.length >= 2) {
+            lng = Number(coords[0])
+            lat = Number(coords[1])
+          } else if (d?.lat && d?.lng) {
+            lat = Number(d.lat)
+            lng = Number(d.lng)
+          }
+          return { ...d, lat, lng }
+        })
+
+        let nearby = mapped
+        if (typeof userLat === "number" && typeof userLng === "number") {
+          // If server already filtered, this is redundant but harmless. Keep for safety.
+          nearby = mapped.filter((d: DriverApi & { lat: number; lng: number }) => {
+            if (!d || isNaN(d.lat) || isNaN(d.lng)) return false
+            const dist = haversineDistance(userLat, userLng, d.lat, d.lng)
+            return dist <= DEFAULT_RADIUS_KM
+          })
+        }
+
+        // ONLY INCLUDE DRIVERS THAT ARE CURRENTLY ONLINE
+        nearby = nearby.filter((d: DriverApi) => Boolean(d.is_online))
+
+        // normalize for map: id/uid, name, lat, lng
+        const driversForMapNormalized = nearby.map((d: DriverApi & { lat: number; lng: number }, idx: number) => ({
+          id: String(d.id ?? d.uid ?? idx),
+          uid: d.uid,
+          name: String(d.name || d.full_name || d.driver_name || ""),
+          lat: d.lat,
+          lng: d.lng,
+        }))
+        // Cast to the expected driversForMap shape
+        setDriversForMap(
+          driversForMapNormalized as Array<{ id: string; uid?: string; name: string; lat: number; lng: number }>,
+        )
+        if ((driversForMapNormalized || []).length === 0) {
+          toast({
+            title: "Sin conductores cercanos",
+            description: `No se encontraron conductores a ≤ ${DEFAULT_RADIUS_KM} km`,
+            variant: "default",
+          })
+        }
+        return driversForMapNormalized
+      } catch (err) {
+        console.error("Error loading nearby drivers:", err)
         setDriversForMap([])
-        setNoDriversNearby("Aún no hay rangos configurados")
         return []
       }
-
-  const mapped = (res.data || []).map((d: DriverApi) => {
-        // assumption: driver current_location.coordinates = [lng, lat]
-        const coords = d?.current_location?.coordinates || d?.location?.coordinates || d?.coordinates
-        let lat = 0
-        let lng = 0
-        if (Array.isArray(coords) && coords.length >= 2) {
-          lng = Number(coords[0])
-          lat = Number(coords[1])
-        } else if (d?.lat && d?.lng) {
-          lat = Number(d.lat)
-          lng = Number(d.lng)
-        }
-        return { ...d, lat, lng }
-      })
-
-      let nearby = mapped
-      if (typeof userLat === "number" && typeof userLng === "number") {
-        // If server already filtered, this is redundant but harmless. Keep for safety.
-        nearby = mapped.filter((d: DriverApi & { lat: number; lng: number }) => {
-          if (!d || isNaN(d.lat) || isNaN(d.lng)) return false
-          const dist = haversineDistance(userLat, userLng, d.lat, d.lng)
-          return dist <= DEFAULT_RADIUS_KM
-        })
-      }
-
-  // ONLY INCLUDE DRIVERS THAT ARE CURRENTLY ONLINE
-  nearby = nearby.filter((d: DriverApi) => Boolean(d.is_online))
-
-      // normalize for map: id/uid, name, lat, lng
-      const driversForMapNormalized = nearby.map((d: DriverApi & { lat: number; lng: number }, idx: number) => ({
-        id: String(d.id ?? d.uid ?? idx),
-        uid: d.uid,
-        name: String(d.name || d.full_name || d.driver_name || ""),
-        lat: d.lat,
-        lng: d.lng,
-      }))
-      // Cast to the expected driversForMap shape
-      setDriversForMap(driversForMapNormalized as Array<{ id: string; uid?: string; name: string; lat: number; lng: number }>)
-      if ((driversForMapNormalized || []).length === 0) {
-        toast({
-          title: "Sin conductores cercanos",
-          description: `No se encontraron conductores a ≤ ${DEFAULT_RADIUS_KM} km`,
-          variant: "default",
-        })
-      }
-      return driversForMapNormalized
-    } catch (err) {
-      console.error("Error loading nearby drivers:", err)
-      setDriversForMap([])
-      return []
-    }
-  }, [driverData, DEFAULT_RADIUS_KM, haversineDistance, toast])
-
-
+    },
+    [driverData, DEFAULT_RADIUS_KM, haversineDistance, toast],
+  )
 
   // AUTO LOAD NEARBY DRIVERS WHEN USER AUTHENTICATES
   useEffect(() => {
@@ -501,10 +516,6 @@ function PassengerDashboardContent() {
     loadOnAuth()
   }, [user, pickupCoords, showNearbyDriversInMap])
 
-
-
-
-
   // LOAD AVAILABLE DRIVERS WHEN COORDINATES ARE SET - MODIFICADO PARA USAR DRIVERDATA
   useEffect(() => {
     const loadAvailableDrivers = async () => {
@@ -513,13 +524,17 @@ function PassengerDashboardContent() {
       // debug log removed
 
       try {
-  // Usar la función driverData pasando coordenadas para filtrar por 1km
-  const driverResult = await driverData(pickupCoords?.lat, pickupCoords?.lng, DEFAULT_RADIUS_KM)
+        // Usar la función driverData pasando coordenadas para filtrar por 1km
+        const driverResult = await driverData(pickupCoords?.lat, pickupCoords?.lng, DEFAULT_RADIUS_KM)
 
         if (driverResult && driverResult.noRangesConfigured) {
           // Mostrar mensaje persistente en la UI además del toast
           setNoDriversNearby("Aún no hay rangos configurados")
-          toast({ title: "Rangos no configurados", description: "Aún no hay rangos configurados en el servidor", variant: "destructive" })
+          toast({
+            title: "Rangos no configurados",
+            description: "Aún no hay rangos configurados en el servidor",
+            variant: "destructive",
+          })
           setAvailableDrivers([])
           return
         }
@@ -559,7 +574,6 @@ function PassengerDashboardContent() {
     }
   }, [pickupCoords, destinationCoords, driverData, DEFAULT_RADIUS_KM, toast])
 
-
   // CHECK FOR COMPLETED RIDES TO SHOW RATING DIALOG
   // SHOW DIALOG ONLY WHEN THE RIDE HAS NO PASSENGER RATING AND NO COMMENT (BOTH EMPTY/NULL)
   useEffect(() => {
@@ -568,7 +582,7 @@ function PassengerDashboardContent() {
         ride.status === "completed" &&
         ride.passenger_id === user?.uid &&
         // only show if passenger_rating is truly null/undefined and there's no comment
-        (ride.passenger_rating == null) &&
+        ride.passenger_rating == null &&
         !ride.passenger_comment
       )
     })
@@ -579,18 +593,14 @@ function PassengerDashboardContent() {
     }
   }, [rides, user?.uid])
 
-
-
-
-
   // FUNCTION SOLICITARVIAJE
   const solicitarViaje = async () => {
-  // debug log removed
+    // debug log removed
 
     try {
       const rideData: NewRidePayload = {
         passenger_id: user.uid,
-  passenger_name: String(((userData as { name?: string } | null) ?? {})?.name ?? user?.email ?? ""),
+        passenger_name: String(((userData as { name?: string } | null) ?? {})?.name ?? user?.email ?? ""),
         pickup_address: pickup,
         pickup_coordinates: [pickupCoords.lng, pickupCoords.lat],
         destination_address: destination,
@@ -604,15 +614,15 @@ function PassengerDashboardContent() {
       if (selectedDriver) {
         const driver = availableDrivers.find((d) => d.uid === selectedDriver)
         if (driver) {
+          // Assign the driver_id/driver_name but keep status as 'pending'
+          // so the driver receives a pending request and must accept it.
           rideData.driver_id = selectedDriver
           rideData.driver_name = driver.name
-          rideData.status = "accepted"
-          rideData.accepted_at = new Date().toISOString()
-          // debug log removed
+          // do NOT mark accepted here; driver should accept the request.
         }
       }
 
-  const { error } = await supabase.from("rides").insert(rideData).select()
+      const { error } = await supabase.from("rides").insert(rideData).select()
 
       if (error) {
         console.error("Error creando viaje:", error)
@@ -660,8 +670,6 @@ function PassengerDashboardContent() {
     }
   }
 
-
-
   // HANDLE REQUEST RIDE MODIFICADO SEGÚN EL FLUJO ESPECIFICADO
   const handleRequestRide = async () => {
     if (!pickup || !destination || !pickupCoords || !destinationCoords || !user || !userData) return
@@ -673,7 +681,7 @@ function PassengerDashboardContent() {
 
     try {
       // debug log removed
-  const driverResult = await driverData(pickupCoords?.lat, pickupCoords?.lng, DEFAULT_RADIUS_KM)
+      const driverResult = await driverData(pickupCoords?.lat, pickupCoords?.lng, DEFAULT_RADIUS_KM)
 
       if (!driverResult.success) {
         console.error("Error en driverData:", driverResult.error)
@@ -727,8 +735,6 @@ function PassengerDashboardContent() {
     }
   }
 
-
-
   // HANDLE CANCEL RIDE MODIFICADO SEGÚN EL FLUJO ESPECIFICADO
   const handleCancelRide = async (rideId: string, reason?: string) => {
     try {
@@ -758,7 +764,7 @@ function PassengerDashboardContent() {
       setSelectedDriver("")
       setShowDriverSelection(false)
       setShowChatDialog(false) // Close chat if open
-  setNoDriversNearby("")
+      setNoDriversNearby("")
 
       toast({
         title: "Viaje cancelado",
@@ -776,8 +782,6 @@ function PassengerDashboardContent() {
       })
     }
   }
-
-
 
   // HANDLE RATE DRIVER MODIFICADO SEGÚN EL FLUJO ESPECIFICADO
   const handleRateDriver = async () => {
@@ -812,10 +816,11 @@ function PassengerDashboardContent() {
           .not("passenger_rating", "is", null)
 
         if (driverRides && driverRides.length > 0) {
-          const avgRating = (driverRides as Array<{ passenger_rating?: number }>).reduce(
-            (sum, ride) => sum + Number(ride.passenger_rating ?? 0),
-            0,
-          ) / driverRides.length
+          const avgRating =
+            (driverRides as Array<{ passenger_rating?: number }>).reduce(
+              (sum, ride) => sum + Number(ride.passenger_rating ?? 0),
+              0,
+            ) / driverRides.length
           await supabase.from("drivers").update({ rating: avgRating }).eq("uid", completedRide.driver_id)
         }
       }
@@ -867,9 +872,6 @@ function PassengerDashboardContent() {
     }
   }
 
-
-
-
   // CALCULATE ESTIMATED FARE
   const calculateEstimatedFare = (pickup: { lat: number; lng: number }, destination: { lat: number; lng: number }) => {
     const distance = calculateDistance(pickup.lat, pickup.lng, destination.lat, destination.lng)
@@ -877,7 +879,6 @@ function PassengerDashboardContent() {
     const perKmRate = 12
     return Math.round(baseFare + distance * perKmRate)
   }
-
 
   // CALCULATE ESTIMATED DURATION
   const calculateEstimatedDuration = (
@@ -888,7 +889,6 @@ function PassengerDashboardContent() {
     const avgSpeed = 25
     return Math.round((distance / avgSpeed) * 60)
   }
-
 
   // CALCULATE DISTANCE
   const calculateDistance = (lat1: number, lng1: number, lat2: number, lng2: number) => {
@@ -902,11 +902,14 @@ function PassengerDashboardContent() {
     return R * c
   }
 
-
   // HANDLE USE MY LOCATION
   const handleUseMyLocation = async () => {
     if (typeof window === "undefined" || !navigator.geolocation) {
-      toast({ title: "No disponible", description: "Geolocalización no soportada en este dispositivo", variant: "destructive" })
+      toast({
+        title: "No disponible",
+        description: "Geolocalización no soportada en este dispositivo",
+        variant: "destructive",
+      })
       return
     }
 
@@ -926,9 +929,7 @@ function PassengerDashboardContent() {
       let address = "Ubicación actual"
       if (apiKey) {
         try {
-          const res = await fetch(
-            `https://api.geoapify.com/v1/geocode/reverse?lat=${lat}&lon=${lon}&apiKey=${apiKey}`,
-          )
+          const res = await fetch(`https://api.geoapify.com/v1/geocode/reverse?lat=${lat}&lon=${lon}&apiKey=${apiKey}`)
           if (res.ok) {
             const data = await res.json()
             if (data?.features && data.features.length > 0) {
@@ -949,608 +950,376 @@ function PassengerDashboardContent() {
     }
   }
 
+  // NAVIGATION HANDLERS FOR SIDEBAR BUTTONS
+  const handleNavigation = (section: string) => {
+    switch (section) {
+      case "activity":
+        router.push("/passenger/activity")
+        break
+      case "settings":
+        router.push("/settings")
+        break
+      case "history":
+        router.push("/history")
+        break
+      case "logout":
+        handleLogout()
+        break
+      default:
+        break
+    }
+  }
 
+  const handleLogout = async () => {
+    try {
+      await supabase.auth.signOut()
+      router.push("/auth/login")
+    } catch (error) {
+      console.error("Error logging out:", error)
+    }
+  }
 
-  // RENDERING LOGIC
+  //RENDERING LOGIC
   const canRequestNewRide = !currentRide && rideStatus === "idle"
 
+  // Sidebar must always be collapsed for passenger dashboard
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(true)
+  const [currentView, setCurrentView] = useState<string>("rides")
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
+    <div className="h-screen flex bg-gray-50">
+      <div
+        className={`${sidebarCollapsed ? "w-16 !text-gray-700" : "w-64"} bg-white shadow-lg flex flex-col transition-all duration-300`}
+      >
+        {/* Toggle Button (starts collapsed but can be opened) */}
+        <div className="p-4 border-b border-gray-200">
+          <button
+            aria-label={sidebarCollapsed ? "Abrir sidebar" : "Cerrar sidebar"}
+            onClick={() => setSidebarCollapsed((s) => !s)}
+            className="w-full flex items-center justify-center p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+          >
+            <Menu className="h-5 w-5" />
+          </button>
+        </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Main Content */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Enhanced Map Component */}
-            <Card className="overflow-hidden border-0 shadow-xl bg-white/80 backdrop-blur-sm max-w-full">
-              {/* Header removed to show map only */}
-              <CardContent className="p-0">
-                <MapComponent
-                  userType="passenger"
-                  pickupLocation={pickupCoords ?? undefined}
-                  destinationLocation={destinationCoords ?? undefined}
-                  driverLocations={driversForMap}
-                  onMapReady={(userLoc) => {
-                    // auto-load nearby drivers when we have a user location
-                    if (userLoc) {
-                      showNearbyDriversInMap(userLoc.lat, userLoc.lng)
-                    }
-                  }}
-                />
-              </CardContent>
-            </Card>
-            {/* Enhanced Current Ride Status */}
-            {currentRide && (
-              <div className="space-y-6">
-                <Card className="border-0 shadow-xl bg-gradient-to-r from-blue-50 to-indigo-50 border-l-4 border-l-blue-500">
-                  <CardHeader>
-                    <CardTitle className="flex items-center justify-between">
-                      <div className="flex items-center space-x-3">
-                        <div className="p-2 bg-blue-500 rounded-full">
-                          <Car className="h-5 w-5 text-white" />
-                        </div>
-                        <span className="text-xl font-bold text-gray-800">Viaje Actual</span>
-                      </div>
-                      <Badge
-                        variant={currentRide.status === "pending" ? "secondary" : "default"}
-                        className={`px-4 py-2 text-sm font-semibold ${
-                          currentRide.status === "pending"
-                            ? "bg-yellow-100 text-yellow-800"
-                            : currentRide.status === "accepted"
-                              ? "bg-green-100 text-green-800"
-                              : "bg-blue-100 text-blue-800"
-                        }`}
-                      >
-                        {currentRide.status === "pending" && "⏳ Esperando conductor"}
-                        {currentRide.status === "accepted" && "✅ Conductor asignado"}
-                        {currentRide.status === "in-progress" && "🚗 En progreso"}
-                      </Badge>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-6">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="p-4 bg-white/60 rounded-lg">
-                          <div className="flex items-center space-x-2 mb-2">
-                            <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                            <p className="text-sm font-semibold text-gray-600">Origen</p>
-                          </div>
-                          <p className="text-gray-900 font-medium">{currentRide.pickup_address}</p>
-                        </div>
-                        <div className="p-4 bg-white/60 rounded-lg">
-                          <div className="flex items-center space-x-2 mb-2">
-                            <div className="w-3 h-3 bg-red-500 rounded-full"></div>
-                            <p className="text-sm font-semibold text-gray-600">Destino</p>
-                          </div>
-                          <p className="text-gray-900 font-medium">{currentRide.destination_address}</p>
-                        </div>
-                        <div className="p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg">
-                          <div className="flex items-center space-x-2 mb-2">
-                            <DollarSign className="h-4 w-4 text-green-600" />
-                            <p className="text-sm font-semibold text-green-700">Tarifa estimada</p>
-                          </div>
-                          <p className="text-2xl font-bold text-green-800">${currentRide.estimated_fare}</p>
-                        </div>
-                        {currentRide.driver_name && (
-                          <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg">
-                            <div className="flex items-center space-x-2 mb-2">
-                              <Users className="h-4 w-4 text-blue-600" />
-                              <p className="text-sm font-semibold text-blue-700">Conductor</p>
-                            </div>
-                            <p className="text-xl font-bold text-blue-800">{currentRide.driver_name}</p>
-                          </div>
-                        )}
-                      </div>
-                      {/* Enhanced Action Buttons */}
-                      <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3">
-                        {["pending", "accepted"].includes(currentRide.status) && (
-                          <Button
-                            variant="destructive"
-                            onClick={() => handleCancelRide(currentRide.id)}
-                            className="flex-1 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 font-semibold py-3"
-                          >
-                            <X className="h-4 w-4 mr-2" />
-                            Cancelar Viaje
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-                {/* removed chat summary card as requested; unread counter will appear on the Chat button below */}
-
-                {/* Enhanced Chat and Cancel Options for In-Progress Rides */}
-                {currentRide.status === "in-progress" && (
-                  <Card className="border-0 shadow-xl bg-gradient-to-r from-orange-50 to-amber-50 border-l-4 border-l-orange-500">
-                    <CardHeader>
-                      <CardTitle className="flex items-center space-x-3 text-orange-800">
-                        <div className="p-2 bg-orange-500 rounded-full animate-pulse">
-                          <Car className="h-5 w-5 text-white" />
-                        </div>
-                        <span className="text-xl font-bold">🚗 Viaje en Progreso</span>
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-6">
-                        <div className="p-4 bg-white/60 rounded-lg">
-                          <p className="text-orange-700 font-medium">
-                            Tu conductor está en camino al destino. Puedes comunicarte con él o cancelar si es
-                            necesario.
-                          </p>
-                        </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                          <Button
-                            variant="outline"
-                            className="bg-white/80 border-orange-300 text-orange-700 hover:bg-orange-100 font-semibold py-3 flex items-center justify-center space-x-2"
-                            onClick={() => { setShowChatDialog(true); setChatUnread(0); }}
-                          >
-                            <MessageCircle className="h-4 w-4" />
-                            <span>Chat con Conductor</span>
-                            {chatUnread > 0 && (
-                              <span className="inline-flex items-center justify-center ml-2 px-2 py-0.5 text-xs font-bold leading-none text-white bg-red-600 rounded-full">
-                                {chatUnread}
-                              </span>
-                            )}
-                          </Button>
-                          <Button
-                            variant="destructive"
-                            className="bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 font-semibold py-3"
-                            onClick={() => handleCancelRide(currentRide.id, "Cancelado durante el viaje")}
-                          >
-                            <X className="h-4 w-4 mr-2" />
-                            Cancelar Viaje
-                          </Button>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
+        {/* User Profile Section */}
+        {!sidebarCollapsed && (
+          <div className="p-6 border-b border-gray-200">
+            <div className="flex items-center space-x-3">
+              <Avatar className="h-12 w-12">
+                <AvatarFallback className="bg-gradient-to-r from-blue-500 to-indigo-500 text-white font-bold">
+                  {String(((userData as { name?: string; full_name?: string } | null) ?? {})?.name ?? ((userData as any)?.full_name ?? (user?.email ?? "")).split("@")[0]).charAt(0) || "U"}
+                </AvatarFallback>
+              </Avatar>
+              <div>
+                <h2 className="font-semibold text-gray-900">
+                  {String(((userData as { name?: string; full_name?: string } | null) ?? {})?.name ?? ((userData as any)?.full_name ?? (user?.email ?? "")).split("@")[0]) || "Usuario"}
+                </h2>
+                <p className="text-sm text-gray-500 cursor-pointer hover:text-blue-600">Ver perfil</p>
               </div>
-            )}
-            {/* Mobile: Solicitar Viaje (shown above recent trips on small screens) */}
-            {canRequestNewRide && (
-              <div className="block lg:hidden">
-                <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm max-w-full">
-                  <CardHeader className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-t-lg py-2">
-                    <CardTitle className="flex items-center space-x-2 text-base">
-                      <div className="bg-white/20 p-1.5 rounded-lg">
-                        <Car className="h-4 w-4" />
-                      </div>
-                      <div>
-                        <span>Solicitar Viaje</span>
-                        <CardDescription className="text-blue-100 text-xs mt-0.5">
-                          Ingresa tu destino y encuentra un conductor
-                        </CardDescription>
-                      </div>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="p-3 space-y-3">
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <Label htmlFor="pickup-main" className="text-sm font-semibold text-gray-700">
-                          Punto de Recogida
-                        </Label>
-                        <button
-                          type="button"
-                          onClick={handleUseMyLocation}
-                          className="inline-flex items-center space-x-2 text-xs px-2 py-1 rounded-md border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 hover:border-blue-400 transition-all shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
-                          title="Ubicación actual"
-                        >
-                          <MapPin className="h-4 w-4" />
-                          <span>Mi ubicación</span>
-                        </button>
-                      </div>
-                      <AddressAutocomplete
-                        placeholder="Tu ubicación actual"
-                        value={pickup}
-                        onChange={setPickup}
-                        id="pickup-main"
-                        name="pickup-main"
-                        onAddressSelect={(address, coords) => {
-                          setPickup(address)
-                          setPickupCoords(coords)
-                        }}
-                        suppressSuggestions={showDriverSelection}
-                      />
-                    </div>
-                    <div className="space-y-3">
-                      <Label htmlFor="destination-main" className="text-sm font-semibold text-gray-700">
-                        Destino
-                      </Label>
-                      <AddressAutocomplete
-                        placeholder="¿A dónde vas?"
-                        value={destination}
-                        onChange={setDestination}
-                        id="destination-main"
-                        name="destination-main"
-                        onAddressSelect={(address, coords) => {
-                          setDestination(address)
-                          setDestinationCoords(coords)
-                        }}
-                        suppressSuggestions={showDriverSelection}
-                      />
-                    </div>
-                    {pickupCoords && destinationCoords && (
-                      <div className="p-6 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border-2 border-blue-200">
-                        <h4 className="font-bold text-gray-900 mb-4 text-lg">📋 Resumen del Viaje</h4>
-                        <div className="space-y-3 text-sm">
-                          <div className="flex justify-between items-center p-3 bg-white/60 rounded-lg">
-                            <span className="text-gray-700 font-medium">Distancia:</span>
-                            <span className="font-bold text-blue-700">
-                              {calculateDistance(
-                                pickupCoords.lat,
-                                pickupCoords.lng,
-                                destinationCoords.lat,
-                                destinationCoords.lng,
-                              ).toFixed(1)}{' '}
-                              km
-                            </span>
-                          </div>
-                          <div className="flex justify-between items-center p-3 bg-white/60 rounded-lg">
-                            <span className="text-gray-700 font-medium">Tiempo estimado:</span>
-                            <span className="font-bold text-blue-700">
-                              {calculateEstimatedDuration(pickupCoords, destinationCoords)} min
-                            </span>
-                          </div>
-                          <div className="flex justify-between items-center p-4 bg-gradient-to-r from-green-100 to-emerald-100 rounded-lg border-2 border-green-200">
-                            <span className="text-green-700 font-semibold">Tarifa estimada:</span>
-                            <div className="flex items-center space-x-2">
-                              <DollarSign className="h-5 w-5 text-green-600" />
-                              <span className="font-bold text-green-800 text-xl">
-                                {calculateEstimatedFare(pickupCoords, destinationCoords)}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                    {noDriversNearby && (
-                      <div className="p-3 mb-3 rounded-lg bg-red-50 border border-red-200 text-red-800 font-medium">
-                        {noDriversNearby}
-                      </div>
-                    )}
-                    <Button
-                      className="w-full h-14 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-xl font-bold text-lg"
-                      onClick={handleRequestRide}
-                      disabled={
-                        !pickup || !destination || !pickupCoords || !destinationCoords || (rideStatus as string) === "searching"
-                      }
-                    >
-                      {(rideStatus as string) === "searching" ? (
-                        <>
-                          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-3"></div>
-                          Buscando conductor...
-                        </>
-                      ) : (
-                        <>
-                          <Car className="mr-3 h-6 w-6" />
-                          Solicitar Viaje
-                        </>
-                      )}
-                    </Button>
-                  </CardContent>
-                </Card>
-              </div>
-            )}
-
-            {/* Enhanced Recent Trips - Redesigned */}
-            <Card className="border-0 shadow-xl bg-white/90 backdrop-blur-sm max-w-full rounded-lg overflow-hidden">
-              <CardHeader className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-2 rounded-t-lg">
-                <CardTitle className="flex items-center space-x-2 text-base">
-                  <div className="bg-white/20 p-1.5 rounded-lg">
-                    <Clock className="h-4 w-4" />
-                  </div>
-                  <div>
-                    <span>Viajes Recientes</span>
-                    <CardDescription className="text-blue-100 text-xs">
-                      Historial de tus últimos viajes completados
-                    </CardDescription>
-                  </div>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-0">
-                <ScrollArea className="h-[400px]">
-                  <div className="p-2 space-y-2">
-                    {recentTrips.length > 0 ? (
-                      recentTrips.map((trip) => (
-                        <div
-                          key={trip.id}
-                          className="group bg-white rounded-lg shadow-sm hover:shadow-md transition-all duration-300 border border-gray-100 overflow-hidden"
-                        >
-                          <div className="p-3">
-                            {/* Driver Info & DateTime */}
-                            <div className="flex items-center justify-between mb-2">
-                              <div className="flex items-center space-x-2">
-                                <Avatar className="h-8 w-8 ring-1 ring-blue-100">
-                                  <AvatarFallback className="bg-gradient-to-r from-blue-500 to-indigo-500 text-white font-bold text-sm">
-                                    {trip.driver_name?.charAt(0) || "D"}
-                                  </AvatarFallback>
-                                </Avatar>
-                                <div>
-                                  <p className="font-semibold text-sm text-gray-900">{trip.driver_name}</p>
-                                  <p className="text-xs text-gray-500">
-                                    {new Date(trip.completed_at).toLocaleDateString()} • {trip.estimated_duration} min
-                                  </p>
-                                </div>
-                              </div>
-                              <Badge 
-                                className="bg-gradient-to-r from-green-500 to-emerald-500 text-white font-semibold text-sm px-2 py-0.5"
-                              >
-                                ${trip.actual_fare || trip.estimated_fare}
-                              </Badge>
-                            </div>
-
-                            {/* Route Info */}
-                            <div className="bg-gradient-to-r from-gray-50 to-slate-50 rounded-md p-2 mb-2">
-                              <div className="flex items-start space-x-2">
-                                <div className="min-w-[16px] pt-0.5">
-                                  <Navigation className="h-3 w-3 text-blue-500" />
-                                </div>
-                                <div className="flex-1">
-                                  <p className="font-medium text-xs text-gray-700 leading-snug">
-                                    {trip.pickup_address} 
-                                    <span className="mx-1 text-blue-500">→</span> 
-                                    {trip.destination_address}
-                                  </p>
-                                </div>
-                              </div>
-                            </div>
-
-                            {/* Rating & Status */}
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center space-x-1">
-                                <div className="flex items-center">
-                                  {[...Array(5)].map((_, i) => (
-                                    <Star
-                                      key={i}
-                                      className={`h-3 w-3 ${
-                                        i < (trip.passenger_rating || 0)
-                                          ? "fill-yellow-400 text-yellow-400"
-                                          : "text-gray-200"
-                                      }`}
-                                    />
-                                  ))}
-                                </div>
-                                <span className="text-xs font-medium text-gray-600">({trip.passenger_rating || 0}/5)</span>
-                              </div>
-                              <div className="flex items-center space-x-1 text-emerald-600">
-                                <div className="h-1.5 w-1.5 rounded-full bg-emerald-500"></div>
-                                <span className="text-xs font-medium">Completado</span>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      ))
-                    ) : (
-                      <div className="text-center py-8">
-                        <div className="relative">
-                          <div className="absolute inset-0 bg-gradient-to-r from-blue-100 to-indigo-100 rounded-full w-16 h-16 mx-auto blur-lg opacity-70"></div>
-                          <div className="relative p-4 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center">
-                            <Calendar className="h-8 w-8 text-white" />
-                          </div>
-                        </div>
-                        <h3 className="text-base font-bold text-gray-800 mb-1">No hay viajes recientes</h3>
-                        <p className="text-sm text-gray-500">Tus viajes aparecerán aquí una vez completados</p>
-                      </div>
-                    )}
-                  </div>
-                </ScrollArea>
-              </CardContent>
-            </Card>
+            </div>
           </div>
-          {/* Enhanced Sidebar */}
-          <div className="space-y-4">
-            {/* Enhanced Request Ride Form (hidden on small screens) */}
-            {canRequestNewRide && (
-              <Card className="hidden lg:block border-0 shadow-xl bg-white/80 backdrop-blur-sm max-w-full">
-                <CardHeader className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-t-lg py-2">
-                  <CardTitle className="flex items-center space-x-2 text-base">
-                    <div className="bg-white/20 p-1.5 rounded-lg">
-                      <Car className="h-4 w-4" />
-                    </div>
-                    <div>
-                      <span>Solicitar Viaje</span>
-                      <CardDescription className="text-blue-100 text-xs mt-0.5">
-                        Ingresa tu destino y encuentra un conductor
-                      </CardDescription>
-                    </div>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="p-3 space-y-3">
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <Label htmlFor="pickup-dialog" className="text-sm font-semibold text-gray-700">
-                        Punto de Recogida
-                      </Label>
-                      <button
-                        type="button"
-                        onClick={handleUseMyLocation}
-                        className="inline-flex items-center space-x-2 text-xs px-2 py-1 rounded-md border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 hover:border-blue-400 transition-all shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
-                        title="Ubicación actual"
-                      >
-                        <MapPin className="h-4 w-4" />
-                        <span>Mi ubicación</span>
-                      </button>
-                    </div>
-                      <AddressAutocomplete
-                      placeholder="Tu ubicación actual"
-                      value={pickup}
-                      onChange={setPickup}
-                        id="pickup-dialog"
-                        name="pickup-dialog"
-                      onAddressSelect={(address, coords) => {
-                        setPickup(address)
-                        setPickupCoords(coords)
-                      }}
-                    />
-                  </div>
-                  <div className="space-y-3">
-                    <Label htmlFor="destination-dialog" className="text-sm font-semibold text-gray-700">
-                      Destino
-                    </Label>
-                    <AddressAutocomplete
-                      placeholder="¿A dónde vas?"
-                      value={destination}
-                      onChange={setDestination}
-                      id="destination-dialog"
-                      name="destination-dialog"
-                      onAddressSelect={(address, coords) => {
-                        setDestination(address)
-                        setDestinationCoords(coords)
-                      }}
-                    />
-                  </div>
-                  {/* Enhanced Trip Summary */}
-                  {pickupCoords && destinationCoords && (
-                    <div className="p-6 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border-2 border-blue-200">
-                      <h4 className="font-bold text-gray-900 mb-4 text-lg">📋 Resumen del Viaje</h4>
-                      <div className="space-y-3 text-sm">
-                        <div className="flex justify-between items-center p-3 bg-white/60 rounded-lg">
-                          <span className="text-gray-700 font-medium">Distancia:</span>
-                          <span className="font-bold text-blue-700">
-                            {calculateDistance(
-                              pickupCoords.lat,
-                              pickupCoords.lng,
-                              destinationCoords.lat,
-                              destinationCoords.lng,
-                            ).toFixed(1)}{" "}
-                            km
-                          </span>
-                        </div>
-                        <div className="flex justify-between items-center p-3 bg-white/60 rounded-lg">
-                          <span className="text-gray-700 font-medium">Tiempo estimado:</span>
-                          <span className="font-bold text-blue-700">
-                            {calculateEstimatedDuration(pickupCoords, destinationCoords)} min
-                          </span>
-                        </div>
-                        <div className="flex justify-between items-center p-4 bg-gradient-to-r from-green-100 to-emerald-100 rounded-lg border-2 border-green-200">
-                          <span className="text-green-700 font-semibold">Tarifa estimada:</span>
-                          <div className="flex items-center space-x-2">
-                            <DollarSign className="h-5 w-5 text-green-600" />
-                            <span className="font-bold text-green-800 text-xl">
-                              {calculateEstimatedFare(pickupCoords, destinationCoords)}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                  {/* Banner visible cuando no hay conductores en el área */}
-                  {noDriversNearby && (
-                    <div className="p-3 mb-3 rounded-lg bg-red-50 border border-red-200 text-red-800 font-medium">
-                      {noDriversNearby}
-                    </div>
-                  )}
-                  <Button
-                    className="w-full h-14 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-xl font-bold text-lg"
-                    onClick={handleRequestRide}
-                    disabled={
-                      !pickup || !destination || !pickupCoords || !destinationCoords || (rideStatus as string) === "searching"
-                    }
-                  >
-                      {(rideStatus as string) === "searching" ? (
-                      <>
-                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-3"></div>
-                        Buscando conductor...
-                      </>
-                    ) : (
-                      <>
-                        <Car className="mr-3 h-6 w-6" />
-                        Solicitar Viaje
-                      </>
-                    )}
-                  </Button>
-                  <div className="mt-3 flex items-center space-x-2">
-                    <Button
-                      variant="ghost"
-                      onClick={async () => {
-                        try {
-                          let lat: number | null = null
-                          let lng: number | null = null
-                          if (pickupCoords) {
-                            lat = pickupCoords.lat
-                            lng = pickupCoords.lng
-                          } else if (typeof window !== "undefined" && navigator.geolocation) {
-                            // ask for current position
-                            const p = await new Promise<GeolocationPosition>((resolve, reject) => {
-                              navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: true, timeout: 10000 })
-                            })
-                            lat = p.coords.latitude
-                            lng = p.coords.longitude
-                            // also set pickupCoords for subsequent interactions
-                            setPickupCoords({ lat, lng })
-                          }
+        )}
 
-                          if (lat === null || lng === null) {
-                            toast({ title: "Ubicación requerida", description: "No fue posible obtener tu ubicación", variant: "destructive" })
-                            return
-                          }
-
-                          await showNearbyDriversInMap(lat, lng)
-                        } catch (err) {
-                          console.error("Error obteniendo geolocalización para mostrar conductores:", err)
-                          toast({ title: "Error", description: "No fue posible obtener la ubicación", variant: "destructive" })
-                        }
-                      }}
-                    >
-                      Mostrar conductores
-                    </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-            )}
-            {/* Quick Destinations section removed */}
-            {/* Enhanced User Stats */}
-            <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm max-w-full">
-              <CardHeader className="bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-t-lg py-2">
-                <CardTitle className="flex items-center space-x-2 text-base">
-                  <div className="bg-white/20 p-1.5 rounded-lg">
-                    <Activity className="h-4 w-4" />
-                  </div>
-                  <span>Tu Actividad</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-3 space-y-3">
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="text-center p-3 bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-lg shadow overflow-hidden relative">
-                    <div className="absolute top-0 right-0 w-12 h-12 bg-white/10 rounded-full -mr-6 -mt-6" />
-                    <div className="relative z-10">
-                      <p className="text-2xl font-bold">{passengerStats.totalTrips}</p>
-                      <p className="text-blue-100 text-sm">Viajes</p>
-                    </div>
-                  </div>
-                  <div className="text-center p-3 bg-gradient-to-br from-yellow-500 to-orange-500 text-white rounded-lg shadow overflow-hidden relative">
-                    <div className="absolute top-0 right-0 w-12 h-12 bg-white/10 rounded-full -mr-6 -mt-6" />
-                    <div className="relative z-10">
-                      <p className="text-2xl font-bold">{passengerStats.averageRating.toFixed(1)}</p>
-                      <div className="flex items-center justify-center mt-2 space-x-1">
-                        {[...Array(5)].map((_, i) => (
-                          <Star
-                            key={i}
-                            className={`h-4 w-4 ${
-                              i < Math.round(passengerStats.averageRating)
-                                ? "fill-yellow-400 text-yellow-400"
-                                : "text-yellow-100"
-                            }`}
-                          />
-                        ))}
-                      </div>
-                      <p className="text-yellow-100 text-sm mt-1">Rating</p>
-                    </div>
-                  </div>
-                </div>
-                <div className="text-center p-4 bg-gradient-to-br from-purple-500 to-pink-500 text-white rounded-lg shadow overflow-hidden relative">
-                  <div className="absolute top-0 right-0 w-14 h-14 bg-white/10 rounded-full -mr-7 -mt-7" />
-                  <div className="relative z-10">
-                    <p className="text-2xl font-bold">${passengerStats.totalSpent}</p>
-                    <p className="text-purple-100 text-sm">Total gastado</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+        {/* Collapsed User Profile */}
+        {sidebarCollapsed && (
+          <div className="p-3 border-b border-gray-200 flex justify-center">
+            <Avatar className="h-10 w-10">
+              <AvatarFallback className="bg-gradient-to-r from-blue-500 to-indigo-500 text-white font-bold text-sm">
+                  {String(((userData as { name?: string; full_name?: string } | null) ?? {})?.name ?? ((userData as any)?.full_name ?? (user?.email ?? "")).split("@")[0]).charAt(0) || "U"}
+              </AvatarFallback>
+            </Avatar>
           </div>
+        )}
+
+        {/* Navigation (matched to driver style) */}
+        <nav className="flex-1 p-4">
+          <div className="space-y-2">
+            <button
+              onClick={() => {
+                setCurrentView("rides")
+              }}
+              className={`w-full flex items-center ${sidebarCollapsed ? "justify-center relative" : "space-x-3"} ${sidebarCollapsed ? "px-2" : "px-4"} py-3 rounded-lg text-left transition-colors ${
+                currentView === "rides" ? "bg-blue-500 text-white" : "text-gray-700 hover:bg-gray-100"
+              }`}
+            >
+              <Car className={`${sidebarCollapsed ? "h-6 w-6" : "h-5 w-5"} ${currentView === "rides" ? "text-white stroke-current" : "!text-gray-700 !stroke-current"}`} />
+              {!sidebarCollapsed && <span className="font-medium">Rides</span>}
+            </button>
+
+            <button
+              onClick={() => {
+                setCurrentView("activity")
+                handleNavigation("activity")
+              }}
+              className={`w-full flex items-center ${sidebarCollapsed ? "justify-center relative" : "space-x-3"} ${sidebarCollapsed ? "px-2" : "px-4"} py-3 rounded-lg text-left transition-colors ${
+                currentView === "activity" ? "bg-blue-500 text-white" : "text-gray-700 hover:bg-gray-100"
+              }`}
+            >
+              <Activity className={`${sidebarCollapsed ? "h-6 w-6" : "h-5 w-5"} ${currentView === "activity" ? "text-white stroke-current" : "!text-gray-700 !stroke-current"}`} />
+              {!sidebarCollapsed && <span className="font-medium">Activity</span>}
+            </button>
+
+            <button
+              onClick={() => {
+                setCurrentView("settings")
+                handleNavigation("settings")
+              }}
+              className={`w-full flex items-center ${sidebarCollapsed ? "justify-center relative" : "space-x-3"} ${sidebarCollapsed ? "px-2" : "px-4"} py-3 rounded-lg text-left transition-colors ${
+                currentView === "settings" ? "bg-blue-500 text-white" : "text-gray-700 hover:bg-gray-100"
+              }`}
+            >
+              <Settings className={`${sidebarCollapsed ? "h-6 w-6" : "h-5 w-5"} ${currentView === "settings" ? "text-white stroke-current" : "!text-gray-700 !stroke-current"}`} />
+              {!sidebarCollapsed && <span className="font-medium">Configuración</span>}
+            </button>
+
+            <button
+              onClick={() => {
+                setCurrentView("history")
+                handleNavigation("history")
+              }}
+              className={`w-full flex items-center ${sidebarCollapsed ? "justify-center relative" : "space-x-3"} ${sidebarCollapsed ? "px-2" : "px-4"} py-3 rounded-lg text-left transition-colors ${
+                currentView === "history" ? "bg-blue-500 text-white" : "text-gray-700 hover:bg-gray-100"
+              }`}
+            >
+              <History className={`${sidebarCollapsed ? "h-6 w-6" : "h-5 w-5"} ${currentView === "history" ? "text-white stroke-current" : "!text-gray-700 !stroke-current"}`} />
+              {!sidebarCollapsed && <span className="font-medium">Historial</span>}
+            </button>
+          </div>
+        </nav>
+
+        <div className="mt-auto p-4 border-t border-gray-200">
+          <button
+            onClick={() => {
+              setCurrentView("logout")
+              handleNavigation("logout")
+            }}
+            className={`w-full flex items-center ${sidebarCollapsed ? "justify-center" : "space-x-3"} px-4 py-3 rounded-lg text-left text-gray-700 hover:bg-gray-100 transition-colors`}
+          >
+            <LogOut className={`${sidebarCollapsed ? "h-6 w-6" : "h-5 w-5"} ${sidebarCollapsed ? "" : ""}`} />
+            {!sidebarCollapsed && <span className="font-medium">Logout</span>}
+          </button>
         </div>
       </div>
+
+      {/* Main Content Area */}
+      <div className="flex-1 flex h-full">
+        {/* Map Section - Updated to take full available height */}
+        <div className="flex-1 relative h-full">
+          <MapComponent
+            userType="passenger"
+            pickupLocation={pickupCoords ?? undefined}
+            destinationLocation={destinationCoords ?? undefined}
+            driverLocations={driversForMap}
+            onMapReady={(userLoc) => {
+              if (userLoc) {
+                showNearbyDriversInMap(userLoc.lat, userLoc.lng)
+              }
+            }}
+          />
+
+          <div className="absolute top-4 right-4 flex flex-col space-y-2">
+            <button className="bg-white w-12 h-12 rounded-full shadow-lg hover:shadow-xl transition-shadow flex items-center justify-center">
+              <Plus className="h-5 w-5 text-gray-600" />
+            </button>
+            <button className="bg-white w-12 h-12 rounded-full shadow-lg hover:shadow-xl transition-shadow flex items-center justify-center">
+              <Minus className="h-5 w-5 text-gray-600" />
+            </button>
+            <button className="bg-white w-12 h-12 rounded-full shadow-lg hover:shadow-xl transition-shadow flex items-center justify-center">
+              <MapPin className="h-5 w-5 text-gray-600" />
+            </button>
+            <button className="bg-white w-12 h-12 rounded-full shadow-lg hover:shadow-xl transition-shadow flex items-center justify-center">
+              <Share className="h-5 w-5 text-gray-600" />
+            </button>
+          </div>
+
+          {/* Driver Arrival Notification */}
+          {currentRide && currentRide.status === "accepted" && (
+            <div className="absolute top-4 left-1/2 transform -translate-x-1/2">
+              <div className="bg-white rounded-lg shadow-lg p-4 flex items-center space-x-3 min-w-[280px]">
+                <Avatar className="h-10 w-10">
+                  <AvatarFallback className="bg-gradient-to-r from-blue-500 to-indigo-500 text-white font-bold">
+                    {String(currentRide.driver_name ?? "").charAt(0) || "D"}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-blue-600">Arriving in 3 minutes</p>
+                  <div className="flex items-center space-x-2">
+                    <span className="font-semibold text-gray-900">{currentRide.driver_name}</span>
+                    <div className="flex items-center space-x-1">
+                      <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                      <span className="text-sm text-gray-600">4.98</span>
+                    </div>
+                    <span className="text-sm text-gray-500">• Toyota Camry</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Ride Details Panel */}
+          {currentRide && (
+            <div className="absolute bottom-4 left-4 right-4 bg-white rounded-lg shadow-xl p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-900">Ride Details</h3>
+                <div className="text-right">
+                  <p className="text-sm text-gray-500">Estimated Fare</p>
+                  <p className="text-2xl font-bold text-gray-900">${currentRide.estimated_fare}</p>
+                </div>
+              </div>
+
+              <div className="flex items-center space-x-2 mb-4">
+                <span className="text-sm font-medium text-gray-600">ID: #{currentRide.id?.toString().slice(-6)}</span>
+                <Badge
+                  className={`${
+                    currentRide.status === "pending"
+                      ? "bg-yellow-100 text-yellow-800"
+                      : currentRide.status === "accepted"
+                        ? "bg-green-100 text-green-800"
+                        : "bg-blue-100 text-blue-800"
+                  }`}
+                >
+                  {currentRide.status === "pending" && "Pending"}
+                  {currentRide.status === "accepted" && "Accepted"}
+                  {currentRide.status === "in-progress" && "In-progress"}
+                </Badge>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 mb-6">
+                <div>
+                  <p className="text-sm font-medium text-gray-600 mb-1">From</p>
+                  <p className="text-sm text-gray-900">{currentRide.pickup_address}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-600 mb-1">To</p>
+                  <p className="text-sm text-gray-900">{currentRide.destination_address}</p>
+                </div>
+              </div>
+
+              <div className="flex space-x-3">
+                {currentRide.status === "in-progress" && (
+                  <Button
+                    className="flex-1 bg-blue-600 hover:bg-blue-700"
+                    onClick={() => {
+                      setShowChatDialog(true)
+                      setChatUnread(0)
+                    }}
+                  >
+                    <MessageCircle className="h-4 w-4 mr-2" />
+                    Contact Driver
+                    {chatUnread > 0 && (
+                      <span className="ml-2 bg-red-500 text-white text-xs rounded-full px-2 py-0.5">{chatUnread}</span>
+                    )}
+                  </Button>
+                )}
+                {["pending", "accepted", "in-progress"].includes(currentRide.status) && (
+                  <Button
+                    variant="outline"
+                    className="flex-1 bg-transparent"
+                    onClick={() =>
+                      handleCancelRide(
+                        currentRide.id,
+                        currentRide.status === "in-progress" ? "Cancelado durante el viaje" : undefined,
+                      )
+                    }
+                  >
+                    Cancel Ride
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Right Panel - Updated to use h-full instead of h-screen */}
+        <div className="w-96 bg-white shadow-lg p-6 flex flex-col h-full">
+          <div className="flex-1">
+            <h1 className="text-2xl font-bold text-gray-900 mb-6">Request a ride</h1>
+
+            <div className="space-y-4 mb-6">
+              <Button
+                variant="outline"
+                className="w-full justify-start text-blue-600 border-blue-200 hover:bg-blue-50 bg-transparent"
+                onClick={handleUseMyLocation}
+              >
+                <MapPin className="h-4 w-4 mr-2" />
+                Use My Location
+              </Button>
+
+              <div className="relative">
+                <div className="absolute left-3 top-1/2 transform -translate-y-1/2">
+                  <div className="w-3 h-3 bg-gray-400 rounded-full"></div>
+                </div>
+                <AddressAutocomplete
+                  placeholder="Enter pickup location"
+                  value={pickup}
+                  onChange={setPickup}
+                  onAddressSelect={(address, coords) => {
+                    setPickup(address)
+                    setPickupCoords(coords)
+                  }}
+                  className="pl-10 py-3 border-gray-300 rounded-lg text-gray-500"
+                />
+              </div>
+
+              <div className="relative">
+                <div className="absolute left-3 top-1/2 transform -translate-y-1/2">
+                  <div className="w-3 h-3 bg-gray-900 rounded-full"></div>
+                </div>
+                <AddressAutocomplete
+                  placeholder="Enter destination"
+                  value={destination}
+                  onChange={setDestination}
+                  onAddressSelect={(address, coords) => {
+                    setDestination(address)
+                    setDestinationCoords(coords)
+                  }}
+                  className="pl-10 py-3 border-gray-300 rounded-lg text-gray-500"
+                />
+              </div>
+            </div>
+
+            {pickupCoords && destinationCoords && (
+              <div className="space-y-3 mb-6">
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-600">Estimated Fare</span>
+                  <span className="text-lg font-semibold text-gray-900">
+                    {calculateEstimatedFare(pickupCoords, destinationCoords)}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-600">Estimated Duration</span>
+                  <span className="text-gray-900 font-medium">
+                    {calculateEstimatedDuration(pickupCoords, destinationCoords)} minutes
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {noDriversNearby && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                <p className="text-sm text-blue-700 text-center">{noDriversNearby}</p>
+              </div>
+            )}
+          </div>
+
+          <Button
+            className="w-full h-12 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg"
+            onClick={handleRequestRide}
+            disabled={!pickup || !destination || !pickupCoords || !destinationCoords || rideStatus === "searching"}
+          >
+            {rideStatus === "searching" ? (
+              <>
+                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-3"></div>
+                Searching for driver...
+              </>
+            ) : (
+              "Request Ride"
+            )}
+          </Button>
+        </div>
+      </div>
+
       {/* Quick Destination Dialog removed */}
       {/* Enhanced Chat Dialog */}
       <Dialog open={showChatDialog} onOpenChange={setShowChatDialog}>
@@ -1599,7 +1368,7 @@ function PassengerDashboardContent() {
                     <div className="flex items-center space-x-3 py-2">
                       <Avatar className="h-10 w-10 ring-2 ring-blue-200">
                         <AvatarFallback className="bg-gradient-to-r from-blue-500 to-indigo-500 text-white font-bold">
-                          {driver.name.charAt(0)}
+                          {String(driver.name ?? "").charAt(0)}
                         </AvatarFallback>
                       </Avatar>
                       <div>
@@ -1661,8 +1430,8 @@ function PassengerDashboardContent() {
           <div className="space-y-6">
             <div className="text-center">
               <Avatar className="h-20 w-20 mx-auto mb-4 ring-4 ring-blue-200">
-                <AvatarFallback className="bg-gradient-to-r from-blue-500 to-indigo-500 text-white text-2xl font-bold">
-                  {completedRide?.driver_name?.charAt(0) || "D"}
+                  <AvatarFallback className="bg-gradient-to-r from-blue-500 to-indigo-500 text-white text-2xl font-bold">
+                  {String(completedRide?.driver_name ?? "").charAt(0) || "D"}
                 </AvatarFallback>
               </Avatar>
               <p className="font-bold text-lg text-gray-800">{completedRide?.driver_name}</p>
@@ -1700,11 +1469,7 @@ function PassengerDashboardContent() {
               >
                 ✨ Enviar Calificación
               </Button>
-              <Button
-                variant="outline"
-                className="font-semibold bg-white/60"
-                onClick={handleSkipRating}
-              >
+              <Button variant="outline" className="font-semibold bg-white/60" onClick={handleSkipRating}>
                 Omitir
               </Button>
             </div>

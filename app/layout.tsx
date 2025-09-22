@@ -3,10 +3,10 @@ import type { Metadata } from "next"
 import { Inter } from "next/font/google"
 import "./globals.css"
 import { AuthProvider } from "@/lib/auth-context"
-import { Navbar } from "@/components/Navbar"
 import { ErrorBoundary } from "@/components/ErrorBoundary"
-import { PWARegister } from '@/components/PWARegister'
-import { PWAInstallPrompt } from '@/components/PWAInstallPrompt'
+import { PWARegister } from "@/components/PWARegister"
+import { PWAInstallPrompt } from "@/components/PWAInstallPrompt"
+import { ConditionalNavbar } from "@/components/ConditionalNavbar"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -42,14 +42,13 @@ export default function RootLayout({
         <link rel="icon" href="/saferide-icon.svg" />
         <link rel="apple-touch-icon" href="/saferide-icon.svg" />
       </head>
-  <body suppressHydrationWarning className={inter.className}>
+      <body suppressHydrationWarning className={inter.className}>
         <ErrorBoundary>
           <PWARegister />
-            <PWAInstallPrompt />
+          <PWAInstallPrompt />
           <AuthProvider>
-            <Navbar />
+            <ConditionalNavbar />
             <main>{children}</main>
-           
           </AuthProvider>
         </ErrorBoundary>
       </body>

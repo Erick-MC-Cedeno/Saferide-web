@@ -2,50 +2,51 @@
 import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Switch } from "@/components/ui/switch"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogClose, DialogFooter } from "@/components/ui/dialog"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogClose,
+  DialogFooter,
+} from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import {
   MapPin,
-  Navigation,
   Clock,
   Star,
-  Shield,
   DollarSign,
   TrendingUp,
-  Users,
   Car,
-  Calendar,
-  BarChart3,
   MessageCircle,
   XCircle,
   CheckCircle,
-  Activity,
-  Zap,
+  LogOut,
+  History,
+  Map,
+  FileText,
+  Menu,
 } from "lucide-react"
 import { useRealTimeRides } from "@/hooks/useRealTimeRides"
 import { useDriverStatus } from "@/hooks/useDriverStatus"
 import { supabase } from "@/lib/supabase"
 import type { Database } from "@/lib/supabase"
 import { MapComponent } from "@/components/MapComponent"
+import { Badge } from "@/components/ui/badge"
 import { useAuth } from "@/lib/auth-context"
 import { ProtectedRoute } from "@/components/ProtectedRoute"
-import { RideTracker } from "@/components/RideTracker"
 import { useToast } from "@/hooks/use-toast"
 import { RideChat } from "@/components/RideChat"
-import { RealtimeStatus } from "@/components/RealtimeStatus"
+import { useRouter } from "next/navigation"
 
-
-
-// CONTENIDO Y GESTIÓN DE ESTADO DEL DASHBOARD DEL CONDUCTOR: AGRUPA ESTADO, EFECTOS Y FUNCIONES
 function DriverDashboardContent() {
-  const { user } = useAuth()
+  const { user, signOut } = useAuth()
   const { toast } = useToast()
-  // PASAR UNDEFINED SI EL USUARIO NO ESTÁ DISPONIBLE PARA EVITAR ENVIAR IDS POR DEFECTO AL API
+  const router = useRouter()
   const driverId = user?.uid
   const { isOnline, loading: statusLoading, updateOnlineStatus } = useDriverStatus(driverId)
   const {
@@ -57,6 +58,11 @@ function DriverDashboardContent() {
     lastUpdate,
     refreshRides,
   } = useRealTimeRides(driverId)
+
+  const [currentView, setCurrentView] = useState("map")
+  const [userData, setUserData] = useState<any>(null)
+
+  // CONTENIDO Y GESTIÓN DE ESTADO DEL DASHBOARD DEL CONDUCTOR: AGRUPA ESTADO, EFECTOS Y FUNCIONES
   const [driverStats, setDriverStats] = useState({
     todayTrips: 0,
     todayEarnings: 0,
@@ -77,6 +83,8 @@ function DriverDashboardContent() {
   const [chatUnread, setChatUnread] = useState(0)
   const [chatLastMessage, setChatLastMessage] = useState<string | null>(null)
   const chatChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null)
+  // Sidebar collapse state (drivers can collapse to icons-only)
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const autoOpenedSelectRef = useRef(false)
   // SI EL USUARIO CIERRA MANUALMENTE EL DIÁLOGO DE SELECCIÓN, EVITAR QUE SE VUELVA A ABRIR AUTOMÁTICAMENTE
   const manualClosedSelectRef = useRef(false)
@@ -85,8 +93,12 @@ function DriverDashboardContent() {
   const [selectedActiveRide, setSelectedActiveRide] = useState<RideRow | null>(null)
   const [showSelectDialog, setShowSelectDialog] = useState(false)
   const suppressAutoOpenRef = useRef(false)
+  // marker click dialog state
+  const [selectedMarkerRideId, setSelectedMarkerRideId] = useState<string | null>(null)
+  const [showMarkerDialog, setShowMarkerDialog] = useState(false)
 
-  const pendingRides = rides.filter((ride) => ride.status === "pending")
+  // Pending rides that are NOT assigned to a specific driver (passenger chose any driver)
+  const pendingRides = rides.filter((ride) => ride.status === "pending" && !ride.driver_id)
   // Rides specifically assigned to this driver (passenger selected this driver)
   // NOTE: when a passenger selects a driver the passenger flow currently inserts the ride
   // with status 'accepted' and driver_id set. We want to notify the driver in that case
@@ -94,11 +106,14 @@ function DriverDashboardContent() {
   const assignedIncomingRides = rides.filter(
     (ride) => ride.driver_id === driverId && ["pending", "accepted"].includes(ride.status),
   )
-    // SOPORTE PARA MÚLTIPLES VIAJES ACTIVOS ASIGNADOS A ESTE CONDUCTOR (ACEPTADOS O EN PROGRESO)
+  // Assigned pending rides (passenger picked this driver but ride still pending acceptance)
+  const assignedPendingRides = assignedIncomingRides.filter((r) => r.status === "pending")
+  // Count only broadcast (any-driver) pending rides for the Ride Requests badge.
+  const pendingCount = pendingRides.length
+  // SOPORTE PARA MÚLTIPLES VIAJES ACTIVOS ASIGNADOS A ESTE CONDUCTOR (ACEPTADOS O EN PROGRESO)
   const activeRides = rides.filter(
     (ride) => ride.driver_id === driverId && ["accepted", "in-progress"].includes(ride.status),
   )
-
 
   // DETERMINAR QUÉ VIAJE MOSTRAR EN EL RIDE TRACKER:
   // - SI EL CONDUCTOR LO SELECCIONÓ, USAR ESA SELECCIÓN
@@ -109,6 +124,7 @@ function DriverDashboardContent() {
   // ---- Sound notification state ----
   const prevPendingRef = useRef<number>(0)
   const prevAssignedRef = useRef<number>(0)
+  const prevAssignedPendingRef = useRef<number>(0)
   const playUnlockAttachedRef = useRef<boolean>(false)
   const audioChatRef = useRef<HTMLAudioElement | null>(null)
   const playChatUnlockAttachedRef = useRef<boolean>(false)
@@ -117,7 +133,18 @@ function DriverDashboardContent() {
   const [soundEnabled, setSoundEnabled] = useState<boolean | null>(null)
   const [chatNotificationEnabled, setChatNotificationEnabled] = useState<boolean | null>(null)
 
-
+  useEffect(() => {
+    const loadUserData = async () => {
+      if (!user?.uid || !supabase) return
+      try {
+        const { data } = await supabase.from("drivers").select("name, email, rating").eq("uid", user.uid).single()
+        setUserData(data)
+      } catch (error) {
+        console.error("Error loading user data:", error)
+      }
+    }
+    loadUserData()
+  }, [user?.uid])
 
   // LOAD USER SETTINGS FROM USER_SETTINGS TABLE
   useEffect(() => {
@@ -201,30 +228,28 @@ function DriverDashboardContent() {
       audioRef.current = new Audio()
       audioRef.current.preload = "auto"
       // fetch base64 audio and set as data url
-      fetch('/api/sounds/saferidetone')
+      fetch("/api/sounds/saferidetone")
         .then((r) => r.json())
         .then((j) => {
           if (j?.base64) {
             audioRef.current!.src = `data:audio/mpeg;base64,${j.base64}`
           }
         })
-        .catch((e) => console.warn('Could not load saferidetone:', e))
+        .catch((e) => console.warn("Could not load saferidetone:", e))
     }
     if (!audioChatRef.current) {
       audioChatRef.current = new Audio()
       audioChatRef.current.preload = "auto"
-      fetch('/api/sounds/saferidechattone')
+      fetch("/api/sounds/saferidechattone")
         .then((r) => r.json())
         .then((j) => {
           if (j?.base64) {
             audioChatRef.current!.src = `data:audio/mpeg;base64,${j.base64}`
           }
         })
-        .catch((e) => console.warn('Could not load saferidechattone:', e))
+        .catch((e) => console.warn("Could not load saferidechattone:", e))
     }
   }, [])
-
-
 
   // LOAD CHAT NOTIFICATION SETTINGS FROM LOCAL STORAGE
   useEffect(() => {
@@ -237,14 +262,18 @@ function DriverDashboardContent() {
         }
       }
     } catch (e) {
-      console.warn('Could not read saferide_chat_notification from localStorage:', e)
+      console.warn("Could not read saferide_chat_notification from localStorage:", e)
     }
     const onStorage = (e: StorageEvent) => {
       try {
         if (!user?.uid) return
         const chatKey = `saferide_chat_notification_${user.uid}`
         if (e.key === chatKey) {
-          try { setChatNotificationEnabled(e.newValue ? JSON.parse(e.newValue) : null) } catch (err) { console.warn('Error parsing storage event for chat toggle', err) }
+          try {
+            setChatNotificationEnabled(e.newValue ? JSON.parse(e.newValue) : null)
+          } catch (err) {
+            console.warn("Error parsing storage event for chat toggle", err)
+          }
         }
       } catch (err) {
         // ignore
@@ -259,19 +288,21 @@ function DriverDashboardContent() {
         const value: string = detail?.value
         const chatKey = `saferide_chat_notification_${user.uid}`
         if (key === chatKey) {
-          try { setChatNotificationEnabled(value ? JSON.parse(value) : null) } catch (err) { console.warn('Error parsing pref-changed value for chat toggle', err) }
+          try {
+            setChatNotificationEnabled(value ? JSON.parse(value) : null)
+          } catch (err) {
+            console.warn("Error parsing pref-changed value for chat toggle", err)
+          }
         }
       } catch (err) {
         // ignore
       }
     }
-    window.addEventListener('storage', onStorage)
-    window.addEventListener('saferide:pref-changed', onPrefChangedChat)
-    return () => window.removeEventListener('storage', onStorage)
+    window.addEventListener("storage", onStorage)
+    window.addEventListener("saferide:pref-changed", onPrefChangedChat)
+    return () => window.removeEventListener("storage", onStorage)
   }, [])
 
-
-  
   // HELPER: TRY TO PLAY AUDIO IMMEDIATELY; IF BLOCKED BY AUTOPLAY POLICY,
   const playAudioWithUnlock = async () => {
     if (!audioRef.current) return
@@ -294,7 +325,8 @@ function DriverDashboardContent() {
           // Try to resume WebAudio if available
           try {
             // @ts-ignore
-            const ctx = (window as any).audioContext || new (window.AudioContext || (window as any).webkitAudioContext)()
+            const ctx =
+              (window as any).audioContext || new (window.AudioContext || (window as any).webkitAudioContext)()
             if (ctx && typeof ctx.resume === "function") {
               await ctx.resume()
               ;(window as any).audioContext = ctx
@@ -338,7 +370,8 @@ function DriverDashboardContent() {
         try {
           try {
             // @ts-ignore
-            const ctx = (window as any).audioContext || new (window.AudioContext || (window as any).webkitAudioContext)()
+            const ctx =
+              (window as any).audioContext || new (window.AudioContext || (window as any).webkitAudioContext)()
             if (ctx && typeof ctx.resume === "function") {
               await ctx.resume()
               ;(window as any).audioContext = ctx
@@ -402,7 +435,21 @@ function DriverDashboardContent() {
     prevAssignedRef.current = current
   }, [assignedIncomingRides.length, soundEnabled])
 
-
+  // When a new assigned PENDING ride arrives, switch to map and open marker dialog
+  useEffect(() => {
+    const prev = prevAssignedPendingRef.current
+    const current = assignedPendingRides.length
+    if (current > prev) {
+      // open map and show the dialog for the newest assigned pending ride
+      const newest = assignedPendingRides[0]
+      if (newest) {
+        setCurrentView("map")
+        setSelectedMarkerRideId(newest.id)
+        setShowMarkerDialog(true)
+      }
+    }
+    prevAssignedPendingRef.current = current
+  }, [assignedPendingRides.length])
 
   // CARGAR ESTADÍSTICAS DEL CONDUCTOR Y VIAJES RECIENTES (EFECTO DE INICIALIZACIÓN)
   useEffect(() => {
@@ -410,11 +457,7 @@ function DriverDashboardContent() {
       if (!supabase || !driverId) return
       try {
         // OBTENER DATOS DEL CONDUCTOR (SÓLO RATING; TOTAL_TRIPS SE CALCULA A PARTIR DE LOS VIAJES)
-        const { data: driverData } = await supabase
-          .from("drivers")
-          .select("rating")
-          .eq("uid", driverId)
-          .single()
+        const { data: driverData } = await supabase.from("drivers").select("rating").eq("uid", driverId).single()
 
         // OBTENER TODOS LOS VIAJES COMPLETADOS DE ESTE CONDUCTOR (NO SOLO LOS RECIENTES)
         const { data: allCompletedRides } = await supabase
@@ -431,16 +474,27 @@ function DriverDashboardContent() {
           const thisWeek = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
           const thisMonth = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
 
-          const todayRides = completed.filter((ride) => ride.completed_at && new Date(ride.completed_at).toDateString() === today)
+          const todayRides = completed.filter(
+            (ride) => ride.completed_at && new Date(ride.completed_at).toDateString() === today,
+          )
           const weeklyRides = completed.filter((ride) => ride.completed_at && new Date(ride.completed_at) >= thisWeek)
           const monthlyRides = completed.filter((ride) => ride.completed_at && new Date(ride.completed_at) >= thisMonth)
 
           setDriverStats({
             todayTrips: todayRides.length,
-            todayEarnings: todayRides.reduce((sum, ride) => sum + Number(ride.actual_fare ?? ride.estimated_fare ?? 0), 0),
+            todayEarnings: todayRides.reduce(
+              (sum, ride) => sum + Number(ride.actual_fare ?? ride.estimated_fare ?? 0),
+              0,
+            ),
             todayHours: todayRides.length * 0.5, // ESTIMADO: 30 MIN POR VIAJE
-            weeklyEarnings: weeklyRides.reduce((sum, ride) => sum + Number(ride.actual_fare ?? ride.estimated_fare ?? 0), 0),
-            monthlyEarnings: monthlyRides.reduce((sum, ride) => sum + Number(ride.actual_fare ?? ride.estimated_fare ?? 0), 0),
+            weeklyEarnings: weeklyRides.reduce(
+              (sum, ride) => sum + Number(ride.actual_fare ?? ride.estimated_fare ?? 0),
+              0,
+            ),
+            monthlyEarnings: monthlyRides.reduce(
+              (sum, ride) => sum + Number(ride.actual_fare ?? ride.estimated_fare ?? 0),
+              0,
+            ),
             totalTrips: completed.length,
             rating: (driverData as { rating?: number } | null)?.rating ?? 0,
           })
@@ -481,24 +535,20 @@ function DriverDashboardContent() {
     loadDriverStats()
   }, [driverId])
 
-
-
-
-
   // COMPROBAR SI HAY VIAJES COMPLETADOS PARA MOSTRAR EL DIÁLOGO DE CALIFICACIÓN
   useEffect(() => {
     const completedRide = rides.find((ride) => {
       return (
         ride.status === "completed" &&
         ride.driver_id === driverId &&
-        (ride.driver_rating == null) &&
-  // TAMBIÉN ASEGURARSE DE QUE EL CONDUCTOR NO HAYA YA DEJADO UN COMENTARIO O LO HAYA OMITIDO
+        ride.driver_rating == null &&
+        // TAMBIÉN ASEGURARSE DE QUE EL CONDUCTOR NO HAYA YA DEJADO UN COMENTARIO O LO HAYA OMITIDO
         !ride.driver_comment
       )
     })
     if (completedRide) {
       setCompletedRide(completedRide)
-  // EVITAR APERTURA AUTOMÁTICA DEL DIÁLOGO DE CALIFICACIÓN MÁS DE UNA VEZ DURANTE MOUNT/STRICT RERENDERS
+      // EVITAR APERTURA AUTOMÁTICA DEL DIÁLOGO DE CALIFICACIÓN MÁS DE UNA VEZ DURANTE MONTAJE/STRICT RERENDERS
       if (!autoOpenedRatingRef.current) {
         setShowRatingDialog(true)
         autoOpenedRatingRef.current = true
@@ -517,6 +567,7 @@ function DriverDashboardContent() {
         } catch {}
         chatChannelRef.current = null
       }
+      // The dependency array should include activeRide?.id to ensure the effect re-runs when the active ride changes.
       if (!activeRide) return
       try {
         const channel = supabase
@@ -552,13 +603,11 @@ function DriverDashboardContent() {
         chatChannelRef.current = null
       }
     }
-  }, [activeRide?.id])
+  }, [activeRide?.id, chatNotificationEnabled]) // Added activeRide?.id to dependency array
 
-
-  
   // SI HAY MÚLTIPLES VIAJES ACTIVOS PARA ESTE CONDUCTOR, ABRIR AUTOMÁTICAMENTE EL DIÁLOGO DE SELECCIÓN
   useEffect(() => {
-  // ABRIR EL DIÁLOGO DE SELECCIÓN AUTOMÁTICAMENTE SOLO UNA VEZ POR MONTAJE PARA EVITAR RENDERIZADOS DUPLICADOS
+    // ABRIR EL DIÁLOGO DE SELECCIÓN AUTOMÁTICAMENTE SOLO UNA VEZ POR MONTAJE PARA EVITAR RENDERIZADOS DUPLICADOS
     if (
       activeRides.length > 1 &&
       !selectedActiveRide &&
@@ -571,8 +620,6 @@ function DriverDashboardContent() {
     }
   }, [activeRides, selectedActiveRide])
 
-
-  
   // SI LA SELECCIÓN ACTUAL DESAPARECE (CANCELADO/COMPLETADO/ELIMINADO), BORRAR LA SELECCIÓN
   useEffect(() => {
     if (selectedActiveRide && !activeRides.find((r) => r.id === selectedActiveRide.id)) {
@@ -580,12 +627,10 @@ function DriverDashboardContent() {
     }
   }, [activeRides, selectedActiveRide])
 
-
-
   // ACEPTAR UN VIAJE: EJECUTAR LÓGICA DE ACEPTACIÓN Y NOTIFICAR AL USUARIO
   const handleAcceptRide = async (rideId: string) => {
     try {
-  // OBTENER NOMBRE DEL CONDUCTOR PARA REGISTRAR EN LA ACCIÓN DE ACEPTAR
+      // OBTENER NOMBRE DEL CONDUCTOR PARA REGISTRAR EN LA ACCIÓN DE ACEPTAR
       const { data: driverData } = await supabase.from("drivers").select("name").eq("uid", driverId).single()
       const driverName = (driverData as { name?: string } | null)?.name ?? "Conductor"
       const result = await acceptRide(rideId, driverName)
@@ -612,8 +657,6 @@ function DriverDashboardContent() {
     }
   }
 
-
-
   // RECHAZAR UN VIAJE: ENVIAR MOTIVO Y NOTIFICAR AL USUARIO
   const handleRejectRide = async (rideId: string) => {
     const result = await rejectRide(rideId, "No disponible en este momento")
@@ -632,16 +675,14 @@ function DriverDashboardContent() {
     console.log("Ride rejected successfully")
   }
 
-
-
   // ACTUALIZAR EL ESTADO DEL VIAJE: CAMBIOS DE ESTADO Y REFRESCO DE LA LISTA
   const handleStatusUpdate = async (rideId: string, status: string) => {
     try {
-  const allowed = ["pending", "accepted", "in-progress", "completed", "cancelled"] as const
-  // Tipar allowed como RideRow['status'][] y castear status antes de usarlo
-  const allowedStatuses = allowed as ReadonlyArray<RideRow["status"]>
-  if (!allowedStatuses.includes(status as RideRow["status"])) throw new Error("Estado inválido")
-  const result = await updateRideStatus(rideId, status as RideRow["status"])
+      const allowed = ["pending", "accepted", "in-progress", "completed", "cancelled"] as const
+      // Tipar allowed como RideRow['status'][] y castear status antes de usarlo
+      const allowedStatuses = allowed as ReadonlyArray<RideRow["status"]>
+      if (!allowedStatuses.includes(status as RideRow["status"])) throw new Error("Estado inválido")
+      const result = await updateRideStatus(rideId, status as RideRow["status"])
       if (!result.success) {
         toast({
           title: "Error",
@@ -650,17 +691,13 @@ function DriverDashboardContent() {
         })
         return
       }
-  // ASEGURAR QUE LA UI REFLEJE EL ESTADO MÁS RECIENTE INMEDIATAMENTE.
-  // refreshRides RECARGA LA LISTA DE VIAJES DESDE LA BASE DE DATOS.
+      // ASEGURAR QUE LA UI REFLEJE EL ESTADO MÁS RECIENTE INMEDIATAMENTE.
+      // refreshRides RECARGA LA LISTA DE VIAJES DESDE LA BASE DE DATOS.
       try {
         await refreshRides()
-  // SI EL USUARIO TENÍA UN VIAJE SELECCIONADO, ACTUALIZAR ESA SELECCIÓN CON LA VERSIÓN MÁS RECIENTE DESDE LA BD
+        // SI EL USUARIO TENÍA UN VIAJE SELECCIONADO, ACTUALIZAR ESA SELECCIÓN CON LA VERSIÓN MÁS RECIENTE DESDE LA BD
         if (selectedActiveRide && selectedActiveRide.id === rideId) {
-          const { data: freshRide, error: rideErr } = await supabase
-            .from("rides")
-            .select("*")
-            .eq("id", rideId)
-            .single()
+          const { data: freshRide, error: rideErr } = await supabase.from("rides").select("*").eq("id", rideId).single()
           if (!rideErr && freshRide) {
             const typed = freshRide as unknown as RideRow
             setSelectedActiveRide(typed)
@@ -689,7 +726,6 @@ function DriverDashboardContent() {
     }
   }
 
-
   // ENVIAR CALIFICACIÓN AL PASAJERO (OPCIONAL) Y COMENTARIO: ACTUALIZA RIDE Y PROMEDIA CALIFICACIONES
   const handleRatePassenger = async () => {
     if (!completedRide) return
@@ -716,13 +752,14 @@ function DriverDashboardContent() {
           .not("driver_rating", "is", null)
 
         if (passengerRides && passengerRides.length > 0) {
-          const avgRating = passengerRides.reduce((sum, ride) => sum + Number(ride.driver_rating ?? 0), 0) / passengerRides.length
+          const avgRating =
+            passengerRides.reduce((sum, ride) => sum + Number(ride.driver_rating ?? 0), 0) / passengerRides.length
           await supabase.from("passengers").update({ rating: avgRating }).eq("uid", completedRide.passenger_id)
         }
       }
 
-  setShowRatingDialog(false)
-  autoOpenedRatingRef.current = false
+      setShowRatingDialog(false)
+      autoOpenedRatingRef.current = false
       setPassengerRating(0)
       setRatingComment("")
       setCompletedRide(null)
@@ -733,7 +770,6 @@ function DriverDashboardContent() {
       toast({ title: "Error", description: "No se pudo enviar la calificación", variant: "destructive" })
     }
   }
-
 
   // OMITIR CALIFICACIÓN DEL PASAJERO: GUARDAR COMENTARIO POR DEFECTO SI NO HAY TEXTO
   const handleSkipPassengerRating = async () => {
@@ -747,8 +783,8 @@ function DriverDashboardContent() {
         return
       }
 
-  setShowRatingDialog(false)
-  autoOpenedRatingRef.current = false
+      setShowRatingDialog(false)
+      autoOpenedRatingRef.current = false
       setPassengerRating(0)
       setRatingComment("")
       setCompletedRide(null)
@@ -758,8 +794,6 @@ function DriverDashboardContent() {
       toast({ title: "Error", description: "Ocurrió un error.", variant: "destructive" })
     }
   }
-
-
 
   // CANCELAR VIAJE ACTIVO: MARCAR COMO 'cancelled' Y REGISTRAR FECHA/MOTIVO
   const handleCancelActiveRide = async (rideId: string) => {
@@ -805,652 +839,735 @@ function DriverDashboardContent() {
     name: ride.passenger_name,
   }))
 
+  // Rides assigned to this driver — these should appear on the map for this driver
+  // (passenger selected this specific driver).
+  const assignedRideLocations = assignedIncomingRides.map((ride) => ({
+    id: ride.id,
+    lat: ride.pickup_coordinates[1],
+    lng: ride.pickup_coordinates[0],
+    name: ride.passenger_name,
+  }))
 
-  // LÓGICA DE RENDERIZADO (JSX): ESTRUCTURA PRINCIPAL DEL DASHBOARD
+  // selected ride data for marker dialog
+  const selectedMarkerRide = selectedMarkerRideId ? rides.find((r) => r.id === selectedMarkerRideId) ?? null : null
+
+  const handleLogout = async () => {
+    try {
+      await signOut()
+      router.push("/")
+    } catch (error) {
+      console.error("Error logging out:", error)
+      toast({
+        title: "Error",
+        description: "No se pudo cerrar sesión",
+        variant: "destructive",
+      })
+    }
+  }
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
-  {/* ENCABEZADO MEJORADO: ICONO, BADGE Y BLOQUE DE ESTADO */}
-      <header className="bg-white/80 backdrop-blur-md shadow-lg border-b border-blue-100">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between py-4">
-            {/* IZQUIERDA: LOGO Y BADGE QUE IDENTIFICAN AL USUARIO COMO CONDUCTOR */}
+    <div className="min-h-screen bg-gray-50 flex">
+      {/* Sidebar */}
+      <div className={`${sidebarCollapsed ? "w-16" : "w-64"} bg-white shadow-lg flex flex-col transition-all duration-300`}>
+        {/* Toggle Button */}
+        <div className="p-4 border-b border-gray-200">
+          <button
+            aria-label={sidebarCollapsed ? "Abrir sidebar" : "Cerrar sidebar"}
+            onClick={() => setSidebarCollapsed((s) => !s)}
+            className="w-full flex items-center justify-center p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+          >
+            <Menu className="h-5 w-5" />
+          </button>
+        </div>
+
+        {/* Profile Section - full vs collapsed */}
+        {!sidebarCollapsed ? (
+          <div className="p-6 border-b border-gray-200">
             <div className="flex items-center space-x-3">
-              <div className="p-2 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg shadow-md flex items-center justify-center">
-                <Shield className="h-7 w-7 text-white" />
+              <Avatar className="h-12 w-12">
+                <AvatarImage src="/placeholder.svg?height=48&width=48" />
+                <AvatarFallback className="bg-blue-500 text-white font-semibold">
+                  {(String(userData?.name || user?.email || "D")).charAt(0)}
+                </AvatarFallback>
+              </Avatar>
+              <div>
+                <h3 className="font-semibold text-gray-900">{userData?.name || "Driver"}</h3>
+                <p className="text-sm text-gray-500">ID: {user?.uid?.slice(0, 9) || "123456789"}</p>
               </div>
-              <Badge variant="secondary" className="bg-blue-100 text-blue-700 border-blue-200 text-xs py-0.5 px-2">
-                Conductor
-              </Badge>
             </div>
 
-            {/* DERECHA: BLOQUE COMPACTO DE ESTADO (ONLINE/OFFLINE) */}
-            <div className="flex items-center space-x-3">
-              <div className="flex items-center space-x-2 bg-white/60 rounded-full px-3 py-1 border border-blue-200">
-                <Activity className="h-4 w-4 text-blue-600" />
-                <div className="flex items-center space-x-2">
-                  <span className="text-xs font-medium text-gray-700">Estado</span>
-                  <Switch checked={isOnline} onCheckedChange={updateOnlineStatus} disabled={statusLoading} />
-                  <span className={`text-xs font-semibold ${isOnline ? "text-green-600" : "text-gray-500"}`}>
-                    {isOnline ? "En línea" : "Desconectado"}
-                  </span>
-                </div>
-                {isOnline && <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse ml-2" />}
-              </div>
+            {/* Online Status */}
+            <div className="mt-4 flex items-center space-x-2">
+              <div className={`w-3 h-3 rounded-full ${isOnline ? "bg-green-500" : "bg-gray-400"}`} />
+              <span className="text-sm font-medium text-gray-700">{isOnline ? "Online" : "Offline"}</span>
             </div>
           </div>
+        ) : (
+          <div className="p-3 border-b border-gray-200 flex justify-center">
+            <Avatar className="h-10 w-10">
+              <AvatarFallback className="bg-blue-500 text-white font-semibold text-sm">
+                {(String(userData?.name || user?.email || "D")).charAt(0)}
+              </AvatarFallback>
+            </Avatar>
+          </div>
+        )}
+
+        {/* Navigation */}
+        <nav className="flex-1 p-4">
+          <div className="space-y-2">
+            <button
+              onClick={() => setCurrentView("map")}
+              className={`w-full flex items-center ${sidebarCollapsed ? "justify-center relative" : "space-x-3"} ${sidebarCollapsed ? "px-2" : "px-4"} py-3 rounded-lg text-left transition-colors ${
+                currentView === "map" ? "bg-blue-500 text-white" : "text-gray-700 hover:bg-gray-100"
+              }`}
+            >
+              <Map className={`${sidebarCollapsed ? "h-6 w-6" : "h-5 w-5"} ${currentView === "map" ? "text-white stroke-current" : "text-gray-700 stroke-current"}`} />
+              {!sidebarCollapsed && <span className="font-medium">Map</span>}
+              {(pendingCount > 0 || assignedIncomingRides.length > 0) && (
+                <Badge variant="destructive" className={`${sidebarCollapsed ? "absolute left-14" : "ml-auto"}`}>1</Badge>
+              )}
+            </button>
+
+            <button
+              onClick={() => setCurrentView("requests")}
+              className={`w-full flex items-center ${sidebarCollapsed ? "justify-center relative" : "space-x-3"} ${sidebarCollapsed ? "px-2" : "px-4"} py-3 rounded-lg text-left transition-colors ${
+                currentView === "requests" ? "bg-blue-500 text-white" : "text-gray-700 hover:bg-gray-100"
+              }`}
+            >
+              <FileText className={`${sidebarCollapsed ? "h-6 w-6" : "h-5 w-5"} ${currentView === "requests" ? "text-white stroke-current" : "text-gray-700 stroke-current"}`} />
+              {!sidebarCollapsed && <span className="font-medium">Ride Requests</span>}
+              {pendingCount > 0 && <Badge variant="destructive" className={`${sidebarCollapsed ? "absolute left-14" : "ml-auto"}`}>1</Badge>}
+            </button>
+
+            <button
+              onClick={() => {
+                if (activeRide) {
+                  setSelectedActiveRide(activeRide)
+                  setShowChatDialog(true)
+                } else {
+                  toast({ title: "No active chat", description: "No tienes un viaje activo para chatear.", variant: "default" })
+                }
+              }}
+              className={`w-full flex items-center ${sidebarCollapsed ? "justify-center relative" : "space-x-3"} ${sidebarCollapsed ? "px-2" : "px-4"} py-3 rounded-lg text-left transition-colors ${
+                currentView === "chat" ? "bg-blue-500 text-white" : "text-gray-700 hover:bg-gray-100"
+              }`}
+            >
+              <MessageCircle className={`${sidebarCollapsed ? "h-6 w-6" : "h-5 w-5"} ${currentView === "chat" ? "text-white stroke-current" : "text-gray-700 stroke-current"}`} />
+              {!sidebarCollapsed && <span className="font-medium">Chat</span>}
+              {chatUnread > 0 && <Badge variant="destructive" className={`${sidebarCollapsed ? "absolute left-14" : "ml-auto"}`}>1</Badge>}
+            </button>
+
+            <button
+              onClick={() => setCurrentView("accepted")}
+              className={`w-full flex items-center ${sidebarCollapsed ? "justify-center relative" : "space-x-3"} ${sidebarCollapsed ? "px-2" : "px-4"} py-3 rounded-lg text-left transition-colors ${
+                currentView === "accepted" ? "bg-blue-500 text-white" : "text-gray-700 hover:bg-gray-100"
+              }`}
+            >
+              <CheckCircle className={`${sidebarCollapsed ? "h-6 w-6" : "h-5 w-5"} ${currentView === "accepted" ? "text-white stroke-current" : "text-gray-700 stroke-current"}`} />
+              {!sidebarCollapsed && <span className="font-medium">Accepted Rides</span>}
+              {activeRides.length > 0 && <Badge variant="destructive" className={`${sidebarCollapsed ? "absolute left-14" : "ml-auto"}`}>1</Badge>}
+            </button>
+
+            <button
+              onClick={() => setCurrentView("trips")}
+              className={`w-full flex items-center ${sidebarCollapsed ? "justify-center relative" : "space-x-3"} ${sidebarCollapsed ? "px-2" : "px-4"} py-3 rounded-lg text-left transition-colors ${
+                currentView === "trips" ? "bg-blue-500 text-white" : "text-gray-700 hover:bg-gray-100"
+              }`}
+            >
+              <History className={`${sidebarCollapsed ? "h-6 w-6" : "h-5 w-5"} ${currentView === "trips" ? "text-white stroke-current" : "text-gray-700 stroke-current"}`} />
+              {!sidebarCollapsed && <span className="font-medium">Recent Trips</span>}
+            </button>
+
+            <button
+              onClick={() => setCurrentView("earnings")}
+              className={`w-full flex items-center ${sidebarCollapsed ? "justify-center relative" : "space-x-3"} ${sidebarCollapsed ? "px-2" : "px-4"} py-3 rounded-lg text-left transition-colors ${
+                currentView === "earnings" ? "bg-blue-500 text-white" : "text-gray-700 hover:bg-gray-100"
+              }`}
+            >
+              <DollarSign className={`${sidebarCollapsed ? "h-6 w-6" : "h-5 w-5"} ${currentView === "earnings" ? "text-white stroke-current" : "text-gray-700 stroke-current"}`} />
+              {!sidebarCollapsed && <span className="font-medium">Earnings</span>}
+            </button>
+          </div>
+        </nav>
+
+        {/* Logout */}
+        <div className="p-4 border-t border-gray-200">
+          <button
+            onClick={handleLogout}
+            className={`w-full flex items-center ${sidebarCollapsed ? "justify-center" : "space-x-3"} px-4 py-3 rounded-lg text-left text-gray-700 hover:bg-gray-100 transition-colors`}
+          >
+            <LogOut className={`${sidebarCollapsed ? "h-6 w-6" : "h-5 w-5"}`} />
+            {!sidebarCollapsed && <span className="font-medium">Logout</span>}
+          </button>
         </div>
-      </header>
-
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <Tabs defaultValue="dashboard" className="space-y-16">
-          {" "}
-          {/* AUMENTO DE ESPACIADO VERTICAL PARA MEJOR DISTRIBUCIÓN */}
-          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 bg-white/60 backdrop-blur-sm border border-blue-200 rounded-xl p-1 gap-6">
-            {" "}
-            {/* AUMENTO DE GAP ENTRE PESTAÑAS */}
-            <TabsTrigger
-              value="dashboard"
-              className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-indigo-500 data-[state=active]:text-white rounded-lg font-medium"
-            >
-              <BarChart3 className="h-4 w-4 mr-2" />
-              <span className="flex items-center">
-                <span>Dashboard</span>
-                {assignedIncomingRides.length > 0 ? (
-                  <span className="ml-2 -mt-0.5 inline-flex items-center justify-center px-2 py-0.5 text-xs font-bold leading-none text-white bg-red-600 rounded-full">
-                    {assignedIncomingRides.length}
-                  </span>
-                ) : null}
-              </span>
-            </TabsTrigger>
-            <TabsTrigger
-              value="requests"
-              className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-indigo-500 data-[state=active]:text-white rounded-lg font-medium"
-            >
-              <Zap className="h-4 w-4 mr-2" />
-              <span className="flex items-center">
-                <span>Solicitudes</span>
-                {pendingRides.length > 0 ? (
-                  <span className="ml-2 -mt-0.5 inline-flex items-center justify-center px-2 py-0.5 text-xs font-bold leading-none text-white bg-red-600 rounded-full">
-                    {pendingRides.length}
-                  </span>
-                ) : null}
-              </span>
-            </TabsTrigger>
-            <TabsTrigger
-              value="trips"
-              className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-indigo-500 data-[state=active]:text-white rounded-lg font-medium"
-            >
-              <Car className="h-4 w-4 mr-2" />
-              Viajes
-            </TabsTrigger>
-            <TabsTrigger
-              value="earnings"
-              className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-indigo-500 data-[state=active]:text-white rounded-lg font-medium"
-            >
-              <DollarSign className="h-4 w-4 mr-2" />
-              Ganancias
-            </TabsTrigger>
-          </TabsList>
-          <TabsContent value="dashboard" className="space-y-8">
-            <div className="grid lg:grid-cols-3 gap-8">
-              {/* CONTENIDO PRINCIPAL: MAPA, VIAJES ACTIVOS Y ESTADÍSTICAS */}
-              <div className="lg:col-span-2 space-y-8">
-                {/* DIÁLOGO DE SELECCIÓN CUANDO HAY MÚLTIPLES VIAJES ACTIVOS */}
-                <Dialog
-                  open={showSelectDialog}
-                  onOpenChange={(open) => {
-                    // Defer state update to avoid setState during render warnings
-                    setTimeout(() => {
-                      setShowSelectDialog(open)
-                      if (!open) {
-                        // mark that the user closed the dialog manually so it won't auto re-open
-                        manualClosedSelectRef.current = true
-                        // but clear the auto-open flag so a future manual open isn't blocked
-                        autoOpenedSelectRef.current = false
-                      }
-                    }, 0)
-                  }}
-                >
-                  <DialogContent className="sm:max-w-2xl border-0 shadow-2xl">
-                    <DialogHeader>
-                      <DialogTitle>Seleccionar Viaje</DialogTitle>
-                      <DialogDescription>
-                        Tienes {activeRides.length} viajes activos. Selecciona el que deseas ver e iniciar.
-                      </DialogDescription>
-                    </DialogHeader>
-                    <div className="space-y-4 p-2">
-                      {activeRides.map((r) => (
-                        <div key={r.id} className="flex items-center justify-between p-3 bg-white/60 rounded-md">
-                          <div>
-                            <p className="font-semibold">{r.passenger_name} — ${r.estimated_fare}</p>
-                            <p className="text-sm text-muted-foreground">{r.pickup_address} → {r.destination_address}</p>
-                            <p className="text-xs text-muted-foreground">Solicitado: {new Date(r.requested_at).toLocaleString()}</p>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <DialogClose asChild>
-                              <Button
-                                className="bg-blue-600 hover:bg-blue-700"
-                                onClick={() => {
-                                  setSelectedActiveRide(r)
-                                  // prevent auto re-open while selection is being processed
-                                  suppressAutoOpenRef.current = true
-                                  setShowSelectDialog(false)
-                                  setTimeout(() => (suppressAutoOpenRef.current = false), 300)
-                                }}
-                              >
-                                Seleccionar
-                              </Button>
-                            </DialogClose>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                    <div className="mt-4 flex justify-end">
-                      <DialogFooter>
-                        <DialogClose asChild>
-                          <Button variant="outline" className="text-sm">
-                            Cerrar
-                          </Button>
-                        </DialogClose>
-                      </DialogFooter>
-                    </div>
-                  </DialogContent>
-                </Dialog>
-
-                {/* COMPONENTE MAPA MEJORADO: MUESTRA UBICACIONES Y PUNTOS DE RECOGIDA */}
-                  <Card className="overflow-hidden border-0 shadow-xl bg-white/80 backdrop-blur-sm">
-                  <CardContent className="p-0">
-                    {/* ENCABEZADO E BARRA DE INFORMACIÓN ELIMINADOS (MAPA PERMANECE) */}
-                    <MapComponent
-                      userType="driver"
-                      driverLocations={rideLocations}
-                      pickupLocation={
-                        activeRide
-                          ? { lat: activeRide.pickup_coordinates[1], lng: activeRide.pickup_coordinates[0] }
-                          : undefined
-                      }
-                      destinationLocation={
-                        activeRide
-                          ? { lat: activeRide.destination_coordinates[1], lng: activeRide.destination_coordinates[0] }
-                          : undefined
-                      }
-                    />
-                  </CardContent>
-                </Card>
-
-                  {/* SI HAY VARIOS VIAJES ACTIVOS, MOSTRAR BOTÓN DE SELECCIÓN */}
-                  {activeRides.length > 1 && (
-                    <div className="flex justify-end mt-4">
-                      <Button
-                        variant="outline"
-                        onClick={() => {
-                          manualClosedSelectRef.current = false
-                          setShowSelectDialog(true)
-                        }}
-                        className="text-sm"
-                      >
-                        Viajes activos ({activeRides.length})
-                      </Button>
-                    </div>
-                  )}
-
-                {/* VIAJE ACTIVO MEJORADO: TRACKER, CHAT Y OPCIONES */}
-                {activeRide && (
-                  <div className="space-y-6">
-                    {/* BOTÓN DE SELECCIÓN MOVIDO SOBRE EL MAPA PARA VISIBILIDAD */}
-                    <RideTracker ride={activeRide} userType="driver" onStatusUpdate={handleStatusUpdate} />
-                    {/* removed chat summary card; unread counter moved into the Chat button below */}
-                    {/* OPCIONES DE CHAT Y CANCELACIÓN MEJORADAS PARA VIAJES EN PROGRESO */}
-                    {activeRide.status === "in-progress" && (
-                      <Card className="border-0 shadow-xl bg-gradient-to-r from-orange-50 to-amber-50">
-                        <CardContent className="p-6">
-                          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 space-y-4 sm:space-y-0">
-                            <div className="flex items-center space-x-3">
-                              <div className="p-2 bg-orange-500 rounded-full">
-                                <Car className="h-5 w-5 text-white" />
-                              </div>
-                              <div>
-                                <h4 className="font-bold text-orange-800 text-lg">Viaje en Progreso</h4>
-                                <p className="text-orange-600 text-sm">Mantente en contacto con tu pasajero</p>
-                              </div>
-                            </div>
-                            <Badge className="bg-orange-500 text-white px-3 py-1 text-sm font-semibold">
-                              En camino
-                            </Badge>
-                          </div>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div className="flex items-center space-x-2">
-                              <Button
-                                variant="outline"
-                                className="bg-white/80 border-orange-200 hover:bg-orange-100 text-orange-700 font-medium flex items-center justify-center space-x-2"
-                                onClick={() => { setShowChatDialog(true); setChatUnread(0); }}
-                              >
-                                <MessageCircle className="h-4 w-4" />
-                                <span>Chat con Pasajero</span>
-                                {chatUnread > 0 && (
-                                  <span className="inline-flex items-center justify-center ml-2 px-2 py-0.5 text-xs font-bold leading-none text-white bg-red-600 rounded-full">
-                                    {chatUnread}
-                                  </span>
-                                )}
-                              </Button>
-                              {showChatUnlockPrompt && (
-                                <Button size="sm" variant="ghost" onClick={() => unlockChatAudioNow()}>
-                                  Activar sonidos
-                                </Button>
-                              )}
-                            </div>
-                            <Button
-                              variant="destructive"
-                              className="bg-red-500 hover:bg-red-600 font-medium"
-                              onClick={() => handleCancelActiveRide(activeRide.id)}
-                            >
-                              <XCircle className="h-4 w-4 mr-2" />
-                              Cancelar Viaje
-                            </Button>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    )}
-                  </div>
-                )}
-
-                {/* ESTADÍSTICAS DEL DÍA (TARJETAS RESUMEN) */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
-                  <Card className="border-0 shadow-lg bg-gradient-to-br from-blue-500 to-blue-600 text-white overflow-hidden relative">
-                    <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full -mr-10 -mt-10" />
-                    <CardContent className="p-6 relative z-10">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <div className="flex items-center justify-between">
-                            <p className="text-3xl font-bold">{driverStats.todayTrips}</p>
-                            <div className="ml-4">
-                              <RealtimeStatus lastUpdate={lastUpdate} onRefresh={() => refreshRides()} isLoading={ridesLoading} />
-                            </div>
-                          </div>
-                          <p className="text-blue-100 font-medium">Viajes Hoy</p>
-                        </div>
-                        <Users className="h-8 w-8 text-blue-200" />
-                      </div>
-                    </CardContent>
-                  </Card>
-                  <Card className="border-0 shadow-lg bg-gradient-to-br from-green-500 to-green-600 text-white overflow-hidden relative">
-                    <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full -mr-10 -mt-10" />
-                    <CardContent className="p-6 relative z-10">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-3xl font-bold">${driverStats.todayEarnings}</p>
-                          <p className="text-green-100 font-medium">Ganancias Hoy</p>
-                        </div>
-                        <DollarSign className="h-8 w-8 text-green-200" />
-                      </div>
-                    </CardContent>
-                  </Card>
-                  <Card className="border-0 shadow-lg bg-gradient-to-br from-orange-500 to-orange-600 text-white overflow-hidden relative">
-                    <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full -mr-10 -mt-10" />
-                    <CardContent className="p-6 relative z-10">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-3xl font-bold">{driverStats.todayHours.toFixed(1)}h</p>
-                          <p className="text-orange-100 font-medium">Horas Hoy</p>
-                        </div>
-                        <Clock className="h-8 w-8 text-orange-200" />
-                      </div>
-                    </CardContent>
-                  </Card>
-                  <Card className="border-0 shadow-lg bg-gradient-to-br from-yellow-500 to-yellow-600 text-white overflow-hidden relative">
-                    <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full -mr-10 -mt-10" />
-                    <CardContent className="p-6 relative z-10">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-3xl font-bold">{driverStats.rating.toFixed(1)}</p>
-                          <p className="text-yellow-100 font-medium">Rating</p>
-                        </div>
-                        <Star className="h-8 w-8 text-yellow-200" />
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-              </div>
-
-              {/* BARRA LATERAL MEJORADA: ESTADO, GANANCIAS Y RESUMEN */}
-              <div className="space-y-6">
-                {/* TARJETA DE ESTADO MEJORADA: DISPONIBILIDAD Y NÚMERO DE VIAJES */}
-                <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm">
-                  <CardHeader className="bg-gradient-to-r from-slate-600 to-slate-700 text-white rounded-t-lg py-2 px-3">
-                    <CardTitle className="flex items-center space-x-2 text-sm">
-                      <Activity className="h-4 w-4" />
-                      <span className="text-sm">Estado del Conductor</span>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="p-4 space-y-4">
-                    <div className="flex items-center justify-between p-4 bg-slate-50 rounded-lg">
-                      <span className="font-medium text-slate-700">Disponibilidad</span>
-                      <Badge
-                        variant={isOnline ? "default" : "secondary"}
-                        className={isOnline ? "bg-green-500 hover:bg-green-600" : ""}
-                      >
-                        {isOnline ? "En línea" : "Desconectado"}
-                      </Badge>
-                    </div>
-                    <div className="flex items-center justify-between p-4 bg-slate-50 rounded-lg">
-                      <span className="font-medium text-slate-700">Viajes Totales</span>
-                      <Badge variant="outline" className="border-slate-300 text-slate-700 font-semibold">
-                        {driverStats.totalTrips}
-                      </Badge>
-                    </div>
-                    {!isOnline && (
-                      <Button
-                        className="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 font-medium"
-                        onClick={() => updateOnlineStatus(true)}
-                      >
-                        <CheckCircle className="h-4 w-4 mr-2" />
-                        Conectarse
-                      </Button>
-                    )}
-                  </CardContent>
-                </Card>
-
-                {/* RESUMEN DE GANANCIAS MEJORADO: HOY, SEMANA, MES */}
-                <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm">
-                  <CardHeader className="bg-gradient-to-r from-emerald-600 to-green-600 text-white rounded-t-lg py-2 px-3">
-                    <CardTitle className="flex items-center space-x-2 text-sm">
-                      <TrendingUp className="h-4 w-4" />
-                      <span className="text-sm">Resumen de Ganancias</span>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="p-4 space-y-3">
-                    <div className="flex justify-between items-center p-3 bg-green-50 rounded-lg">
-                      <span className="text-green-700 font-medium">Hoy</span>
-                      <span className="font-bold text-green-800 text-lg">${driverStats.todayEarnings}</span>
-                    </div>
-                    <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg">
-                      <span className="text-blue-700 font-medium">Esta semana</span>
-                      <span className="font-bold text-blue-800 text-lg">${driverStats.weeklyEarnings}</span>
-                    </div>
-                    <div className="flex justify-between items-center p-3 bg-purple-50 rounded-lg">
-                      <span className="text-purple-700 font-medium">Este mes</span>
-                      <span className="font-bold text-purple-800 text-lg">${driverStats.monthlyEarnings}</span>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            </div>
-          </TabsContent>
-          <TabsContent value="requests" className="space-y-6">
-            <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm">
-              <CardHeader className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white">
-                <CardTitle className="flex items-center space-x-2">
-                  <Zap className="h-5 w-5" />
-                  <span>Solicitudes de Viaje</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-6">
-                {isOnline && pendingRides.length > 0 ? (
-                  <div className="space-y-6">
-                    {pendingRides.map((ride) => (
-                      <Card key={ride.id} className="border-0 shadow-lg bg-gradient-to-r from-blue-50 to-indigo-50">
-                        <CardContent className="p-6">
-                          <div className="space-y-6">
-                            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between space-y-4 sm:space-y-0">
-                              <div className="flex items-center space-x-4">
-                                <Avatar className="h-16 w-16 ring-2 ring-blue-200">
-                                  <AvatarImage src="/placeholder.svg?height=64&width=64" />
-                                  <AvatarFallback className="bg-gradient-to-r from-blue-500 to-indigo-500 text-white text-xl font-bold">
-                                    {ride.passenger_name.charAt(0)}
-                                  </AvatarFallback>
-                                </Avatar>
-                                <div>
-                                  <h3 className="font-bold text-lg text-gray-800">{ride.passenger_name}</h3>
-                                  <div className="flex items-center space-x-1">
-                                    <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                                    <span className="text-sm font-medium">4.8</span>
-                                  </div>
-                                </div>
-                              </div>
-                              <Badge className="bg-gradient-to-r from-green-500 to-green-600 text-white px-4 py-2 text-lg font-bold">
-                                ${ride.estimated_fare}
-                              </Badge>
-                            </div>
-                            <div className="space-y-3 bg-white/60 p-4 rounded-lg">
-                              <div className="flex items-center space-x-3">
-                                <div className="p-1 bg-green-500 rounded-full">
-                                  <MapPin className="h-4 w-4 text-white" />
-                                </div>
-                                <span className="text-sm font-medium">Recogida: {ride.pickup_address}</span>
-                              </div>
-                              <div className="flex items-center space-x-3">
-                                <div className="p-1 bg-red-500 rounded-full">
-                                  <Navigation className="h-4 w-4 text-white" />
-                                </div>
-                                <span className="text-sm font-medium">Destino: {ride.destination_address}</span>
-                              </div>
-                              <div className="flex items-center space-x-3">
-                                <div className="p-1 bg-blue-500 rounded-full">
-                                  <Clock className="h-4 w-4 text-white" />
-                                </div>
-                                <span className="text-sm font-medium">{ride.estimated_duration} min</span>
-                              </div>
-                            </div>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                              <Button
-                                className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 font-semibold py-3"
-                                onClick={() => handleAcceptRide(ride.id)}
-                              >
-                                <CheckCircle className="h-4 w-4 mr-2" />
-                                Aceptar Viaje
-                              </Button>
-                              <Button
-                                variant="outline"
-                                className="border-red-200 text-red-600 hover:bg-red-50 font-semibold py-3 bg-transparent"
-                                onClick={() => handleRejectRide(ride.id)}
-                              >
-                                <XCircle className="h-4 w-4 mr-2" />
-                                Rechazar
-                              </Button>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-16">
-                    <div className="p-4 bg-gradient-to-r from-blue-100 to-indigo-100 rounded-full w-24 h-24 mx-auto mb-6 flex items-center justify-center">
-                      <Car className="h-12 w-12 text-blue-600" />
-                    </div>
-                    <p className="text-xl font-bold text-gray-700 mb-2">
-                      {isOnline ? "No hay solicitudes disponibles" : "Conéctate para recibir solicitudes"}
-                    </p>
-                    <p className="text-gray-500 text-lg">
-                      {isOnline ? "Te notificaremos cuando haya viajes disponibles" : "Activa tu estado en línea"}
-                    </p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-          <TabsContent value="trips" className="space-y-6">
-            <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm">
-              <CardHeader className="bg-gradient-to-r from-purple-600 to-pink-600 text-white">
-                <CardTitle className="flex items-center space-x-2">
-                  <Car className="h-5 w-5" />
-                  <span>Viajes Recientes</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-6">
-                {recentTrips.length > 0 ? (
-                  <div className="space-y-6">
-                    {recentTrips.map((trip) => (
-                      <div
-                        key={trip.id}
-                        className="border-0 bg-gradient-to-r from-gray-50 to-slate-50 p-6 rounded-xl shadow-md"
-                      >
-                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
-                          <div className="flex-1 w-full">
-                            <div className="flex items-center space-x-3 mb-3">
-                              <Avatar className="h-12 w-12">
-                                <AvatarFallback className="bg-gradient-to-r from-purple-500 to-pink-500 text-white font-semibold">
-                                  {trip.passenger_name.charAt(0)}
-                                </AvatarFallback>
-                              </Avatar>
-                              <div>
-                                <p className="font-bold text-lg text-gray-800">{trip.passenger_name}</p>
-                                <p className="text-sm text-gray-600">
-                                  {new Date(trip.completed_at).toLocaleDateString()} - {trip.estimated_duration} min
-                                </p>
-                              </div>
-                            </div>
-                            <div className="bg-white/60 p-3 rounded-lg mb-3">
-                              <p className="text-sm text-gray-700 font-medium">
-                                {trip.pickup_address} → {trip.destination_address}
-                              </p>
-                            </div>
-                            <div className="flex items-center space-x-1">
-                              {[...Array(5)].map((_, i) => (
-                                <Star
-                                  key={i}
-                                  className={`h-4 w-4 ${
-                                    i < (trip.passenger_rating || 0)
-                                      ? "fill-yellow-400 text-yellow-400"
-                                      : "text-gray-300"
-                                  }`}
-                                />
-                              ))}
-                            </div>
-                          </div>
-                          <Badge className="bg-gradient-to-r from-green-500 to-green-600 text-white px-4 py-2 text-lg font-bold mt-4 sm:mt-0">
-                            ${trip.actual_fare || trip.estimated_fare}
-                          </Badge>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-16">
-                    <div className="p-4 bg-gradient-to-r from-purple-100 to-pink-100 rounded-full w-24 h-24 mx-auto mb-6 flex items-center justify-center">
-                      <Calendar className="h-12 w-12 text-purple-600" />
-                    </div>
-                    <p className="text-xl font-bold text-gray-700 mb-2">No hay viajes recientes</p>
-                    <p className="text-gray-500 text-lg">Tus viajes completados aparecerán aquí</p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-          <TabsContent value="earnings" className="space-y-8">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              <Card className="border-0 shadow-xl bg-gradient-to-br from-green-500 to-emerald-600 text-white overflow-hidden relative">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16" />
-                <CardHeader className="relative z-10">
-                  <CardTitle className="flex items-center space-x-2">
-                    <DollarSign className="h-6 w-6" />
-                    <span>Ganancias Diarias</span>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="relative z-10">
-                  <p className="text-4xl font-bold mb-2">${driverStats.todayEarnings}</p>
-                  <p className="text-green-100 font-medium">{driverStats.todayTrips} viajes completados</p>
-                </CardContent>
-              </Card>
-              <Card className="border-0 shadow-xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white overflow-hidden relative">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16" />
-                <CardHeader className="relative z-10">
-                  <CardTitle className="flex items-center space-x-2">
-                    <BarChart3 className="h-6 w-6" />
-                    <span>Ganancias Semanales</span>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="relative z-10">
-                  <p className="text-4xl font-bold mb-2">${driverStats.weeklyEarnings}</p>
-                  <p className="text-blue-100 font-medium">Últimos 7 días</p>
-                </CardContent>
-              </Card>
-              <Card className="border-0 shadow-xl bg-gradient-to-br from-purple-500 to-pink-600 text-white overflow-hidden relative">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16" />
-                <CardHeader className="relative z-10">
-                  <CardTitle className="flex items-center space-x-2">
-                    <TrendingUp className="h-6 w-6" />
-                    <span>Ganancias Mensuales</span>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="relative z-10">
-                  <p className="text-4xl font-bold mb-2">${driverStats.monthlyEarnings}</p>
-                  <p className="text-purple-100 font-medium">Últimos 30 días</p>
-                </CardContent>
-              </Card>
-            </div>
-            <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm">
-              <CardHeader className="bg-gradient-to-r from-slate-600 to-slate-700 text-white">
-                <CardTitle>Estadísticas Generales</CardTitle>
-              </CardHeader>
-              <CardContent className="p-8">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                  <div className="space-y-6">
-                    <div className="flex justify-between items-center p-4 bg-slate-50 rounded-lg">
-                      <span className="text-gray-700 font-medium">Total de viajes:</span>
-                      <span className="font-bold text-xl text-slate-700">{driverStats.totalTrips}</span>
-                    </div>
-                    <div className="flex justify-between items-center p-4 bg-yellow-50 rounded-lg">
-                      <span className="text-gray-700 font-medium">Rating promedio:</span>
-                      <div className="flex items-center space-x-2">
-                        <Star className="h-5 w-5 fill-yellow-400 text-yellow-400" />
-                        <span className="font-bold text-xl text-yellow-600">{driverStats.rating.toFixed(1)}</span>
-                      </div>
-                    </div>
-                    <div className="flex justify-between items-center p-4 bg-blue-50 rounded-lg">
-                      <span className="text-gray-700 font-medium">Horas trabajadas hoy:</span>
-                      <span className="font-bold text-xl text-blue-600">{driverStats.todayHours.toFixed(1)}h</span>
-                    </div>
-                  </div>
-                  <div className="space-y-6">
-                    <div className="flex justify-between items-center p-4 bg-green-50 rounded-lg">
-                      <span className="text-gray-700 font-medium">Ganancia promedio por viaje:</span>
-                      <span className="font-bold text-xl text-green-600">
-                        $
-                        {driverStats.totalTrips > 0
-                          ? (
-                              (driverStats.todayEarnings + driverStats.weeklyEarnings + driverStats.monthlyEarnings) /
-                              driverStats.totalTrips
-                            ).toFixed(0)
-                          : 0}
-                      </span>
-                    </div>
-                    <div className="flex justify-between items-center p-4 bg-purple-50 rounded-lg">
-                      <span className="text-gray-700 font-medium">Estado:</span>
-                      <Badge
-                        variant={isOnline ? "default" : "secondary"}
-                        className={`px-4 py-2 text-sm font-semibold ${isOnline ? "bg-green-500 hover:bg-green-600" : ""}`}
-                      >
-                        {isOnline ? "En línea" : "Desconectado"}
-                      </Badge>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
       </div>
 
-  {/* DIÁLOGO DE CHAT: VENTANA PARA COMUNICACIÓN ENTRE CONDUCTOR Y PASAJERO */}
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col">
+        {/* Map View */}
+        {currentView === "map" && (
+          <div className="flex-1 relative">
+            {/* Map Component */}
+            <div className="absolute inset-0">
+              <MapComponent
+                userType="driver"
+                // Only show rides that were explicitly assigned to this driver on the map.
+                // Broadcast (any-driver) requests are handled in the Ride Requests view.
+                driverLocations={assignedRideLocations}
+                onMarkerClick={(id) => {
+                  // set selection and open small dialog to accept/reject/chat
+                  setSelectedMarkerRideId(id)
+                  setShowMarkerDialog(true)
+                }}
+                pickupLocation={
+                  activeRide
+                    ? { lat: activeRide.pickup_coordinates[1], lng: activeRide.pickup_coordinates[0] }
+                    : undefined
+                }
+                destinationLocation={
+                  activeRide
+                    ? { lat: activeRide.destination_coordinates[1], lng: activeRide.destination_coordinates[0] }
+                    : undefined
+                }
+              />
+            </div>
+
+            {/* Floating counts on the map: Requests (broadcast) and Chat unread */}
+            <div className="absolute left-4 top-4 flex flex-col space-y-2 z-50">
+              <button
+                onClick={() => setCurrentView("requests")}
+                title="Open Ride Requests"
+                className="flex items-center space-x-2 bg-white/90 backdrop-blur-sm px-3 py-2 rounded-full shadow-md hover:shadow-lg"
+              >
+                <FileText className="h-4 w-4 text-gray-700" />
+                <span className="text-sm font-medium text-gray-800">Requests</span>
+                {pendingCount > 0 && <Badge variant="destructive" className="ml-2">{pendingCount}</Badge>}
+              </button>
+
+              <button
+                onClick={() => {
+                  if (activeRide) {
+                    setSelectedActiveRide(activeRide)
+                    setShowChatDialog(true)
+                    setChatUnread(0)
+                  } else {
+                    toast({ title: "No active chat", description: "No tienes un viaje activo para chatear.", variant: "default" })
+                  }
+                }}
+                title="Open Chat"
+                className="flex items-center space-x-2 bg-white/90 backdrop-blur-sm px-3 py-2 rounded-full shadow-md hover:shadow-lg"
+              >
+                <MessageCircle className="h-4 w-4 text-gray-700" />
+                <span className="text-sm font-medium text-gray-800">Chat</span>
+                {chatUnread > 0 && <Badge variant="destructive" className="ml-2">{chatUnread}</Badge>}
+              </button>
+            </div>
+
+            {/* Accepted rides are no longer shown as overlay on the map. They are visible
+                only in the Accepted Rides view to avoid UI duplication. */}
+
+            {/* Broadcast pending rides are intentionally not shown as overlay on the driver map.
+                They are available in the Ride Requests view only. */}
+
+            {/* Online/Offline Toggle */}
+            <div className="absolute top-4 right-4">
+              <Card className="bg-white shadow-lg">
+                <CardContent className="p-4">
+                  <div className="flex items-center space-x-3">
+                    <span className="text-sm font-medium text-gray-700">{isOnline ? "Online" : "Offline"}</span>
+                    <Switch checked={isOnline} onCheckedChange={updateOnlineStatus} disabled={statusLoading} />
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        )}
+
+        {/* Ride Requests View */}
+        {/* Accepted Rides View */}
+        {currentView === "accepted" && (
+          <div className="flex-1 p-6">
+              <div className="mb-6">
+              <h1 className="text-2xl font-bold text-gray-900">Accepted Rides</h1>
+              <p className="text-gray-600">Viajes que has aceptado o que te han sido asignados.</p>
+            </div>
+
+            {activeRides.length > 0 ? (
+              <div className="space-y-4">
+                {activeRides.map((ride) => (
+                  <Card key={ride.id} className="bg-white shadow-sm">
+                    <CardContent className="p-6">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-4">
+                          <Avatar className="h-12 w-12">
+                            <AvatarFallback className="bg-blue-500 text-white">
+                              {ride.passenger_name.charAt(0)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <h3 className="font-semibold text-gray-900">{ride.passenger_name}</h3>
+                            <div className="flex items-center space-x-1">
+                              <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                              <span className="text-sm text-gray-600">4.9</span>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-2xl font-bold text-blue-600">${ride.estimated_fare}</div>
+                          <div className="text-sm text-gray-500">~{ride.estimated_duration} min</div>
+                        </div>
+                      </div>
+
+                      <div className="mt-4 grid grid-cols-2 gap-4">
+                        <div>
+                          <div className="flex items-center space-x-2 mb-1">
+                            <div className="w-2 h-2 bg-blue-500 rounded-full" />
+                            <span className="text-sm text-gray-600">Pickup</span>
+                          </div>
+                          <p className="text-sm font-medium text-gray-900">{ride.pickup_address}</p>
+                        </div>
+                        <div>
+                          <div className="flex items-center space-x-2 mb-1">
+                            <div className="w-2 h-2 bg-red-500 rounded-full" />
+                            <span className="text-sm text-gray-600">Destination</span>
+                          </div>
+                          <p className="text-sm font-medium text-gray-900">{ride.destination_address}</p>
+                        </div>
+                      </div>
+
+                      <div className="mt-4 flex space-x-3">
+                        <Button variant="outline" className="flex-1" onClick={() => {
+                          setSelectedActiveRide(ride)
+                          setShowChatDialog(true)
+                          setChatUnread(0)
+                        }}>
+                          Chat with Passenger
+                        </Button>
+                        <Button variant="destructive" className="flex-1" onClick={() => handleCancelActiveRide(ride.id)}>
+                          Cancel Ride
+                        </Button>
+                        <Button
+                          className="flex-1 bg-green-600 hover:bg-green-700"
+                          onClick={() => handleStatusUpdate(ride.id, ride.status === "accepted" ? "in-progress" : "completed")}
+                        >
+                          {ride.status === "accepted" ? "Start Trip" : "Complete Trip"}
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-12">
+                <Car className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-gray-900 mb-2">No accepted rides</h3>
+                <p className="text-gray-500">Los viajes que aceptes aparecerán aquí.</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Ride Requests View */}
+        {currentView === "requests" && (
+          <div className="flex-1 p-6">
+            <div className="mb-6">
+              <h1 className="text-2xl font-bold text-gray-900">Ride Requests</h1>
+              <p className="text-gray-600">Manage your incoming ride requests.</p>
+            </div>
+
+            {pendingRides.length > 0 ? (
+              <div className="space-y-4">
+                {pendingRides.map((ride) => (
+                  <Card key={ride.id} className="bg-white shadow-sm">
+                    <CardContent className="p-6">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-4">
+                          <Avatar className="h-12 w-12">
+                            <AvatarFallback className="bg-blue-500 text-white">
+                              {ride.passenger_name.charAt(0)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <h3 className="font-semibold text-gray-900">{ride.passenger_name}</h3>
+                            <div className="flex items-center space-x-1">
+                              <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                              <span className="text-sm text-gray-600">4.9</span>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-2xl font-bold text-blue-600">${ride.estimated_fare}</div>
+                          <div className="text-sm text-gray-500">~{ride.estimated_duration} min</div>
+                        </div>
+                      </div>
+
+                      <div className="mt-4 grid grid-cols-2 gap-4">
+                        <div>
+                          <div className="flex items-center space-x-2 mb-1">
+                            <div className="w-2 h-2 bg-blue-500 rounded-full" />
+                            <span className="text-sm text-gray-600">Pickup</span>
+                          </div>
+                          <p className="text-sm font-medium text-gray-900">{ride.pickup_address}</p>
+                        </div>
+                        <div>
+                          <div className="flex items-center space-x-2 mb-1">
+                            <div className="w-2 h-2 bg-red-500 rounded-full" />
+                            <span className="text-sm text-gray-600">Destination</span>
+                          </div>
+                          <p className="text-sm font-medium text-gray-900">{ride.destination_address}</p>
+                        </div>
+                      </div>
+
+                      <div className="mt-4 flex space-x-3">
+                        <Button
+                          variant="outline"
+                          className="flex-1 bg-transparent"
+                          onClick={() => handleRejectRide(ride.id)}
+                        >
+                          Reject
+                        </Button>
+                        <Button
+                          className="flex-1 bg-blue-600 hover:bg-blue-700"
+                          onClick={() => handleAcceptRide(ride.id)}
+                        >
+                          Accept
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-12">
+                <Car className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-gray-900 mb-2">No ride requests</h3>
+                <p className="text-gray-500">New ride requests will appear here when available.</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Recent Trips View */}
+        {currentView === "trips" && (
+          <div className="flex-1 p-6">
+            <div className="mb-6">
+              <h1 className="text-2xl font-bold text-gray-900">Recent Trips</h1>
+              <p className="text-gray-600">A log of your completed rides.</p>
+            </div>
+
+            {recentTrips.length > 0 ? (
+              <div className="space-y-4">
+                {recentTrips.map((trip) => (
+                  <div key={trip.id} className="bg-white rounded-lg shadow-sm p-6">
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-3 mb-2">
+                          <h3 className="font-semibold text-gray-900">{trip.passenger_name}</h3>
+                          <div className="flex items-center space-x-1">
+                            <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                            <span className="text-sm font-medium">{trip.passenger_rating || "5.0"}</span>
+                          </div>
+                        </div>
+                        <p className="text-sm text-gray-500 mb-2">{new Date(trip.completed_at).toLocaleDateString()}</p>
+
+                        <div className="space-y-1">
+                          <div className="flex items-center space-x-2">
+                            <div className="w-2 h-2 bg-green-500 rounded-full" />
+                            <span className="text-sm text-gray-900">{trip.pickup_address}</span>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <div className="w-2 h-2 bg-red-500 rounded-full" />
+                            <span className="text-sm text-gray-900">{trip.destination_address}</span>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center space-x-1 mt-2">
+                          <Clock className="h-4 w-4 text-gray-400" />
+                          <span className="text-sm text-gray-600">{trip.estimated_duration} min duration</span>
+                        </div>
+                      </div>
+
+                      <div className="text-right">
+                        <div className="text-xl font-bold text-green-600">
+                          ${trip.actual_fare || trip.estimated_fare}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-12">
+                <History className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-gray-900 mb-2">No recent trips</h3>
+                <p className="text-gray-500">Your completed trips will appear here.</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Earnings View */}
+        {currentView === "earnings" && (
+          <div className="flex-1 p-6">
+            <div className="mb-6">
+              <h1 className="text-2xl font-bold text-gray-900">Earnings</h1>
+              <p className="text-gray-600">Track your financial performance.</p>
+            </div>
+
+            {/* Today's Earnings */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+              <Card className="bg-white shadow-sm">
+                <CardContent className="p-6">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">Today's Earnings</h3>
+                  <div className="text-3xl font-bold text-gray-900 mb-1">${driverStats.todayEarnings}</div>
+                  <div className="flex items-center text-sm text-green-600">
+                    <TrendingUp className="h-4 w-4 mr-1" />
+                    15% vs yesterday
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-white shadow-sm">
+                <CardContent className="p-6">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">This Week's Earnings</h3>
+                  <div className="text-3xl font-bold text-gray-900 mb-1">${driverStats.weeklyEarnings}</div>
+                  <div className="flex items-center text-sm text-red-600">
+                    <TrendingUp className="h-4 w-4 mr-1 rotate-180" />
+                    5% vs last week
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-white shadow-sm">
+                <CardContent className="p-6">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">This Month's Earnings</h3>
+                  <div className="text-3xl font-bold text-gray-900 mb-1">${driverStats.monthlyEarnings}</div>
+                  <div className="flex items-center text-sm text-green-600">
+                    <TrendingUp className="h-4 w-4 mr-1" />
+                    8% vs last month
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Statistics */}
+            <Card className="bg-white shadow-sm">
+              <CardHeader>
+                <CardTitle>Statistics</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="text-center">
+                    <div className="flex items-center justify-center w-12 h-12 bg-blue-100 rounded-lg mx-auto mb-3">
+                      <MapPin className="h-6 w-6 text-blue-600" />
+                    </div>
+                    <div className="text-2xl font-bold text-gray-900">{driverStats.totalTrips}</div>
+                    <div className="text-sm text-gray-600">Total Trips</div>
+                  </div>
+
+                  <div className="text-center">
+                    <div className="flex items-center justify-center w-12 h-12 bg-yellow-100 rounded-lg mx-auto mb-3">
+                      <Star className="h-6 w-6 text-yellow-600" />
+                    </div>
+                    <div className="text-2xl font-bold text-gray-900">{driverStats.rating.toFixed(1)}</div>
+                    <div className="text-sm text-gray-600">Average Rating</div>
+                  </div>
+
+                  <div className="text-center">
+                    <div className="flex items-center justify-center w-12 h-12 bg-green-100 rounded-lg mx-auto mb-3">
+                      <DollarSign className="h-6 w-6 text-green-600" />
+                    </div>
+                    <div className="text-2xl font-bold text-gray-900">
+                      $
+                      {driverStats.totalTrips > 0
+                        ? (driverStats.monthlyEarnings / driverStats.totalTrips).toFixed(0)
+                        : 0}
+                    </div>
+                    <div className="text-sm text-gray-600">Avg. Earnings / Trip</div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+      </div>
+
+      {/* Dialogs remain the same */}
+      <Dialog
+        open={showSelectDialog}
+        onOpenChange={(open) => {
+          // Defer state update to avoid setState during render warnings
+          setTimeout(() => {
+            setShowSelectDialog(open)
+            if (!open) {
+              // mark that the user closed the dialog manually so it won't auto re-open
+              manualClosedSelectRef.current = true
+              // but clear the auto-open flag so a future manual open isn't blocked
+              autoOpenedSelectRef.current = false
+            }
+          }, 0)
+        }}
+      >
+        <DialogContent className="sm:max-w-2xl border-0 shadow-2xl">
+          <DialogHeader>
+            <DialogTitle>Seleccionar Viaje</DialogTitle>
+            <DialogDescription>
+              Tienes {activeRides.length} viajes activos. Selecciona el que deseas ver e iniciar.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 p-2">
+            {activeRides.map((r) => (
+              <div key={r.id} className="flex items-center justify-between p-3 bg-white/60 rounded-md">
+                <div>
+                  <p className="font-semibold">
+                    {r.passenger_name} — ${r.estimated_fare}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    {r.pickup_address} → {r.destination_address}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Solicitado: {new Date(r.requested_at).toLocaleString()}
+                  </p>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <DialogClose asChild>
+                    <Button
+                      className="bg-blue-600 hover:bg-blue-700"
+                      onClick={() => {
+                        setSelectedActiveRide(r)
+                        // prevent auto re-open while selection is being processed
+                        suppressAutoOpenRef.current = true
+                        setShowSelectDialog(false)
+                        setTimeout(() => (suppressAutoOpenRef.current = false), 300)
+                      }}
+                    >
+                      Seleccionar
+                    </Button>
+                  </DialogClose>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="mt-4 flex justify-end">
+            <DialogFooter>
+              <DialogClose asChild>
+                <Button variant="outline" className="text-sm bg-transparent">
+                  Cerrar
+                </Button>
+              </DialogClose>
+            </DialogFooter>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Marker click dialog for assigned rides shown on map */}
+      <Dialog open={showMarkerDialog} onOpenChange={setShowMarkerDialog}>
+        <DialogContent className="sm:max-w-md border-0 shadow-2xl">
+          <DialogHeader>
+            <DialogTitle>Detalles del Viaje</DialogTitle>
+            <DialogDescription>Este viaje fue asignado para ti. Revisa la información y acepta o rechaza.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            {selectedMarkerRide ? (
+              <div>
+                <div className="flex items-center space-x-4 mb-4">
+                  <Avatar className="h-14 w-14">
+                    <AvatarFallback className="bg-blue-500 text-white">{selectedMarkerRide.passenger_name?.charAt(0) ?? "P"}</AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <div className="flex items-center space-x-2">
+                      <h3 className="font-semibold text-lg">{selectedMarkerRide.passenger_name}</h3>
+                      <div className="flex items-center space-x-1 text-sm text-gray-600">
+                        <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                        <span>{(selectedMarkerRide.passenger_rating ?? 4.9).toFixed(1)}</span>
+                      </div>
+                    </div>
+                    <div className="text-sm text-gray-500">Requested: {new Date(selectedMarkerRide.requested_at).toLocaleString()}</div>
+                  </div>
+                </div>
+
+                <div className="space-y-3 mb-3">
+                  <div>
+                    <div className="text-xs text-gray-500">Pickup</div>
+                    <div className="font-medium text-gray-900">{selectedMarkerRide.pickup_address}</div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-gray-500">Destination</div>
+                    <div className="font-medium text-gray-900">{selectedMarkerRide.destination_address}</div>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <div className="text-xs text-gray-500">Tarifa</div>
+                    <div className="text-2xl font-bold text-blue-600">${selectedMarkerRide.estimated_fare}</div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-gray-500">Duración</div>
+                    <div className="text-xl font-bold">{selectedMarkerRide.estimated_duration} min</div>
+                  </div>
+                </div>
+
+                <div className="flex space-x-3">
+                  <Button
+                    className="flex-1 bg-blue-600 hover:bg-blue-700"
+                    onClick={() => {
+                      handleAcceptRide(selectedMarkerRide.id)
+                      setShowMarkerDialog(false)
+                    }}
+                  >
+                    Accept
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    className="flex-1"
+                    onClick={() => {
+                      handleRejectRide(selectedMarkerRide.id)
+                      setShowMarkerDialog(false)
+                    }}
+                  >
+                    Reject
+                  </Button>
+                </div>
+
+                <div className="mt-3">
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => {
+                      setSelectedActiveRide(selectedMarkerRide)
+                      setShowChatDialog(true)
+                      setChatUnread(0)
+                      setShowMarkerDialog(false)
+                    }}
+                  >
+                    Chat with Passenger
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="text-sm text-gray-700">No se encontró información del viaje.</div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={showChatDialog} onOpenChange={setShowChatDialog}>
         <DialogContent className="sm:max-w-lg border-0 shadow-2xl">
           <DialogHeader>
             <DialogTitle className="text-xl font-bold">Chat con Pasajero</DialogTitle>
           </DialogHeader>
           {activeRide && (
-              <RideChat
-                rideId={activeRide.id}
-                driverName={activeRide.driver_name ?? ""
-                }
-                passengerName={activeRide.passenger_name}
-                onClose={() => setShowChatDialog(false)}
-              />
+            <RideChat
+              rideId={activeRide.id}
+              driverName={activeRide.driver_name ?? ""}
+              passengerName={activeRide.passenger_name}
+              onClose={() => setShowChatDialog(false)}
+            />
           )}
         </DialogContent>
       </Dialog>
 
-  {/* DIÁLOGO DE CALIFICACIÓN MEJORADO: PIDE RATING Y COMENTARIO AL CONDUCTOR */}
       <Dialog
         open={showRatingDialog}
         onOpenChange={(open) => {
@@ -1512,11 +1629,7 @@ function DriverDashboardContent() {
               >
                 Enviar Calificación
               </Button>
-              <Button
-                variant="outline"
-                className="font-semibold bg-transparent"
-                onClick={handleSkipPassengerRating}
-              >
+              <Button variant="outline" className="font-semibold bg-transparent" onClick={handleSkipPassengerRating}>
                 Omitir
               </Button>
             </div>

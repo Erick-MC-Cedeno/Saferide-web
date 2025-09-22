@@ -33,6 +33,9 @@ export async function POST(request: NextRequest) {
       status: "pending",
       estimated_fare: estimated_fare || 0,
       estimated_duration: estimated_duration || 0,
+      // allow caller to pass driver assignment (will be optional)
+      driver_id: body.driver_id,
+      driver_name: body.driver_name,
     })
 
     if (result.success) {

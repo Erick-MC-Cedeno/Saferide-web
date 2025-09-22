@@ -36,6 +36,9 @@ export const createRideRequest = async (rideData: Omit<RideRequest, "id" | "requ
         destination_address: rideData.destination_address,
         destination_coordinates: rideData.destination_coordinates,
         status: rideData.status,
+        // optionally include driver assignment if provided by the caller
+        ...(rideData.driver_id ? { driver_id: rideData.driver_id } : {}),
+        ...(rideData.driver_name ? { driver_name: rideData.driver_name } : {}),
         estimated_fare: rideData.estimated_fare,
         estimated_duration: rideData.estimated_duration,
       })

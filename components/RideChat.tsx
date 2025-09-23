@@ -6,8 +6,8 @@ import { useState, useEffect, useRef, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Send, X, AlertCircle, Loader2 } from "lucide-react"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { Send, X, AlertCircle, Loader2, MessageCircle, Phone, User } from 'lucide-react'
 import { useAuth } from "@/lib/auth-context"
 import { supabase } from "@/lib/supabase"
 
@@ -34,6 +34,7 @@ export function RideChat({ rideId, driverName, passengerName, onClose }: RideCha
   const [loading, setLoading] = useState(true)
   const [sending, setSending] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [isTyping, setIsTyping] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null)
   const mountedRef = useRef(true)
@@ -42,6 +43,11 @@ export function RideChat({ rideId, driverName, passengerName, onClose }: RideCha
   const { user, userType } = useAuth()
   const [realtimeOK, setRealtimeOK] = useState(true)
   const intervalRef = useRef<NodeJS.Timeout | null>(null)
+
+  const simulateTyping = useCallback(() => {
+    setIsTyping(true)
+    setTimeout(() => setIsTyping(false), 2000)
+  }, [])
 
   // Función para cargar mensajes iniciales
   const loadMessages = useCallback(async () => {
@@ -110,6 +116,10 @@ export function RideChat({ rideId, driverName, passengerName, onClose }: RideCha
           (payload) => {
             if (!mountedRef.current) return
 
+            if (payload.new.sender_id !== user?.uid) {
+              simulateTyping()
+            }
+
             setMessages((prev) => {
               // Evitar duplicados
               if (prev.some((m) => m.id === payload.new.id)) {
@@ -155,7 +165,7 @@ export function RideChat({ rideId, driverName, passengerName, onClose }: RideCha
       console.error("Error setting up realtime subscription:", error)
       setRealtimeOK(false)
     }
-  }, [rideId, cleanupChannel])
+  }, [rideId, cleanupChannel, simulateTyping, user?.uid])
 
   // Efecto principal
   useEffect(() => {
@@ -232,11 +242,19 @@ export function RideChat({ rideId, driverName, passengerName, onClose }: RideCha
 
   if (loading) {
     return (
-      <Card className="w-full max-w-md mx-auto">
-        <CardContent className="p-4 flex justify-center items-center h-64">
-          <div className="flex items-center space-x-2">
-            <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
-            <span className="text-gray-600">Cargando chat...</span>
+      <Card className="w-full max-w-md mx-auto border-0 shadow-2xl">
+        <CardContent className="p-8 flex justify-center items-center h-80">
+          <div className="flex flex-col items-center space-y-4">
+            <div className="relative">
+              <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full flex items-center justify-center">
+                <MessageCircle className="h-8 w-8 text-white" />
+              </div>
+              <Loader2 className="h-6 w-6 animate-spin text-blue-600 absolute -bottom-1 -right-1 bg-white rounded-full" />
+            </div>
+            <div className="text-center">
+              <p className="text-gray-700 font-medium">Cargando chat...</p>
+              <p className="text-gray-500 text-sm">Conectando con el conductor</p>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -244,86 +262,191 @@ export function RideChat({ rideId, driverName, passengerName, onClose }: RideCha
   }
 
   return (
-    <Card className="w-full max-w-md mx-auto shadow-lg">
-      <CardHeader className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white">
+    <Card className="w-full max-w-md mx-auto border-0 shadow-2xl overflow-hidden">
+      <CardHeader className="bg-gradient-to-r from-blue-600 via-blue-700 to-indigo-700 text-white p-6">
         <div className="flex justify-between items-center">
-          <CardTitle className="text-lg flex items-center">
-            Chat del Viaje
-            {error && <AlertCircle className="h-4 w-4 ml-2 text-yellow-300" />}
-          </CardTitle>
-          {onClose && (
-            <Button variant="ghost" size="sm" onClick={onClose} className="h-8 w-8 p-0 text-white hover:bg-blue-700">
-              <X className="h-4 w-4" />
+          <div className="flex items-center space-x-3">
+            <div className="relative">
+              <Avatar className="h-10 w-10 ring-2 ring-white/30">
+                <AvatarFallback className="bg-white/20 text-white font-bold">
+                  {userType === "driver" ? passengerName.charAt(0) : driverName.charAt(0)}
+                </AvatarFallback>
+              </Avatar>
+              <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-400 rounded-full border-2 border-white"></div>
+            </div>
+            <div>
+              <CardTitle className="text-lg font-bold">{userType === "driver" ? passengerName : driverName}</CardTitle>
+              <p className="text-blue-100 text-sm flex items-center">
+                <User className="h-3 w-3 mr-1" />
+                {userType === "driver" ? "Pasajero" : "Conductor"}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center space-x-2">
+            {error && (
+              <div className="bg-yellow-400/20 p-2 rounded-full">
+                <AlertCircle className="h-4 w-4 text-yellow-200" />
+              </div>
+            )}
+            <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-white hover:bg-white/20 rounded-full">
+              <Phone className="h-4 w-4" />
             </Button>
-          )}
+            {onClose && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onClose}
+                className="h-8 w-8 p-0 text-white hover:bg-white/20 rounded-full"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
         </div>
       </CardHeader>
 
-      <CardContent className="p-4">
+      <CardContent className="p-0 bg-gray-50">
         {error && (
-          <div className="bg-red-50 text-red-700 p-3 rounded-md mb-4 flex items-center">
-            <AlertCircle className="h-4 w-4 mr-2" />
-            <span className="text-sm">{error}</span>
+          <div className="bg-red-50 border-l-4 border-red-400 text-red-700 p-4 m-4 rounded-r-lg">
+            <div className="flex items-center">
+              <AlertCircle className="h-5 w-5 mr-3 text-red-400" />
+              <div>
+                <p className="font-medium">Error de conexión</p>
+                <p className="text-sm">{error}</p>
+              </div>
+            </div>
           </div>
         )}
 
-        <div className="h-64 overflow-y-auto mb-4 space-y-3">
+        <div className="h-80 overflow-y-auto p-4 space-y-4 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent">
           {messages.length === 0 ? (
-            <div className="text-center text-gray-500 py-8">
-              <p>No hay mensajes aún.</p>
-              <p className="text-sm">Envía el primer mensaje para comunicarte.</p>
+            <div className="text-center py-12">
+              <div className="w-16 h-16 bg-gradient-to-r from-blue-100 to-indigo-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <MessageCircle className="h-8 w-8 text-blue-500" />
+              </div>
+              <p className="text-gray-600 font-medium mb-2">¡Inicia la conversación!</p>
+              <p className="text-gray-500 text-sm">Envía un mensaje para comunicarte durante el viaje</p>
             </div>
           ) : (
-            messages.map((msg) => {
-              const { isCurrentUser, name, initial } = getSenderInfo(msg.sender_id, msg.sender_type)
+            <>
+              {messages.map((msg, index) => {
+                const { isCurrentUser, name, initial } = getSenderInfo(msg.sender_id, msg.sender_type)
+                const isFirstInGroup = index === 0 || messages[index - 1].sender_id !== msg.sender_id
+                const isLastInGroup = index === messages.length - 1 || messages[index + 1].sender_id !== msg.sender_id
 
-              return (
-                <div key={msg.id} className={`flex ${isCurrentUser ? "justify-end" : "justify-start"}`}>
-                  <div className={`flex max-w-[80%] ${isCurrentUser ? "flex-row-reverse" : "flex-row"}`}>
-                    <Avatar className={`h-8 w-8 ${isCurrentUser ? "ml-2" : "mr-2"}`}>
-                      <AvatarImage src="/placeholder.svg?height=32&width=32" />
-                      <AvatarFallback
-                        className={isCurrentUser ? "bg-blue-100 text-blue-700" : "bg-gray-100 text-gray-700"}
-                      >
-                        {initial}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <div className={`text-xs text-gray-500 mb-1 ${isCurrentUser ? "text-right" : "text-left"}`}>
-                        {name} •{" "}
-                        {new Date(msg.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                return (
+                  <div key={msg.id} className={`flex ${isCurrentUser ? "justify-end" : "justify-start"} group`}>
+                    <div className={`flex max-w-[85%] ${isCurrentUser ? "flex-row-reverse" : "flex-row"} items-end`}>
+                      {!isCurrentUser && isLastInGroup && (
+                        <Avatar className="h-8 w-8 mr-2 ring-2 ring-gray-200">
+                          <AvatarFallback className="bg-gradient-to-r from-gray-500 to-gray-600 text-white text-sm font-bold">
+                            {initial}
+                          </AvatarFallback>
+                        </Avatar>
+                      )}
+                      {!isCurrentUser && !isLastInGroup && <div className="w-8 mr-2" />}
+
+                      <div className="flex flex-col">
+                        {isFirstInGroup && (
+                          <div
+                            className={`text-xs text-gray-500 mb-1 px-1 ${isCurrentUser ? "text-right" : "text-left"}`}
+                          >
+                            <span className="font-medium">{name}</span>
+                            <span className="mx-1">•</span>
+                            <span>
+                              {new Date(msg.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                            </span>
+                          </div>
+                        )}
+
+                        <div
+                          className={`p-3 rounded-2xl shadow-sm transition-all duration-200 hover:shadow-md ${
+                            isCurrentUser
+                              ? "bg-gradient-to-r from-blue-500 to-blue-600 text-white ml-2"
+                              : "bg-white text-gray-800 border border-gray-200 mr-2"
+                          } ${
+                            isFirstInGroup && isLastInGroup
+                              ? "rounded-2xl"
+                              : isFirstInGroup
+                                ? isCurrentUser
+                                  ? "rounded-tr-md"
+                                  : "rounded-tl-md"
+                                : isLastInGroup
+                                  ? isCurrentUser
+                                    ? "rounded-br-md"
+                                    : "rounded-bl-md"
+                                  : isCurrentUser
+                                    ? "rounded-r-md"
+                                    : "rounded-l-md"
+                          } animate-in slide-in-from-bottom-2 duration-300`}
+                        >
+                          <p className="text-sm leading-relaxed">{msg.message}</p>
+                        </div>
                       </div>
-                      <div
-                        className={`p-3 rounded-lg ${
-                          isCurrentUser
-                            ? "bg-blue-600 text-white rounded-tr-none"
-                            : "bg-gray-100 text-gray-800 rounded-tl-none"
-                        }`}
-                      >
-                        {msg.message}
-                      </div>
+
+                      {isCurrentUser && isLastInGroup && (
+                        <Avatar className="h-8 w-8 ml-2 ring-2 ring-blue-200">
+                          <AvatarFallback className="bg-gradient-to-r from-blue-500 to-indigo-500 text-white text-sm font-bold">
+                            {initial}
+                          </AvatarFallback>
+                        </Avatar>
+                      )}
+                      {isCurrentUser && !isLastInGroup && <div className="w-8 ml-2" />}
                     </div>
                   </div>
+                )
+              })}
+
+              {isTyping && (
+                <div className="flex justify-start">
+                  <div className="flex items-center space-x-2 bg-gray-200 rounded-full px-4 py-2 animate-pulse">
+                    <div className="flex space-x-1">
+                      <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce"></div>
+                      <div
+                        className="w-2 h-2 bg-gray-500 rounded-full animate-bounce"
+                        style={{ animationDelay: "0.1s" }}
+                      ></div>
+                      <div
+                        className="w-2 h-2 bg-gray-500 rounded-full animate-bounce"
+                        style={{ animationDelay: "0.2s" }}
+                      ></div>
+                    </div>
+                    <span className="text-xs text-gray-600">escribiendo...</span>
+                  </div>
                 </div>
-              )
-            })
+              )}
+            </>
           )}
           <div ref={messagesEndRef} />
         </div>
       </CardContent>
 
-      <CardFooter className="p-4 pt-0">
-        <form onSubmit={handleSendMessage} className="flex w-full space-x-2">
-          <Input
-            value={newMessage}
-            onChange={(e) => setNewMessage(e.target.value)}
-            placeholder="Escribe un mensaje..."
-            className="flex-1"
-            disabled={sending}
-          />
-          <Button type="submit" disabled={!newMessage.trim() || sending}>
-            {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-          </Button>
+      <CardFooter className="p-4 bg-white border-t border-gray-100">
+        <form onSubmit={handleSendMessage} className="flex w-full">
+          {/* Integrated send button inside input field */}
+          <div className="flex-1 relative">
+            <Input
+              value={newMessage}
+              onChange={(e) => setNewMessage(e.target.value)}
+              placeholder="Escribe tu mensaje..."
+              className="pr-14 py-3 border-gray-200 rounded-full focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50 hover:bg-white transition-colors"
+              disabled={sending}
+            />
+            {/* Send button now positioned inside the input */}
+            <Button
+              type="submit"
+              disabled={!newMessage.trim() || sending}
+              className="absolute right-2 top-1/2 transform -translate-y-1/2 h-8 w-8 rounded-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+            </Button>
+            {/* Typing indicator moved to bottom left of input */}
+            {newMessage.trim() && !sending && (
+              <div className="absolute left-3 bottom-1">
+                <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+              </div>
+            )}
+          </div>
         </form>
       </CardFooter>
     </Card>

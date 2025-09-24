@@ -1,6 +1,6 @@
 "use client"
 
-import type React from "react"
+import type { FormEvent } from "react"
 
 import { useState, useEffect, useRef, useCallback } from "react"
 import { Button } from "@/components/ui/button"
@@ -62,11 +62,13 @@ export function RideChat({ rideId, driverName, passengerName, onClose }: RideCha
   const [playingAudio, setPlayingAudio] = useState<string | null>(null)
   const [sharingLocation, setSharingLocation] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
-  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null)
+  // supabase client may be null at runtime; keep channel as unknown/any to avoid complex type issues
+  const channelRef = useRef<any | null>(null)
   const mountedRef = useRef(true)
   const retryCountRef = useRef(0)
   const maxRetries = 3
-  const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null)
+  // In browsers, setInterval returns a number. Use number | null for timer refs.
+  const recordingIntervalRef = useRef<number | null>(null)
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const { user, userType, userData } = useAuth()
   const [driverProfileImage, setDriverProfileImage] = useState<string | null>(null)
@@ -127,7 +129,7 @@ export function RideChat({ rideId, driverName, passengerName, onClose }: RideCha
         location_name: locationName,
       }
 
-      const { data, error } = await supabase.from("ride_messages").insert(messageData).select()
+  const { data, error } = await (supabase.from("ride_messages") as any).insert(messageData).select()
 
       if (error) throw error
 
@@ -189,7 +191,8 @@ export function RideChat({ rideId, driverName, passengerName, onClose }: RideCha
       setIsRecording(true)
       setRecordingTime(0)
 
-      recordingIntervalRef.current = setInterval(() => {
+      // Use window.setInterval so TypeScript infers a number in browser environments
+      recordingIntervalRef.current = window.setInterval(() => {
         setRecordingTime((prev) => prev + 1)
       }, 1000)
     } catch (error) {
@@ -203,7 +206,7 @@ export function RideChat({ rideId, driverName, passengerName, onClose }: RideCha
       mediaRecorder.stop()
       setIsRecording(false)
       if (recordingIntervalRef.current) {
-        clearInterval(recordingIntervalRef.current)
+        window.clearInterval(recordingIntervalRef.current)
       }
     }
   }
@@ -215,7 +218,7 @@ export function RideChat({ rideId, driverName, passengerName, onClose }: RideCha
       setAudioChunks([])
       setRecordingTime(0)
       if (recordingIntervalRef.current) {
-        clearInterval(recordingIntervalRef.current)
+        window.clearInterval(recordingIntervalRef.current)
       }
     }
   }
@@ -248,7 +251,7 @@ export function RideChat({ rideId, driverName, passengerName, onClose }: RideCha
 
       console.log("[v0] Upload successful:", uploadData)
 
-      const { data: urlData } = supabase.storage.from("ride-audio-messages").getPublicUrl(fileName)
+  const { data: urlData } = (supabase.storage.from("ride-audio-messages") as any).getPublicUrl(fileName)
 
       console.log("[v0] Public URL generated:", urlData.publicUrl)
 
@@ -265,7 +268,7 @@ export function RideChat({ rideId, driverName, passengerName, onClose }: RideCha
 
       console.log("[v0] Inserting message data:", messageData)
 
-      const { data, error } = await supabase.from("ride_messages").insert(messageData).select()
+  const { data, error } = await (supabase.from("ride_messages") as any).insert(messageData).select()
 
       if (error) {
         console.error("[v0] Database insert error:", error)
@@ -463,23 +466,21 @@ export function RideChat({ rideId, driverName, passengerName, onClose }: RideCha
       if (!supabase) return
 
       try {
-        const { data: driverData } = await supabase
-          .from("drivers")
+        const { data: driverData } = (await (supabase.from("drivers") as any)
           .select("profile_image")
           .eq("name", driverName)
-          .single()
+          .single()) as any
 
-        if (driverData?.profile_image) {
+        if (driverData && driverData.profile_image) {
           setDriverProfileImage(driverData.profile_image)
         }
 
-        const { data: passengerData } = await supabase
-          .from("passengers")
+        const { data: passengerData } = (await (supabase.from("passengers") as any)
           .select("profile_image")
           .eq("name", passengerName)
-          .single()
+          .single()) as any
 
-        if (passengerData?.profile_image) {
+        if (passengerData && passengerData.profile_image) {
           setPassengerProfileImage(passengerData.profile_image)
         }
       } catch (error) {
@@ -490,7 +491,7 @@ export function RideChat({ rideId, driverName, passengerName, onClose }: RideCha
     loadProfileImages()
   }, [driverName, passengerName])
 
-  const handleSendMessage = async (e: React.FormEvent) => {
+  const handleSendMessage = async (e: FormEvent) => {
     e.preventDefault()
     if (!newMessage.trim() || !user || sending) return
 
@@ -510,7 +511,7 @@ export function RideChat({ rideId, driverName, passengerName, onClose }: RideCha
 
       console.log("Enviando mensaje:", messageData)
 
-      const { data, error } = await supabase.from("ride_messages").insert(messageData).select()
+  const { data, error } = await (supabase.from("ride_messages") as any).insert(messageData).select()
 
       if (error) throw error
 
@@ -535,15 +536,17 @@ export function RideChat({ rideId, driverName, passengerName, onClose }: RideCha
   }
 
   const [realtimeOK, setRealtimeOK] = useState(true)
-  const intervalRef = useRef<NodeJS.Timeout | null>(null)
+  const intervalRef = useRef<number | null>(null)
 
   useEffect(() => {
     if (!realtimeOK) {
-      intervalRef.current = setInterval(loadMessages, 4000)
+      intervalRef.current = window.setInterval(loadMessages, 4000)
     } else {
-      clearInterval(intervalRef.current)
+      if (intervalRef.current) window.clearInterval(intervalRef.current)
     }
-    return () => clearInterval(intervalRef.current)
+    return () => {
+      if (intervalRef.current) window.clearInterval(intervalRef.current)
+    }
   }, [realtimeOK, loadMessages])
 
   if (loading) {

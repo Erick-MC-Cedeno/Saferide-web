@@ -297,8 +297,7 @@ function ProfileContent() {
     setSaving(true)
     try {
       const table = userType === "driver" ? "drivers" : "passengers"
-      const { error } = await supabase
-        .from(table)
+      const { error } = await (supabase.from(table) as any)
         .update({
           name: editForm.name,
           phone: editForm.phone,

@@ -102,7 +102,7 @@ function SettingsContent() {
     if (!user?.uid || !supabase) return
 
     try {
-      const { error } = await supabase.from("user_settings").upsert(
+  const { error } = await (supabase.from("user_settings") as any).upsert(
         {
           uid: user.uid,
           settings: defaultSettings,
@@ -179,7 +179,10 @@ function SettingsContent() {
     }
 
     try {
-      const { data, error } = await supabase.from("user_settings").select("settings").eq("uid", user.uid).single()
+      const { data, error } = await (supabase.from("user_settings") as any)
+        .select("settings")
+        .eq("uid", user.uid)
+        .single()
 
       if (data?.settings) {
         const serverSettings = (data.settings ?? {}) as Partial<UserSettings>
@@ -261,7 +264,7 @@ function SettingsContent() {
 
     setLoading(true)
     try {
-      const { error } = await supabase.from("user_settings").upsert(
+  const { error } = await (supabase.from("user_settings") as any).upsert(
         {
           uid: user.uid,
           settings: settings,

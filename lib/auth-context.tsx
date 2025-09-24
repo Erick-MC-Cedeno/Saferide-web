@@ -2,7 +2,7 @@
 
 import React from "react"
 import { createContext, useContext, useEffect, useState, useRef } from "react"
-import { getUserData } from "./auth"
+import { getUserData, extractErrorMessage, extractErrorStatus } from "./auth"
 import { supabase } from "./supabase"
 
 interface AuthContextType {
@@ -155,7 +155,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         try {
           localStorage.removeItem('supabase.auth.token')
           // limpiar otros keys conocidos si aplica
-        } catch (e) {
+        } catch {
           // ignore
         }
         return
@@ -167,15 +167,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.error('Error signing out from supabase:', error)
         // Si el servidor responde que la sesión falta/expiró (p. ej. AuthSessionMissingError o 403),
         // tratarlo como signOut exitoso en el cliente para evitar que el usuario quede bloqueado.
-        const msg = String((error as any)?.message || '')
-        const status = (error as any)?.status
+        const msg = extractErrorMessage(error)
+        const status = extractErrorStatus(error)
         if (msg.includes('Auth session missing') || msg.includes('AuthSessionMissingError') || status === 403) {
           console.warn('Server reports missing session; proceeding with local cleanup.')
           setUser(null)
           setUserData(null)
           setUserType(null)
           isLoadingUserData.current = false
-          try { localStorage.removeItem('supabase.auth.token') } catch (e) {}
+          try { localStorage.removeItem('supabase.auth.token') } catch {}
           return
         }
         throw error
@@ -190,19 +190,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Limpieza adicional: eliminar keys específicas en storage si se usan (no forzar globalmente)
       try {
         localStorage.removeItem('supabase.auth.token')
-      } catch (e) {
+      } catch {
         // ignore storage cleanup errors
       }
     } catch (err) {
       console.error('Error during signOut:', err)
       // Si el error indica que la sesión ya no existe, tratar como éxito y limpiar el estado local.
-      const m = String((err as any)?.message || '')
+      const m = extractErrorMessage(err)
       if (m.includes('Auth session missing') || m.includes('AuthSessionMissingError')) {
         setUser(null)
         setUserData(null)
         setUserType(null)
         isLoadingUserData.current = false
-        try { localStorage.removeItem('supabase.auth.token') } catch (e) {}
+        try { localStorage.removeItem('supabase.auth.token') } catch {}
         return
       }
       // Re-lanzar para que el componente UI pueda manejar otros errores (ej. mostrar toast)

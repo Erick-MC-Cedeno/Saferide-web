@@ -26,12 +26,23 @@ import {
 import { useRealTimeRides } from "@/hooks/useRealTimeRides"
 import { useAuth } from "@/lib/auth-context"
 import { supabase } from "@/lib/supabase"
+import type { Database } from "@/lib/supabase"
+// helper type for ride rows
+type RideRow = Database["public"]["Tables"]["rides"]["Row"]
 import { MapComponent } from "@/components/MapComponent"
 import { AddressAutocomplete } from "@/components/AddressAutocomplete"
 import { ProtectedRoute } from "@/components/ProtectedRoute"
 import { useToast } from "@/hooks/use-toast"
 import { RideChat } from "@/components/RideChat"
 import { useRouter } from "next/navigation" // Import useRouter
+
+// Extend window for webkitAudioContext and audioContext storage used by unlock logic
+declare global {
+  interface Window {
+    webkitAudioContext?: typeof AudioContext
+    audioContext?: AudioContext
+  }
+}
 
 // DASHBOARD PASSENGER CONTENT
 function PassengerDashboardContent() {
@@ -56,6 +67,13 @@ function PassengerDashboardContent() {
     vehicle_model?: string
   }
 
+  type DriverDataResult = {
+    success: boolean
+    data?: DriverApi[]
+    error?: string
+    noRangesConfigured?: boolean
+  }
+
   type NewRidePayload = {
     passenger_id: string
     passenger_name?: string
@@ -76,17 +94,20 @@ function PassengerDashboardContent() {
   const [destinationCoords, setDestinationCoords] = useState<{ lat: number; lng: number } | null>(null)
   type RideStatus = "idle" | "searching" | "pending" | "accepted" | "in-progress"
   const [rideStatus, setRideStatus] = useState<RideStatus>("idle")
-  const [availableDrivers, setAvailableDrivers] = useState([])
+  const [availableDrivers, setAvailableDrivers] = useState<DriverApi[]>([])
   const [selectedDriver, setSelectedDriver] = useState("")
   // Mensaje visible cuando no hay conductores en el área
   const [noDriversNearby, setNoDriversNearby] = useState("")
   const [showDriverSelection, setShowDriverSelection] = useState(false)
   const [showRatingDialog, setShowRatingDialog] = useState(false)
-  const [completedRide, setCompletedRide] = useState(null)
+  const [completedRide, setCompletedRide] = useState<RideRow | null>(null)
   const [rating, setRating] = useState(0)
   const [comment, setComment] = useState("")
-  const [recentTrips, setRecentTrips] = useState([])
-  const [passengerStats, setPassengerStats] = useState({
+  // We only store these values for updates/read later; the UI currently doesn't
+  // reference the *value* directly in this component, so keep only the setters
+  // to avoid unused variable warnings while still populating the data.
+  const [, setRecentTrips] = useState<unknown[]>([])
+  const [, setPassengerStats] = useState<{ totalTrips: number; totalSpent: number; averageRating: number }>({
     totalTrips: 0,
     totalSpent: 0,
     averageRating: 0,
@@ -95,7 +116,9 @@ function PassengerDashboardContent() {
   // QUIK DESTINATIONS REMOVED
   const [showChatDialog, setShowChatDialog] = useState(false)
   const [chatUnread, setChatUnread] = useState(0)
-  const [chatLastMessage, setChatLastMessage] = useState<string | null>(null)
+  // We only need setter for last message in this component (the chat component
+  // displays messages), so keep setter to avoid unused variable warning.
+  const [, setChatLastMessage] = useState<string | null>(null)
   const chatChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null)
   const audioChatRef = useRef<HTMLAudioElement | null>(null)
   const playChatUnlockAttachedRef = useRef<boolean>(false)
@@ -114,8 +137,7 @@ function PassengerDashboardContent() {
     if (!currentRide && rideStatus !== "idle") {
       setRideStatus("idle")
     }
-    // rideStatus intentionally included
-  }, [!!currentRide, rideStatus])
+  }, [currentRide, rideStatus])
 
   // Chat notifications (passenger listens for messages from driver)
   useEffect(() => {
@@ -136,10 +158,12 @@ function PassengerDashboardContent() {
             { event: "INSERT", schema: "public", table: "ride_messages", filter: `ride_id=eq.${currentRide.id}` },
             (payload) => {
               if (!mounted) return
-              const msg = payload.new as any
-              setChatLastMessage(String(msg.message ?? ""))
+              // Narrow payload shape safely
+              const newRecord = (payload as { new?: Record<string, unknown> }).new ?? {}
+              const message = typeof newRecord.message === "string" ? newRecord.message : String(newRecord.message ?? "")
+              setChatLastMessage(message)
               // if message comes from driver, increment unread for passenger
-              if (msg.sender_type === "driver") {
+              if (newRecord.sender_type === "driver") {
                 setChatUnread((c) => c + 1)
                 // Use in-memory state which is kept in sync via storage events and the toggle
                 if (chatNotificationEnabled === null || chatNotificationEnabled === true) {
@@ -150,8 +174,8 @@ function PassengerDashboardContent() {
           )
           .subscribe()
         chatChannelRef.current = channel
-      } catch (err) {
-        console.error("Error subscribing to chat notifications (passenger):", err)
+      } catch (_err) {
+        console.error("Error subscribing to chat notifications (passenger):", _err)
       }
     }
     setup()
@@ -200,11 +224,11 @@ function PassengerDashboardContent() {
         if (e.key === chatKey) {
           try {
             setChatNotificationEnabled(e.newValue ? JSON.parse(e.newValue) : null)
-          } catch (err) {
-            console.warn("Error parsing storage event for chat toggle (passenger)", err)
+          } catch {
+            // ignore parse errors
           }
         }
-      } catch (err) {
+      } catch {
         // ignore
       }
     }
@@ -213,19 +237,19 @@ function PassengerDashboardContent() {
     const onPrefChanged = (ev: Event) => {
       try {
         if (!user?.uid) return
-        // @ts-ignore
-        const detail = (ev as CustomEvent).detail
-        const key: string = detail?.key
-        const value: string = detail?.value
+        // Narrow event detail safely
+        const detail = (ev as CustomEvent & { detail?: Record<string, unknown> }).detail
+        const key = String(detail?.key ?? "")
+        const value = String(detail?.value ?? "")
         const chatKey = `saferide_chat_notification_${user.uid}`
         if (key === chatKey) {
           try {
             setChatNotificationEnabled(value ? JSON.parse(value) : null)
-          } catch (err) {
-            console.warn("Error parsing pref-changed value for chat toggle (passenger)", err)
+          } catch {
+            // ignore parse errors
           }
         }
-      } catch (err) {
+      } catch {
         // ignore
       }
     }
@@ -243,8 +267,9 @@ function PassengerDashboardContent() {
     try {
       await audioChatRef.current.play()
       return
-    } catch (err: any) {
-      const isNotAllowed = err && (err.name === "NotAllowedError" || String(err.message).includes("didn't interact"))
+  } catch (errUnknown) {
+  const err = errUnknown as { name?: string; message?: string }
+  const isNotAllowed = err && (err.name === "NotAllowedError" || String(err.message).includes("didn't interact"))
       if (!isNotAllowed) {
         console.warn("Chat audio play failed:", err)
         return
@@ -252,19 +277,21 @@ function PassengerDashboardContent() {
       if (playChatUnlockAttachedRef.current) return
       playChatUnlockAttachedRef.current = true
       const tryUnlock = async () => {
-        try {
-          // @ts-ignore
-          const ctx = (window as any).audioContext || new (window.AudioContext || (window as any).webkitAudioContext)()
+          try {
+          // Access AudioContext in a type-safe manner using declared Window extensions
+          const Ctor = window.AudioContext ?? window.webkitAudioContext
+          const ctx = window.audioContext ?? (typeof Ctor === "function" ? new Ctor() : undefined)
           if (ctx && typeof ctx.resume === "function") {
             await ctx.resume()
-            ;(window as any).audioContext = ctx
+            ;(window as unknown as { audioContext?: AudioContext }).audioContext = ctx
           }
-        } catch (e) {
+        } catch {
           // ignore
         }
         try {
           await audioChatRef.current!.play()
-        } catch (e: any) {
+        } catch (eUnknown) {
+          const e = eUnknown as Error
           console.warn("Retry chat audio play after user interaction failed:", e)
         } finally {
           window.removeEventListener("pointerdown", tryUnlock)
@@ -359,7 +386,7 @@ function PassengerDashboardContent() {
 
   // FUNCION PARA OPTENER LOS DATOS DE EL DRIVER
   const driverData = useCallback(
-    async (lat?: number | null, lng?: number | null, radiusKm?: number) => {
+    async (lat?: number | null, lng?: number | null, radiusKm?: number): Promise<DriverDataResult> => {
       try {
         const params = new URLSearchParams()
         const rad = typeof radiusKm === "number" ? radiusKm : DEFAULT_RADIUS_KM
@@ -383,7 +410,9 @@ function PassengerDashboardContent() {
           throw new Error(result.error || "Error al obtener conductores")
         }
 
-        return { success: true, ...result }
+  // Ensure result.data is an array of DriverApi
+  const data = Array.isArray(result?.data) ? (result.data as DriverApi[]) : []
+  return { success: true, data }
       } catch (error) {
         console.error("Error en driverData:", error)
         throw error
@@ -414,7 +443,7 @@ function PassengerDashboardContent() {
             ? await driverData(userLat, userLng, DEFAULT_RADIUS_KM)
             : await driverData()
         // Manejo cuando el servidor indica que no hay rangos configurados
-        if (res && res.noRangesConfigured) {
+  if (res && res.noRangesConfigured) {
           toast({
             title: "Rangos no configurados",
             description: "Aún no hay rangos configurados en el servidor",
@@ -425,7 +454,7 @@ function PassengerDashboardContent() {
           return []
         }
 
-        const mapped = (res.data || []).map((d: DriverApi) => {
+  const mapped = (res.data ?? []).map((d: DriverApi) => {
           // assumption: driver current_location.coordinates = [lng, lat]
           const coords = d?.current_location?.coordinates || d?.location?.coordinates || d?.coordinates
           let lat = 0
@@ -530,9 +559,9 @@ function PassengerDashboardContent() {
 
       try {
         // Usar la función driverData pasando coordenadas para filtrar por 1km
-        const driverResult = await driverData(pickupCoords?.lat, pickupCoords?.lng, DEFAULT_RADIUS_KM)
+  const driverResult = await driverData(pickupCoords?.lat, pickupCoords?.lng, DEFAULT_RADIUS_KM)
 
-        if (driverResult && driverResult.noRangesConfigured) {
+  if (driverResult && driverResult.noRangesConfigured) {
           // Mostrar mensaje persistente en la UI además del toast
           setNoDriversNearby("Aún no hay rangos configurados")
           toast({
@@ -545,8 +574,8 @@ function PassengerDashboardContent() {
         }
 
         // Filtrar conductores verificados o en línea
-        const verifiedDrivers = driverResult.data.filter((driver) => driver.is_verified)
-        const onlineDrivers = driverResult.data.filter((driver) => driver.is_online)
+  const verifiedDrivers = (driverResult.data ?? []).filter((driver) => driver.is_verified)
+  const onlineDrivers = (driverResult.data ?? []).filter((driver) => driver.is_online)
         const availableDriversToShow = verifiedDrivers.length > 0 ? verifiedDrivers : onlineDrivers
 
         setAvailableDrivers(availableDriversToShow)
@@ -627,7 +656,12 @@ function PassengerDashboardContent() {
         }
       }
 
-      const { error } = await supabase.from("rides").insert(rideData).select()
+  // Insert new ride using typed Supabase client
+  const { error } = await (supabase.from("rides") as any)
+        .insert([
+          rideData as Database["public"]["Tables"]["rides"]["Insert"],
+        ])
+        .select()
 
       if (error) {
         console.error("Error creando viaje:", error)
@@ -805,7 +839,12 @@ function PassengerDashboardContent() {
         payload.passenger_rating = rating
       }
 
-      const { error } = await supabase.from("rides").update(payload).eq("id", completedRide.id)
+  // Update completed ride with passenger rating/comment using typed client
+  const { error } = await (supabase.from("rides") as any)
+        .update(
+          payload as Partial<Database["public"]["Tables"]["rides"]["Update"]>,
+        )
+        .eq("id", completedRide.id)
 
       if (error) {
         console.error("Error rating driver:", error)
@@ -826,7 +865,11 @@ function PassengerDashboardContent() {
               (sum, ride) => sum + Number(ride.passenger_rating ?? 0),
               0,
             ) / driverRides.length
-          await supabase.from("drivers").update({ rating: avgRating }).eq("uid", completedRide.driver_id)
+          await (supabase.from("drivers") as any)
+            .update(
+              { rating: avgRating } as Partial<Database["public"]["Tables"]["drivers"]["Update"]>,
+            )
+            .eq("uid", completedRide.driver_id)
         }
       }
 
@@ -858,7 +901,11 @@ function PassengerDashboardContent() {
         passenger_comment: comment.trim() || "Omitido por el pasajero",
         // leave passenger_rating as null to indicate no numeric rating provided
       }
-      const { error } = await supabase.from("rides").update(payload).eq("id", completedRide.id)
+  const { error } = await (supabase.from("rides") as any)
+        .update(
+          payload as Partial<Database["public"]["Tables"]["rides"]["Update"]>,
+        )
+        .eq("id", completedRide.id)
       if (error) {
         console.error("Error skipping rating:", error)
         toast({ title: "Error", description: "No se pudo omitir la calificación.", variant: "destructive" })
@@ -987,8 +1034,14 @@ function PassengerDashboardContent() {
     }
   }
 
-  //RENDERING LOGIC
-  const canRequestNewRide = !currentRide && rideStatus === "idle"
+  // RENDERING HELPERS
+  const getDisplayName = () => {
+    const maybeName = (userData as { name?: string; full_name?: string } | null) ?? null
+    const name = maybeName?.name ?? maybeName?.full_name
+    if (typeof name === "string" && name.trim()) return name
+    if (typeof user?.email === "string") return user.email.split("@")[0]
+    return "Usuario"
+  }
 
   // Sidebar must always be collapsed for passenger dashboard
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true)
@@ -998,7 +1051,7 @@ function PassengerDashboardContent() {
     <div className="h-screen flex bg-gray-50">
       {/* Sidebar - unchanged */}
       <div
-        className={`${sidebarCollapsed ? "w-16 !text-gray-700" : "w-64"} bg-white shadow-lg flex flex-col transition-all duration-300 md:flex hidden`}
+  className={`${sidebarCollapsed ? "w-16 !text-gray-700" : "w-64"} bg-white shadow-lg transition-all duration-300 hidden md:flex md:flex-col`}
       >
         {/* Toggle Button (starts collapsed but can be opened) */}
         <div className="p-4 border-b border-gray-200">
@@ -1017,18 +1070,12 @@ function PassengerDashboardContent() {
             <div className="flex items-center space-x-3">
               <Avatar className="h-12 w-12">
                 <AvatarFallback className="bg-gradient-to-r from-blue-500 to-indigo-500 text-white font-bold">
-                  {String(
-                    ((userData as { name?: string; full_name?: string } | null) ?? {})?.name ??
-                      ((userData as any)?.full_name ?? user?.email ?? "").split("@")[0],
-                  ).charAt(0) || "U"}
+                  {String(getDisplayName()).charAt(0) || "U"}
                 </AvatarFallback>
               </Avatar>
               <div>
                 <h2 className="font-semibold text-gray-900">
-                  {String(
-                    ((userData as { name?: string; full_name?: string } | null) ?? {})?.name ??
-                      ((userData as any)?.full_name ?? user?.email ?? "").split("@")[0],
-                  ) || "Usuario"}
+                  {String(getDisplayName()) || "Usuario"}
                 </h2>
                 <button
                   onClick={() => handleNavigation("profile")}
@@ -1046,10 +1093,7 @@ function PassengerDashboardContent() {
           <div className="p-3 border-b border-gray-200 flex justify-center">
             <Avatar className="h-10 w-10">
               <AvatarFallback className="bg-gradient-to-r from-blue-500 to-indigo-500 text-white font-bold text-sm">
-                {String(
-                  ((userData as { name?: string; full_name?: string } | null) ?? {})?.name ??
-                    ((userData as any)?.full_name ?? user?.email ?? "").split("@")[0],
-                ).charAt(0) || "U"}
+                {String(getDisplayName()).charAt(0) || "U"}
               </AvatarFallback>
             </Avatar>
           </div>
@@ -1162,18 +1206,12 @@ function PassengerDashboardContent() {
             <div className="flex items-center space-x-3">
               <Avatar className="h-12 w-12">
                 <AvatarFallback className="bg-gradient-to-r from-blue-500 to-indigo-500 text-white font-bold">
-                  {String(
-                    ((userData as { name?: string; full_name?: string } | null) ?? {})?.name ??
-                      ((userData as any)?.full_name ?? user?.email ?? "").split("@")[0],
-                  ).charAt(0) || "U"}
+                  {String(getDisplayName()).charAt(0) || "U"}
                 </AvatarFallback>
               </Avatar>
               <div>
                 <h2 className="font-semibold text-gray-900">
-                  {String(
-                    ((userData as { name?: string; full_name?: string } | null) ?? {})?.name ??
-                      ((userData as any)?.full_name ?? user?.email ?? "").split("@")[0],
-                  ) || "Usuario"}
+                  {String(getDisplayName()) || "Usuario"}
                 </h2>
                 <button
                   onClick={() => {
@@ -1194,10 +1232,7 @@ function PassengerDashboardContent() {
           <div className="p-3 border-b border-gray-200 flex justify-center">
             <Avatar className="h-10 w-10">
               <AvatarFallback className="bg-gradient-to-r from-blue-500 to-indigo-500 text-white font-bold text-sm">
-                {String(
-                  ((userData as { name?: string; full_name?: string } | null) ?? {})?.name ??
-                    ((userData as any)?.full_name ?? user?.email ?? "").split("@")[0],
-                ).charAt(0) || "U"}
+                {String(getDisplayName()).charAt(0) || "U"}
               </AvatarFallback>
             </Avatar>
           </div>

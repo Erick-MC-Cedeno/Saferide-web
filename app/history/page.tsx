@@ -72,6 +72,17 @@ interface HistoryStats {
 
 function HistoryContent() {
   const { user, userType, signOut, userData } = useAuth()
+  // Narrow userData and safely extract email without using `any`
+  const userInfo = userData as { name?: string; full_name?: string } | null
+  const getUserEmail = (u: ({ uid: string } & Record<string, unknown>) | null): string | null => {
+    if (!u) return null
+    const maybe = (u as Record<string, unknown>).email
+    return typeof maybe === "string" ? maybe : null
+  }
+  const fallbackName = (() => {
+    const email = getUserEmail(user)
+    return email ? email.split("@")[0] : ""
+  })()
   const { toast } = useToast()
   const router = useRouter()
   const [rides, setRides] = useState<Ride[]>([])
@@ -315,16 +326,14 @@ function HistoryContent() {
               <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center">
                 <span className="text-white font-semibold text-lg">
                   {String(
-                    ((userData as { name?: string; full_name?: string } | null) ?? {})?.name ??
-                      ((userData as any)?.full_name ?? user?.email ?? "").split("@")[0],
+                    ((userInfo ?? {})?.name ?? (userInfo?.full_name ?? fallbackName))
                   ).charAt(0) || "U"}
                 </span>
               </div>
               <div>
                 <h3 className="font-semibold text-gray-900">
                   {String(
-                    ((userData as { name?: string; full_name?: string } | null) ?? {})?.name ??
-                      ((userData as any)?.full_name ?? user?.email ?? "").split("@")[0],
+                    ((userInfo ?? {})?.name ?? (userInfo?.full_name ?? fallbackName))
                   ) || "Usuario"}
                 </h3>
                 <p className="text-sm text-gray-500 hover:text-blue-600 cursor-pointer">Ver perfil</p>
@@ -339,8 +348,7 @@ function HistoryContent() {
             <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center">
               <span className="text-white font-semibold text-sm">
                 {String(
-                  ((userData as { name?: string; full_name?: string } | null) ?? {})?.name ??
-                    ((userData as any)?.full_name ?? user?.email ?? "").split("@")[0],
+                  ((userInfo ?? {})?.name ?? (userInfo?.full_name ?? fallbackName))
                 ).charAt(0) || "U"}
               </span>
             </div>

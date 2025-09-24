@@ -65,7 +65,7 @@ interface UserStats {
 }
 
 function ProfileContent() {
-  const { user, userType, refreshUserData, loading: authLoading, signOut, userData } = useAuth()
+  const { user, userType, refreshUserData, loading: authLoading, signOut } = useAuth()
   const { toast } = useToast()
   const router = useRouter()
   const [profile, setProfile] = useState<UserProfile | null>(null)
@@ -124,8 +124,8 @@ function ProfileContent() {
 
         if (data) {
           // sanitize unknown-typed data from Supabase
-          const d = data as Record<string, any>
-          const toNumber = (v: any) => {
+          const d = data as Record<string, unknown>
+          const toNumber = (v: unknown) => {
             if (typeof v === "number") return v
             if (typeof v === "string" && v.trim() !== "" && !isNaN(Number(v))) return Number(v)
             return 0
@@ -185,8 +185,8 @@ function ProfileContent() {
       const { data: rides } = await supabase.from("rides").select("*").eq(column, user.uid).eq("status", "completed")
 
       if (rides) {
-        const rr = rides as Array<Record<string, any>>
-        const toNumber = (v: any) => {
+        const rr = rides as Array<Record<string, unknown>>
+        const toNumber = (v: unknown) => {
           if (typeof v === "number") return v
           if (typeof v === "string" && v.trim() !== "" && !isNaN(Number(v))) return Number(v)
           return 0
@@ -224,7 +224,7 @@ function ProfileContent() {
         const monthlyTrips = rr.filter((ride) => {
           const createdAt = ride.created_at
           if (typeof createdAt === "string" || typeof createdAt === "number" || createdAt instanceof Date) {
-            const rideDate = new Date(createdAt as any)
+            const rideDate = new Date(String(createdAt))
             return rideDate.getMonth() === currentMonth && rideDate.getFullYear() === currentYear
           }
           return false
@@ -275,13 +275,7 @@ function ProfileContent() {
     loadAllData()
   }, [loadAllData])
 
-  const emitPrefChanged = (key: string, value: string) => {
-    try {
-      window.dispatchEvent(new CustomEvent("saferide:pref-changed", { detail: { key, value } }))
-    } catch (e) {
-      // ignore
-    }
-  }
+  // emitPrefChanged removed (not used in this file)
 
   const handleRetry = async () => {
     setRetryCount((prev) => prev + 1)
@@ -297,12 +291,14 @@ function ProfileContent() {
     setSaving(true)
     try {
       const table = userType === "driver" ? "drivers" : "passengers"
+      const payload: Record<string, unknown> = {
+        name: editForm.name,
+        phone: editForm.phone,
+        updated_at: new Date().toISOString(),
+      }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { error } = await (supabase.from(table) as any)
-        .update({
-          name: editForm.name,
-          phone: editForm.phone,
-          updated_at: new Date().toISOString(),
-        })
+        .update(payload)
         .eq("uid", user.uid)
 
       if (error) throw error

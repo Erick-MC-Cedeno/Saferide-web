@@ -34,7 +34,20 @@ interface ActivityStats {
 }
 
 function ActivityContent() {
-  const { user, userType, signOut, userData } = useAuth()
+  const { user, signOut, userData } = useAuth()
+  // Narrow `userData` to the expected shape used in this component to avoid `any` casts
+  const userInfo = userData as { name?: string; full_name?: string } | null
+  // Safe helper to extract email from the loosely-typed `user` object provided by the auth context
+  const getUserEmail = (u: ({ uid: string } & Record<string, unknown>) | null): string | null => {
+    if (!u) return null
+    const maybe = (u as Record<string, unknown>).email
+    return typeof maybe === "string" ? maybe : null
+  }
+
+  const fallbackName = ((): string => {
+    const email = getUserEmail(user)
+    return email ? email.split("@")[0] : ""
+  })()
   const { toast } = useToast()
   const router = useRouter()
   const [rides, setRides] = useState<Ride[]>([])
@@ -160,16 +173,14 @@ function ActivityContent() {
               <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center">
                 <span className="text-white font-semibold text-lg">
                   {String(
-                    ((userData as { name?: string; full_name?: string } | null) ?? {})?.name ??
-                      ((userData as any)?.full_name ?? user?.email ?? "").split("@")[0],
+                    ((userInfo ?? {})?.name ?? (userInfo?.full_name ?? fallbackName))
                   ).charAt(0) || "U"}
                 </span>
               </div>
               <div>
                 <h3 className="font-semibold text-gray-900">
                   {String(
-                    ((userData as { name?: string; full_name?: string } | null) ?? {})?.name ??
-                      ((userData as any)?.full_name ?? user?.email ?? "").split("@")[0],
+                    ((userInfo ?? {})?.name ?? (userInfo?.full_name ?? fallbackName))
                   ) || "Usuario"}
                 </h3>
                 <button
@@ -188,8 +199,7 @@ function ActivityContent() {
             <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center">
               <span className="text-white font-semibold text-sm">
                 {String(
-                  ((userData as { name?: string; full_name?: string } | null) ?? {})?.name ??
-                    ((userData as any)?.full_name ?? user?.email ?? "").split("@")[0],
+                  ((userInfo ?? {})?.name ?? (userInfo?.full_name ?? fallbackName))
                 ).charAt(0) || "U"}
               </span>
             </div>

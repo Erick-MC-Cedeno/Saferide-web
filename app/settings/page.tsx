@@ -61,6 +61,19 @@ interface UserSettings {
   }
 }
 
+// Local type for runtime AudioContext-like constructors to avoid using `any`.
+type AudioCtxConstructor = new () => {
+  resume?: () => Promise<void>
+  createBuffer: (channels: number, length: number, sampleRate: number) => unknown
+  createBufferSource: () => {
+    buffer?: unknown
+    connect: (dest: unknown) => void
+    start: (when?: number) => void
+    stop: (when?: number) => void
+  }
+  destination: unknown
+}
+
 const defaultSettings: UserSettings = {
   notifications: {
     push: true,
@@ -102,7 +115,8 @@ function SettingsContent() {
     if (!user?.uid || !supabase) return
 
     try {
-  const { error } = await (supabase.from("user_settings") as any).upsert(
+      // @ts-expect-error -- supabase table types not generated in this repo
+  const { error } = await supabase.from("user_settings").upsert(
         {
           uid: user.uid,
           settings: defaultSettings,
@@ -130,7 +144,9 @@ function SettingsContent() {
   const emitPrefChanged = (key: string, value: string) => {
     try {
       window.dispatchEvent(new CustomEvent("saferide:pref-changed", { detail: { key, value } }))
-    } catch (e) {}
+    } catch {
+      // ignore
+    }
   }
 
   const loadUserSettings = useCallback(async () => {
@@ -141,7 +157,7 @@ function SettingsContent() {
 
     let localOverrideSound: boolean | null = null
     let localOverrideChat: boolean | null = null
-    try {
+  try {
       if (user?.uid) {
         const soundKey = `saferide_sound_enabled_${user.uid}`
         const chatKey = `saferide_chat_notification_${user.uid}`
@@ -179,16 +195,17 @@ function SettingsContent() {
     }
 
     try {
-      const { data, error } = await (supabase.from("user_settings") as any)
+      const res = await supabase.from("user_settings")
         .select("settings")
         .eq("uid", user.uid)
         .single()
+      const { data, error } = res as unknown as { data?: { settings?: unknown } | null; error?: unknown }
 
-      if (data?.settings) {
+      if (data && data.settings) {
         const serverSettings = (data.settings ?? {}) as Partial<UserSettings>
         const merged = { ...defaultSettings, ...serverSettings }
 
-        try {
+  try {
           const localSound =
             localOverrideSound !== null
               ? localOverrideSound
@@ -240,7 +257,7 @@ function SettingsContent() {
         }
 
         setSettings(merged)
-      } else if (error && error.code === "PGRST116") {
+      } else if (error && (error as unknown as { code?: string }).code === "PGRST116") {
         await createDefaultSettings()
       }
     } catch (error) {
@@ -264,7 +281,8 @@ function SettingsContent() {
 
     setLoading(true)
     try {
-  const { error } = await (supabase.from("user_settings") as any).upsert(
+      // @ts-expect-error -- supabase table types not generated in this repo
+  const { error } = await supabase.from("user_settings").upsert(
         {
           uid: user.uid,
           settings: settings,
@@ -308,10 +326,12 @@ function SettingsContent() {
 
       if (key === "push") {
         try {
-          const AudioCtx = (window as any).AudioContext || (window as any).webkitAudioContext
+          const AudioGlobal = window as unknown as { AudioContext?: unknown; webkitAudioContext?: unknown }
+          const AudioCtx = AudioGlobal.AudioContext || AudioGlobal.webkitAudioContext
           if (AudioCtx) {
-            try {
-              const ctx = new AudioCtx()
+        try {
+              // AudioCtx is an unknown runtime constructor (window provided). Cast to a local constructor type.
+              const ctx = new (AudioCtx as AudioCtxConstructor)()
               if (typeof ctx.resume === "function") ctx.resume().catch(() => {})
               try {
                 const buffer = ctx.createBuffer(1, 1, 22050)
@@ -320,19 +340,25 @@ function SettingsContent() {
                 src.connect(ctx.destination)
                 src.start(0)
                 src.stop(0)
-              } catch (e) {}
-            } catch (e) {}
+              } catch {
+                // ignore buffer errors
+              }
+            } catch {
+              // ignore audio init errors
+            }
           }
           ;(async () => {
-            try {
-              const res = await fetch("/api/sounds/saferidetone")
-              const j = await res.json()
-              if (j?.base64) {
-                const audio = new Audio(`data:audio/mpeg;base64,${j.base64}`)
-                audio.preload = "auto"
-                audio.play().catch(() => {})
-              }
-            } catch (e) {}
+                try {
+                  const res = await fetch("/api/sounds/saferidetone")
+                  const j = await res.json()
+                  if (j?.base64) {
+                    const audio = new Audio(`data:audio/mpeg;base64,${j.base64}`)
+                    audio.preload = "auto"
+                    audio.play().catch(() => {})
+                  }
+                } catch {
+                  // ignore fetch/play errors
+                }
           })()
         } catch (e) {
           console.warn("Audio unlock attempt failed on settings toggle:", e)
@@ -505,7 +531,7 @@ function SettingsContent() {
                 <span className="text-white font-semibold text-lg">
                   {String(
                     ((userData as { name?: string; full_name?: string } | null) ?? {})?.name ??
-                      ((userData as any)?.full_name ?? user?.email ?? "").split("@")[0],
+                      String(((userData as { full_name?: string } | null)?.full_name ?? user?.email ?? "")).split("@")[0],
                   ).charAt(0) || "U"}
                 </span>
               </div>
@@ -513,7 +539,7 @@ function SettingsContent() {
                 <h3 className="font-semibold text-gray-900">
                   {String(
                     ((userData as { name?: string; full_name?: string } | null) ?? {})?.name ??
-                      ((userData as any)?.full_name ?? user?.email ?? "").split("@")[0],
+                      String(((userData as { full_name?: string } | null)?.full_name ?? user?.email ?? "")).split("@")[0],
                   ) || "Usuario"}
                 </h3>
                 <p className="text-sm text-gray-500 hover:text-blue-600 cursor-pointer">Ver perfil</p>
@@ -528,7 +554,7 @@ function SettingsContent() {
               <span className="text-white font-semibold text-sm">
                 {String(
                   ((userData as { name?: string; full_name?: string } | null) ?? {})?.name ??
-                    ((userData as any)?.full_name ?? user?.email ?? "").split("@")[0],
+                    String(((userData as { full_name?: string } | null)?.full_name ?? user?.email ?? "")).split("@")[0],
                 ).charAt(0) || "U"}
               </span>
             </div>

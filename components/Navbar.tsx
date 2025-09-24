@@ -15,7 +15,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Badge } from "@/components/ui/badge"
-import { Shield, User, Settings, History, CreditCard, LogOut, Menu, X } from 'lucide-react'
+import { User, Settings, History, CreditCard, LogOut, Menu, X } from 'lucide-react'
 import { useAuth } from "@/lib/auth-context"
 import { useToast } from '@/hooks/use-toast'
 
@@ -28,8 +28,8 @@ export function Navbar() {
 
   // ACTUALIZA LA IMAGEN DE PERFIL CUANDO CAMBIAN LOS DATOS DEL USUARIO
   useEffect(() => {
-    const ud = userData as Record<string, any> | null
-    const img = ud && typeof ud.profile_image === 'string' ? ud.profile_image : null
+    const ud = userData as Record<string, unknown> | null
+    const img = ud && typeof (ud as Record<string, unknown>)['profile_image'] === 'string' ? (ud as Record<string, unknown>)['profile_image'] as string : null
     setProfileImage(img)
   }, [userData])
 
@@ -65,9 +65,10 @@ export function Navbar() {
       await new Promise(resolve => setTimeout(resolve, 100))
 
       router.replace('/auth/login')
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error al cerrar sesión:', error)
-      toast({ title: 'Error', description: error?.message || 'No se pudo cerrar sesión', variant: 'destructive' })
+      const msg = error instanceof Error ? error.message : String(error)
+      toast({ title: 'Error', description: msg || 'No se pudo cerrar sesión', variant: 'destructive' })
       // fallback: intentar redirigir igualmente
       try { router.replace('/auth/login') } catch {}
     } finally {
@@ -77,8 +78,8 @@ export function Navbar() {
   }
 
   const getUserInitials = () => {
-    const ud = userData as Record<string, any> | null
-    const name = ud?.name
+    const ud = userData as Record<string, unknown> | null
+    const name = typeof ud?.name === 'string' ? ud.name as string : undefined
     if (typeof name === 'string' && name.length > 0) {
       return name
         .split(" ")
@@ -87,19 +88,20 @@ export function Navbar() {
         .toUpperCase()
         .slice(0, 2)
     }
-    const email = (user as Record<string, any> | null)?.email
+    const u = user as Record<string, unknown> | null
+    const email = typeof u?.email === 'string' ? u.email as string : undefined
     const emailFirst = typeof email === 'string' && email.length > 0 ? email[0].toUpperCase() : 'U'
     return emailFirst || 'U'
   }
 
   // Compute safe display values for JSX (avoid passing unknown to ReactNode)
   const displayName = (() => {
-    const ud = userData as Record<string, any> | null
-    return typeof ud?.name === 'string' ? ud!.name : 'Usuario'
+    const ud = userData as Record<string, unknown> | null
+    return typeof ud?.name === 'string' ? ud!.name as string : 'Usuario'
   })()
   const userEmail = (() => {
-    const u = user as Record<string, any> | null
-    return typeof u?.email === 'string' ? u!.email : ''
+    const u = user as Record<string, unknown> | null
+    return typeof u?.email === 'string' ? u!.email as string : ''
   })()
 
   const navigation = [
@@ -116,8 +118,7 @@ export function Navbar() {
           {/* LOGOTIPO */}
           <Link href="/" className="flex items-center space-x-3">
               <div className="bg-gradient-to-r from-blue-600 to-blue-700 p-2 rounded-lg">
-              {/* usar <img> nativo para evitar advertencias en dev server sobre dimensionado */}
-              <img
+              <Image
                 src="/saferide-icon.svg"
                 alt="SafeRide"
                 width={27}

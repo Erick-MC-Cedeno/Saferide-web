@@ -15,6 +15,9 @@ type BeforeInstallPromptEvent = Event & {
   preventDefault?: () => void
 }
 
+// Extensión para almacenar temporizador en el evento sin usar `any`
+type BeforeInstallPromptEventWithTimer = BeforeInstallPromptEvent & { __clearTimer?: number }
+
 export function PWAInstallPrompt() {
   // ESTADOS LOCALES
   const [deferredPrompt, setDeferredPrompt] = React.useState<BeforeInstallPromptEvent | null>(null) // EVENTO beforeinstallprompt ALMACENADO
@@ -61,7 +64,7 @@ export function PWAInstallPrompt() {
     // BLOQUE: MANEJO DEL EVENTO `beforeinstallprompt`
     // CAPTURAMOS EL EVENTO, LLAMAMOS A preventDefault() Y LO ALMACENAMOS EN `deferredPrompt`
     // ASÍ EL BOTÓN 'INSTALAR' PUEDE LLAMAR A prompt() EN RESPUESTA AL GESTO DEL USUARIO.
-    const onBeforeInstallPrompt = (e: BeforeInstallPromptEvent) => {
+  const onBeforeInstallPrompt = (e: BeforeInstallPromptEventWithTimer) => {
       // Log for debug if requested
       if ((typeof window !== 'undefined') && new URLSearchParams(window.location.search).get('pwa_debug') === '1') {
         console.info('PWAInstallPrompt: beforeinstallprompt recibido')
@@ -89,7 +92,7 @@ export function PWAInstallPrompt() {
           setDeferredPrompt((prev) => (prev === e ? null : prev))
         }, CLEAR_MS)
         // store timer id on the event object if available (best-effort) so cleanup can cancel it if needed
-        ;(e as any).__clearTimer = timer
+        e.__clearTimer = timer
       } catch {
         // ignore timer setup errors
       }
@@ -141,7 +144,7 @@ export function PWAInstallPrompt() {
     if (deferredPrompt && deferredPrompt.prompt) {
       try {
         // If a timer was set to clear this event, cancel it now
-        try { if ((deferredPrompt as any).__clearTimer) window.clearTimeout((deferredPrompt as any).__clearTimer) } catch {}
+  try { if (deferredPrompt && (deferredPrompt as BeforeInstallPromptEventWithTimer).__clearTimer) window.clearTimeout((deferredPrompt as BeforeInstallPromptEventWithTimer).__clearTimer) } catch {}
 
         deferredPrompt.prompt()
         const choiceResult = await deferredPrompt.userChoice
@@ -155,8 +158,8 @@ export function PWAInstallPrompt() {
       } catch (err) {
         console.error('PWA install prompt error', err)
       } finally {
-        try { if ((deferredPrompt as any).__clearTimer) window.clearTimeout((deferredPrompt as any).__clearTimer) } catch {}
-        setDeferredPrompt(null)
+  try { if (deferredPrompt && (deferredPrompt as BeforeInstallPromptEventWithTimer).__clearTimer) window.clearTimeout((deferredPrompt as BeforeInstallPromptEventWithTimer).__clearTimer) } catch {}
+  setDeferredPrompt(null)
       }
     } else if (isIos) {
       // EN IOS NO HAY beforeinstallprompt: MOSTRAR INSTRUCCIONES MANUALES
@@ -187,7 +190,7 @@ export function PWAInstallPrompt() {
               <div className="flex items-center gap-2 w-full sm:w-auto">
                 <div className="flex-shrink-0">
                   {/* usar <img> nativo para evitar advertencias en dev server sobre dimensionado */}
-                  <img
+                  <Image
                     src="/saferide-icon.svg"
                     alt="app"
                     width={36}

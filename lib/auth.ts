@@ -4,6 +4,29 @@ const strongPasswordRegex = /^(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=[\]{};':"\
 // UTILIDADES DE AUTENTICACIÓN: FUNCIONES QUE INTERACTÚAN CON SUPABASE PARA AUTH Y GESTIÓN DE PERFILES EN LA BD
 import { supabase } from "./supabase"
 
+// Helpers para tratar valores de error de forma segura sin usar `any`
+export const extractErrorMessage = (err: unknown): string => {
+  if (!err) return ''
+  if (typeof err === 'string') return err
+  if (err instanceof Error) return err.message
+  if (typeof err === 'object' && err !== null) {
+    const maybe = err as Record<string, unknown>
+    const msg = maybe.message ?? maybe.error ?? maybe.error_description
+    return String(msg ?? '')
+  }
+  return String(err)
+}
+
+export const extractErrorStatus = (err: unknown): number | undefined => {
+  if (typeof err === 'object' && err !== null) {
+    const maybe = err as Record<string, unknown>
+    const s = maybe.status ?? maybe.statusCode
+    if (typeof s === 'number') return s
+    if (typeof s === 'string' && s.trim() !== '' && !Number.isNaN(Number(s))) return Number(s)
+  }
+  return undefined
+}
+
 export interface UserData {
   uid: string
   email: string
@@ -68,6 +91,9 @@ export const registerUser = async (userData: Omit<UserData, "uid">, password: st
     }
 
     if (userData.userType === "driver") {
+  // TypeScript: supabase client in this project doesn't include generated table types,
+  // so we expect a type error for this literal insert payload until types are generated.
+  // @ts-expect-error -- supabase insert payload without generated table types
       const { error } = await supabase.from("drivers").insert({
         uid: user.id,
         email: userData.email,
@@ -85,6 +111,7 @@ export const registerUser = async (userData: Omit<UserData, "uid">, password: st
 
       if (error) throw error
     } else {
+  // @ts-expect-error -- supabase insert payload without generated table types
       const { error } = await supabase.from("passengers").insert({
         uid: user.id,
         email: userData.email,
@@ -173,32 +200,38 @@ export const logoutUser = async () => {
     const { data: { session } } = await supabase.auth.getSession()
     if (!session) {
       // No hay sesión activa: tratar como logout exitoso y limpiar localStorage relacionado
-      try { localStorage.removeItem('supabase.auth.token') } catch (e) {}
+      try { localStorage.removeItem('supabase.auth.token') } catch {
+        // Ignorar errores de acceso a localStorage en entornos sin DOM
+      }
       return { success: true }
     }
 
     const { error } = await supabase.auth.signOut()
     if (error) {
       console.error("Error en Supabase signOut:", error)
-      const msg = String((error as any)?.message || '')
-      const status = (error as any)?.status
+      const msg = extractErrorMessage(error)
+      const status = extractErrorStatus(error)
       if (msg.includes('Auth session missing') || msg.includes('AuthSessionMissingError') || status === 403) {
         // Si el servidor indica que la sesión ya no existe, tratar como éxito localmente
-        try { localStorage.removeItem('supabase.auth.token') } catch (e) {}
+        try { localStorage.removeItem('supabase.auth.token') } catch {
+          // Ignorar errores de acceso a localStorage en entornos sin DOM
+        }
         return { success: true }
       }
-      return { success: false, error: error.message }
+      return { success: false, error: (error as Error)?.message ?? extractErrorMessage(error) }
     }
 
     return { success: true }
   } catch (error: unknown) {
     console.error("Logout error:", error)
-    const m = String((error as any)?.message || '')
+    const m = extractErrorMessage(error)
     if (m.includes('Auth session missing') || m.includes('AuthSessionMissingError')) {
-      try { localStorage.removeItem('supabase.auth.token') } catch (e) {}
+      try { localStorage.removeItem('supabase.auth.token') } catch {
+        // Ignorar errores de acceso a localStorage en entornos sin DOM
+      }
       return { success: true }
     }
-    return { success: false, error: error instanceof Error ? error.message : String(error) }
+    return { success: false, error: error instanceof Error ? error.message : extractErrorMessage(error) }
   }
 }
 

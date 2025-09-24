@@ -301,7 +301,7 @@ export function MapComponent({
                   }
                 })
               }
-            } catch (e) {
+            } catch {
               // ignore
             }
 
@@ -327,7 +327,7 @@ export function MapComponent({
                   }
                 })
               }
-            } catch (e) {
+            } catch {
               // ignore
             }
 
@@ -373,7 +373,7 @@ export function MapComponent({
         }
       )
     }
-  }, [map, pickupLocation, destinationLocation, driverLocations, userType, isLoaded, userLocation])
+  }, [map, pickupLocation, destinationLocation, driverLocations, userType, isLoaded, userLocation, onMarkerClick])
 
   // centerOnUser removed (not used)
 

@@ -25,6 +25,9 @@ import {
 import { useAuth } from "@/lib/auth-context"
 import { supabase } from "@/lib/supabase"
 
+// Infer the realtime channel type from the supabase client so we can type channelRef
+type RealtimeChannel = ReturnType<typeof supabase.channel>
+
 interface Message {
   id: string
   ride_id: string
@@ -62,15 +65,15 @@ export function RideChat({ rideId, driverName, passengerName, onClose }: RideCha
   const [playingAudio, setPlayingAudio] = useState<string | null>(null)
   const [sharingLocation, setSharingLocation] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
-  // supabase client may be null at runtime; keep channel as unknown/any to avoid complex type issues
-  const channelRef = useRef<any | null>(null)
+  // supabase realtime channel reference
+  const channelRef = useRef<RealtimeChannel | null>(null)
   const mountedRef = useRef(true)
   const retryCountRef = useRef(0)
   const maxRetries = 3
   // In browsers, setInterval returns a number. Use number | null for timer refs.
   const recordingIntervalRef = useRef<number | null>(null)
   const audioRef = useRef<HTMLAudioElement | null>(null)
-  const { user, userType, userData } = useAuth()
+  const { user, userType } = useAuth()
   const [driverProfileImage, setDriverProfileImage] = useState<string | null>(null)
   const [passengerProfileImage, setPassengerProfileImage] = useState<string | null>(null)
 
@@ -129,7 +132,8 @@ export function RideChat({ rideId, driverName, passengerName, onClose }: RideCha
         location_name: locationName,
       }
 
-  const { data, error } = await (supabase.from("ride_messages") as any).insert(messageData).select()
+    // @ts-expect-error -- supabase insert payload without generated table types
+  const { data, error } = await supabase.from("ride_messages").insert(messageData).select()
 
       if (error) throw error
 
@@ -162,11 +166,10 @@ export function RideChat({ rideId, driverName, passengerName, onClose }: RideCha
   }
 
   const openLocationInMaps = (latitude: number, longitude: number, locationName?: string) => {
-    const query = locationName || `${latitude},${longitude}`
-    const encodedQuery = encodeURIComponent(query)
+  const query = locationName || `${latitude},${longitude}`
 
     // Try to open in Google Maps app first, fallback to web
-    const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`
+    const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`
     window.open(googleMapsUrl, "_blank")
   }
 
@@ -251,7 +254,7 @@ export function RideChat({ rideId, driverName, passengerName, onClose }: RideCha
 
       console.log("[v0] Upload successful:", uploadData)
 
-  const { data: urlData } = (supabase.storage.from("ride-audio-messages") as any).getPublicUrl(fileName)
+  const { data: urlData } = supabase.storage.from("ride-audio-messages").getPublicUrl(fileName)
 
       console.log("[v0] Public URL generated:", urlData.publicUrl)
 
@@ -268,7 +271,8 @@ export function RideChat({ rideId, driverName, passengerName, onClose }: RideCha
 
       console.log("[v0] Inserting message data:", messageData)
 
-  const { data, error } = await (supabase.from("ride_messages") as any).insert(messageData).select()
+    // @ts-expect-error -- supabase insert payload without generated table types
+  const { data, error } = await supabase.from("ride_messages").insert(messageData).select()
 
       if (error) {
         console.error("[v0] Database insert error:", error)
@@ -466,23 +470,19 @@ export function RideChat({ rideId, driverName, passengerName, onClose }: RideCha
       if (!supabase) return
 
       try {
-        const { data: driverData } = (await (supabase.from("drivers") as any)
-          .select("profile_image")
-          .eq("name", driverName)
-          .single()) as any
+        const driverRes = await supabase.from("drivers").select("profile_image").eq("name", driverName).single()
+        const driverData = driverRes.data as Record<string, unknown> | null
+        const driverProfile = driverData?.profile_image as string | undefined
+        if (driverProfile) setDriverProfileImage(driverProfile)
 
-        if (driverData && driverData.profile_image) {
-          setDriverProfileImage(driverData.profile_image)
-        }
-
-        const { data: passengerData } = (await (supabase.from("passengers") as any)
+        const passengerRes = await supabase
+          .from("passengers")
           .select("profile_image")
           .eq("name", passengerName)
-          .single()) as any
-
-        if (passengerData && passengerData.profile_image) {
-          setPassengerProfileImage(passengerData.profile_image)
-        }
+          .single()
+        const passengerData = passengerRes.data as Record<string, unknown> | null
+        const passengerProfile = passengerData?.profile_image as string | undefined
+        if (passengerProfile) setPassengerProfileImage(passengerProfile)
       } catch (error) {
         console.log("Could not load profile images:", error)
       }
@@ -511,7 +511,8 @@ export function RideChat({ rideId, driverName, passengerName, onClose }: RideCha
 
       console.log("Enviando mensaje:", messageData)
 
-  const { data, error } = await (supabase.from("ride_messages") as any).insert(messageData).select()
+    // @ts-expect-error -- supabase insert payload without generated table types
+  const { data, error } = await supabase.from("ride_messages").insert(messageData).select()
 
       if (error) throw error
 

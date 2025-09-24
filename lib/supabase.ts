@@ -1,42 +1,30 @@
 import { createClient } from "@supabase/supabase-js"
+import type { SupabaseClient } from "@supabase/supabase-js"
 
 // LEE LAS VARIABLES DE ENTORNO PARA CONFIGURAR SUPABASE
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
 // SINGLETON DEL CLIENTE DE SUPABASE PARA EVITAR MÚLTIPLES INSTANCIAS
-let supabaseInstance: ReturnType<typeof createClient> | null = null
+// Create and export a typed Supabase client instance. We provide safe
+// fallbacks for environment variables at build time so TypeScript can
+// fully resolve generics for PostgREST methods (avoids 'never' types).
+const url = supabaseUrl ?? ""
+const anonKey = supabaseAnonKey ?? ""
 
-export const getSupabase = () => {
-  if (!supabaseInstance && supabaseUrl && supabaseAnonKey) {
-    try {
-      supabaseInstance = createClient(supabaseUrl, supabaseAnonKey, {
-        realtime: {
-          params: {
-            eventsPerSecond: 2,
-          },
-        },
-        auth: {
-          // CONFIGURACIÓN DE AUTH: PERSISTENCIA DE SESIONES Y DETECCIÓN AUTOMÁTICA EN URL
-          persistSession: true,
-          autoRefreshToken: true,
-          detectSessionInUrl: true,
-        },
-        global: {
-          headers: {
-            "x-client-info": "saferide-web@1.0.0",
-          },
-        },
-      })
-    } catch (error) {
-      console.error("Error initializing Supabase:", error)
-    }
-  }
-  return supabaseInstance
-}
-
-// EXPORTACIÓN DEL CLIENTE DE SUPABASE (FALLBACK MEDIANTE LA FUNCIÓN getSupabase)
-export const supabase = getSupabase()
+export const supabase: SupabaseClient<Database> = createClient<Database>(url, anonKey, {
+  realtime: { params: { eventsPerSecond: 2 } },
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: true,
+  },
+  global: {
+    headers: {
+      "x-client-info": "saferide-web@1.0.0",
+    },
+  },
+})
 
 // SI FALTAN VARIABLES DE ENTORNO, SE EMITE UNA ADVERTENCIA (NO LANZAMOS EXCEPCIÓN)
 if (!supabaseUrl || !supabaseAnonKey) {
@@ -152,10 +140,10 @@ export interface Database {
           driver_name: string | null
           pickup_address: string
           // [lng, lat] pair or similar; keep as unknown and validate at usage
-          pickup_coordinates: unknown
+            pickup_coordinates: [number, number]
           destination_address: string
           // [lng, lat] pair or similar; keep as unknown and validate at usage
-          destination_coordinates: unknown
+            destination_coordinates: [number, number]
           status: "pending" | "accepted" | "in-progress" | "completed" | "cancelled"
           estimated_fare: number
           actual_fare: number | null
@@ -178,10 +166,10 @@ export interface Database {
           driver_name?: string | null
           pickup_address: string
           // [lng, lat] pair or similar; keep as unknown and validate at usage
-          pickup_coordinates: unknown
+            pickup_coordinates: [number, number]
           destination_address: string
           // [lng, lat] pair or similar; keep as unknown and validate at usage
-          destination_coordinates: unknown
+            destination_coordinates: [number, number]
           status?: "pending" | "accepted" | "in-progress" | "completed" | "cancelled"
           estimated_fare: number
           actual_fare?: number | null
@@ -204,10 +192,10 @@ export interface Database {
           driver_name?: string | null
           pickup_address?: string
           // [lng, lat] pair or similar; keep as unknown and validate at usage
-          pickup_coordinates?: unknown
+            pickup_coordinates?: [number, number]
           destination_address?: string
           // [lng, lat] pair or similar; keep as unknown and validate at usage
-          destination_coordinates?: unknown
+            destination_coordinates?: [number, number]
           status?: "pending" | "accepted" | "in-progress" | "completed" | "cancelled"
           estimated_fare?: number
           actual_fare?: number | null

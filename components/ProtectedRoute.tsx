@@ -55,3 +55,5 @@ export function ProtectedRoute({ children, requiredUserType }: ProtectedRoutePro
 
   return <>{children}</>
 }
+
+export default ProtectedRoute

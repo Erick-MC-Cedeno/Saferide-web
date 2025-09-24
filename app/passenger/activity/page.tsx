@@ -159,14 +159,25 @@ function ActivityContent() {
             <div className="flex items-center space-x-3">
               <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center">
                 <span className="text-white font-semibold text-lg">
-                  {String(((userData as { name?: string; full_name?: string } | null) ?? {})?.name ?? ((userData as any)?.full_name ?? (user?.email ?? "")).split("@")[0]).charAt(0) || "U"}
+                  {String(
+                    ((userData as { name?: string; full_name?: string } | null) ?? {})?.name ??
+                      ((userData as any)?.full_name ?? user?.email ?? "").split("@")[0],
+                  ).charAt(0) || "U"}
                 </span>
               </div>
               <div>
                 <h3 className="font-semibold text-gray-900">
-                  {String(((userData as { name?: string; full_name?: string } | null) ?? {})?.name ?? ((userData as any)?.full_name ?? (user?.email ?? "")).split("@")[0]) || "Usuario"}
+                  {String(
+                    ((userData as { name?: string; full_name?: string } | null) ?? {})?.name ??
+                      ((userData as any)?.full_name ?? user?.email ?? "").split("@")[0],
+                  ) || "Usuario"}
                 </h3>
-                <p className="text-sm text-gray-500 hover:text-blue-600 cursor-pointer">Ver perfil</p>
+                <button
+                  onClick={() => handleNavigation("/profile")}
+                  className="text-sm text-gray-500 hover:text-blue-600 cursor-pointer transition-colors"
+                >
+                  Ver perfil
+                </button>
               </div>
             </div>
           </div>
@@ -175,8 +186,11 @@ function ActivityContent() {
         {sidebarCollapsed && (
           <div className="p-3 border-b border-gray-200 flex justify-center">
             <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center">
-                <span className="text-white font-semibold text-sm">
-                {String(((userData as { name?: string; full_name?: string } | null) ?? {})?.name ?? ((userData as any)?.full_name ?? (user?.email ?? "")).split("@")[0]).charAt(0) || "U"}
+              <span className="text-white font-semibold text-sm">
+                {String(
+                  ((userData as { name?: string; full_name?: string } | null) ?? {})?.name ??
+                    ((userData as any)?.full_name ?? user?.email ?? "").split("@")[0],
+                ).charAt(0) || "U"}
               </span>
             </div>
           </div>
@@ -193,7 +207,9 @@ function ActivityContent() {
                 currentView === "rides" ? "bg-blue-500 text-white" : "text-gray-700 hover:bg-gray-100"
               }`}
             >
-              <Car className={`${sidebarCollapsed ? "h-6 w-6" : "h-5 w-5"} ${currentView === "rides" ? "text-white stroke-current" : "!text-gray-700 !stroke-current"}`} />
+              <Car
+                className={`${sidebarCollapsed ? "h-6 w-6" : "h-5 w-5"} ${currentView === "rides" ? "text-white stroke-current" : "!text-gray-700 !stroke-current"}`}
+              />
               {!sidebarCollapsed && <span className="font-medium">Rides</span>}
             </button>
 
@@ -203,7 +219,9 @@ function ActivityContent() {
                 currentView === "activity" ? "bg-blue-500 text-white" : "text-gray-700 hover:bg-gray-100"
               }`}
             >
-              <Clock className={`${sidebarCollapsed ? "h-6 w-6" : "h-5 w-5"} ${currentView === "activity" ? "text-white stroke-current" : "!text-gray-700 !stroke-current"}`} />
+              <Clock
+                className={`${sidebarCollapsed ? "h-6 w-6" : "h-5 w-5"} ${currentView === "activity" ? "text-white stroke-current" : "!text-gray-700 !stroke-current"}`}
+              />
               {!sidebarCollapsed && <span className="font-medium">Activity</span>}
             </button>
           </div>
@@ -316,7 +334,9 @@ function ActivityContent() {
                                 const r = Number(ride.passenger_rating)
                                 return (
                                   <div className="flex items-center space-x-1">
-                                    <span className="text-sm text-gray-900">{Number.isFinite(r) ? r.toFixed(1) : String(ride.passenger_rating)}</span>
+                                    <span className="text-sm text-gray-900">
+                                      {Number.isFinite(r) ? r.toFixed(1) : String(ride.passenger_rating)}
+                                    </span>
                                     <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
                                   </div>
                                 )

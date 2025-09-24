@@ -253,19 +253,18 @@ function PassengerDashboardContent() {
       playChatUnlockAttachedRef.current = true
       const tryUnlock = async () => {
         try {
-          try {
-            // @ts-ignore
-            const ctx =
-              (window as any).audioContext || new (window.AudioContext || (window as any).webkitAudioContext)()
-            if (ctx && typeof ctx.resume === "function") {
-              await ctx.resume()
-              ;(window as any).audioContext = ctx
-            }
-          } catch (e) {
-            // ignore
+          // @ts-ignore
+          const ctx = (window as any).audioContext || new (window.AudioContext || (window as any).webkitAudioContext)()
+          if (ctx && typeof ctx.resume === "function") {
+            await ctx.resume()
+            ;(window as any).audioContext = ctx
           }
-          await audioChatRef.current!.play()
         } catch (e) {
+          // ignore
+        }
+        try {
+          await audioChatRef.current!.play()
+        } catch (e: any) {
           console.warn("Retry chat audio play after user interaction failed:", e)
         } finally {
           window.removeEventListener("pointerdown", tryUnlock)
@@ -968,6 +967,9 @@ function PassengerDashboardContent() {
       case "history":
         router.push("/history")
         break
+      case "profile": // Added profile navigation
+        router.push("/profile")
+        break
       case "logout":
         handleLogout()
         break
@@ -1028,7 +1030,12 @@ function PassengerDashboardContent() {
                       ((userData as any)?.full_name ?? user?.email ?? "").split("@")[0],
                   ) || "Usuario"}
                 </h2>
-                <p className="text-sm text-gray-500 cursor-pointer hover:text-blue-600">Ver perfil</p>
+                <button
+                  onClick={() => handleNavigation("profile")}
+                  className="text-sm text-gray-500 cursor-pointer hover:text-blue-600 transition-colors"
+                >
+                  Ver perfil
+                </button>
               </div>
             </div>
           </div>
@@ -1168,7 +1175,15 @@ function PassengerDashboardContent() {
                       ((userData as any)?.full_name ?? user?.email ?? "").split("@")[0],
                   ) || "Usuario"}
                 </h2>
-                <p className="text-sm text-gray-500 cursor-pointer hover:text-blue-600">Ver perfil</p>
+                <button
+                  onClick={() => {
+                    handleNavigation("profile")
+                    setSidebarCollapsed(true) // Close mobile sidebar
+                  }}
+                  className="text-sm text-gray-500 cursor-pointer hover:text-blue-600 transition-colors"
+                >
+                  Ver perfil
+                </button>
               </div>
             </div>
           </div>

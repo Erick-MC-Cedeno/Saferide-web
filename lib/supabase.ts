@@ -6,13 +6,15 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
 // SINGLETON DEL CLIENTE DE SUPABASE PARA EVITAR MÚLTIPLES INSTANCIAS
-// Create and export a typed Supabase client instance. We provide safe
-// fallbacks for environment variables at build time so TypeScript can
-// fully resolve generics for PostgREST methods (avoids 'never' types).
+// Create and export a Supabase client instance.
+// Use a loose generic (any) to avoid pervasive 'never' typing issues
+// coming from dynamic table names and complex inferred types in the
+// codebase. This keeps the runtime client fully typed by supabase-js
+// while avoiding overly strict generics that break many call sites.
 const url = supabaseUrl ?? ""
 const anonKey = supabaseAnonKey ?? ""
 
-export const supabase: SupabaseClient<Database> = createClient<Database>(url, anonKey, {
+export const supabase: SupabaseClient<any> = createClient<any>(url, anonKey, {
   realtime: { params: { eventsPerSecond: 2 } },
   auth: {
     persistSession: true,

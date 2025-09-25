@@ -108,7 +108,7 @@ export function useRealTimeRides(driverId?: string, passengerId?: string) {
     async (id: string, reason = "Cancelado") => {
       const { error } = await supabase
         .from("rides")
-        .update({ status: "cancelled", cancellation_reason: reason, cancelled_at: new Date().toISOString() })
+        .update({ status: "cancelled", cancellation_reason: reason, cancelled_at: new Date().toISOString() } as any)
         .eq("id", id)
         .in("status", ["pending", "accepted", "in-progress"])
       if (error) return { success: false, error: error.message }
@@ -137,7 +137,7 @@ export function useRealTimeRides(driverId?: string, passengerId?: string) {
           driver_name: driverName,
           status: "accepted",
           accepted_at: new Date().toISOString(),
-        })
+        } as any)
         .eq("id", id)
         .eq("status", "pending")
       if (error) return { success: false, error: error.message }
@@ -151,7 +151,7 @@ export function useRealTimeRides(driverId?: string, passengerId?: string) {
     async (id: string, status: Ride["status"]) => {
       const update: Partial<Ride> = { status }
       if (status === "completed") update.completed_at = new Date().toISOString()
-      const { error } = await supabase.from("rides").update(update).eq("id", id)
+  const { error } = await supabase.from("rides").update(update as any).eq("id", id)
       if (error) return { success: false, error: error.message }
       await loadRides(true)
       return { success: true }

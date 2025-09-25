@@ -37,13 +37,13 @@ export const createRideRequest = async (rideData: Omit<RideRequest, "id" | "requ
         status: rideData.status,
         estimated_fare: rideData.estimated_fare,
         estimated_duration: rideData.estimated_duration,
-      })
+      } as any)
       .select()
       .single()
 
-    if (error) throw error
+  if (error) throw error
 
-    return { success: true, rideId: data.id }
+  return { success: true, rideId: data ? (data as any).id : null }
   } catch (error: unknown) {
     console.error("Create ride request error:", error)
     return { success: false, error: error instanceof Error ? error.message : String(error) }

@@ -39,7 +39,7 @@ export function useDriverStatus(driverId?: string) {
 
       const { error } = await supabase
         .from("drivers")
-        .update({ current_location: currentLocation })
+        .update({ current_location: currentLocation } as any)
         .eq("uid", driverId)
 
       if (error) throw error
@@ -173,7 +173,7 @@ export function useDriverStatus(driverId?: string) {
             .update({ 
               is_online: online,
               current_location: currentLocation
-            })
+            } as any)
             .eq("uid", driverId)
 
           if (error) throw error
@@ -183,13 +183,13 @@ export function useDriverStatus(driverId?: string) {
         } catch (locationError) {
           console.error("Error getting driver location:", locationError)
           // Si hay un error al obtener la ubicación, solo actualizar el estado online
-          const { error } = await supabase.from("drivers").update({ is_online: online }).eq("uid", driverId)
+          const { error } = await supabase.from("drivers").update({ is_online: online } as any).eq("uid", driverId)
           if (error) throw error
         }
       } else {
         // Si el conductor está pasando a estar offline, detener actualizaciones y actualizar estado
         stopLocationUpdates()
-        const { error } = await supabase.from("drivers").update({ is_online: online }).eq("uid", driverId)
+  const { error } = await supabase.from("drivers").update({ is_online: online } as any).eq("uid", driverId)
         if (error) throw error
       }
       

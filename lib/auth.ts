@@ -93,7 +93,6 @@ export const registerUser = async (userData: Omit<UserData, "uid">, password: st
     if (userData.userType === "driver") {
   // TypeScript: supabase client in this project doesn't include generated table types,
   // so we expect a type error for this literal insert payload until types are generated.
-  // @ts-expect-error -- supabase insert payload without generated table types
       const { error } = await supabase.from("drivers").insert({
         uid: user.id,
         email: userData.email,
@@ -107,11 +106,10 @@ export const registerUser = async (userData: Omit<UserData, "uid">, password: st
         rating: 0,
         total_trips: 0,
         is_online: false,
-      })
+      } as any)
 
       if (error) throw error
     } else {
-  // @ts-expect-error -- supabase insert payload without generated table types
       const { error } = await supabase.from("passengers").insert({
         uid: user.id,
         email: userData.email,
@@ -119,7 +117,7 @@ export const registerUser = async (userData: Omit<UserData, "uid">, password: st
         phone: userData.phone,
         rating: 0,
         total_trips: 0,
-      })
+      } as any)
 
       if (error) throw error
     }

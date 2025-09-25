@@ -288,15 +288,17 @@ export async function POST(request: NextRequest) {
         )
       }
 
-      console.log("✅ User found:", existingUser.name)
+      // existingUser may be loosely typed; guard property access
+      const userName = (existingUser as any)?.name ?? null
+      console.log("✅ User found:", userName)
 
-      // Update profile image
+      // Update profile image (payload cast to any to satisfy supabase generic)
       const { error: updateError } = await supabase
         .from(table)
         .update({
           profile_image: base64String,
           updated_at: new Date().toISOString(),
-        })
+        } as any)
         .eq("uid", userId)
 
       if (updateError) {

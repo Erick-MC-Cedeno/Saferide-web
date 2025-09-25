@@ -132,8 +132,7 @@ export function RideChat({ rideId, driverName, passengerName, onClose }: RideCha
         location_name: locationName,
       }
 
-    // @ts-expect-error -- supabase insert payload without generated table types
-  const { data, error } = await supabase.from("ride_messages").insert(messageData).select()
+    const { data, error } = await supabase.from("ride_messages").insert(messageData as any).select()
 
       if (error) throw error
 
@@ -271,8 +270,7 @@ export function RideChat({ rideId, driverName, passengerName, onClose }: RideCha
 
       console.log("[v0] Inserting message data:", messageData)
 
-    // @ts-expect-error -- supabase insert payload without generated table types
-  const { data, error } = await supabase.from("ride_messages").insert(messageData).select()
+    const { data, error } = await supabase.from("ride_messages").insert(messageData as any).select()
 
       if (error) {
         console.error("[v0] Database insert error:", error)
@@ -511,8 +509,7 @@ export function RideChat({ rideId, driverName, passengerName, onClose }: RideCha
 
       console.log("Enviando mensaje:", messageData)
 
-    // @ts-expect-error -- supabase insert payload without generated table types
-  const { data, error } = await supabase.from("ride_messages").insert(messageData).select()
+    const { data, error } = await supabase.from("ride_messages").insert(messageData as any).select()
 
       if (error) throw error
 

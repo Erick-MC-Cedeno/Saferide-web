@@ -53,10 +53,12 @@ function Calendar({
         day_hidden: "invisible",
         ...classNames,
       }}
+      // react-day-picker's `components` typing can be strict depending on the version.
+      // Cast to `any` for these small icon overrides to avoid TypeScript complaints.
       components={{
-        IconLeft: ({ ...props }) => <ChevronLeft {...props} className="h-4 w-4" />,
-        IconRight: ({ ...props }) => <ChevronRight {...props} className="h-4 w-4" />,
-      }}
+        IconLeft: (({ ...props }: any) => <ChevronLeft {...props} className="h-4 w-4" />) as any,
+        IconRight: (({ ...props }: any) => <ChevronRight {...props} className="h-4 w-4" />) as any,
+      } as any}
       {...props}
     />
   )

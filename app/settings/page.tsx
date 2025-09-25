@@ -115,7 +115,6 @@ function SettingsContent() {
     if (!user?.uid || !supabase) return
 
     try {
-      // @ts-expect-error -- supabase table types not generated in this repo
   const { error } = await supabase.from("user_settings").upsert(
         {
           uid: user.uid,
@@ -281,7 +280,6 @@ function SettingsContent() {
 
     setLoading(true)
     try {
-      // @ts-expect-error -- supabase table types not generated in this repo
   const { error } = await supabase.from("user_settings").upsert(
         {
           uid: user.uid,

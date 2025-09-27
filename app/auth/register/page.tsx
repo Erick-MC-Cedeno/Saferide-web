@@ -6,13 +6,14 @@ import type React from "react"
 
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Car, Users, Sparkles, UserPlus, Loader2, Eye, EyeOff } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
+import Image from "next/image"
 
 // COMPONENTE DE PÁGINA: FORMULARIO DE REGISTRO PARA PASAJEROS Y CONDUCTORES
 export default function RegisterPage() {
@@ -102,13 +103,9 @@ export default function RegisterPage() {
       </div>
 
       <div className="w-full max-w-lg relative z-10">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-3">¡Únete a SafeRide!</h1>
-          <p className="text-gray-600 text-lg">Crea tu cuenta y comienza tu viaje seguro</p>
-        </div>
-
         <Card className="shadow-2xl border-0 bg-white/80 backdrop-blur-sm">
           <CardHeader className="space-y-6 pb-6">
+            <CardTitle className="text-2xl font-bold text-center text-gray-900">Register <Image src="/saferide-icon.svg" width={24} height={24} alt="SafeRide" className="inline ml-2" /></CardTitle>
             <Tabs value={userType} onValueChange={setUserType}>
               <TabsList className="grid w-full grid-cols-2 bg-gray-100/80 backdrop-blur-sm p-1 rounded-xl">
                 <TabsTrigger
@@ -319,10 +316,8 @@ export default function RegisterPage() {
                 </Link>
               </p>
             </div>
-          </CardContent>
-        </Card>
 
-        {/* Security Notice */}
+            {/* Security Notice */}
         <div className="mt-8 text-center">
           <p className="text-xs text-gray-500 leading-relaxed">
             Al crear una cuenta, aceptas nuestros{" "}
@@ -335,6 +330,10 @@ export default function RegisterPage() {
             </Link>
           </p>
         </div>
+          </CardContent>
+        </Card>
+
+        
       </div>
     </div>
   )

@@ -5,7 +5,7 @@ import type React from "react"
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -14,23 +14,29 @@ import { Car, Users, Eye, EyeOff, Loader2, AlertCircle, Sparkles } from "lucide-
 import Link from "next/link"
 import { loginUser } from "@/lib/auth"
 import { useAuth } from "@/lib/auth-context"
+import Image from "next/image"
 
 export default function LoginPage() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
-  const [userType, setUserType] = useState("passenger")
+  const [userType, setUserType] = useState<"passenger" | "driver">("passenger")
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
+  const [isLoggingIn, setIsLoggingIn] = useState(false)
   const router = useRouter()
     const { isSupabaseReady, user, userType: ctxUserType, loading: authLoading } = useAuth()
+
+  const handleUserTypeChange = (value: string) => {
+    setUserType(value as "passenger" | "driver")
+  }
 
 
 
   // VERIFICA SI EL USUARIO ESTÁ AUTENTICADO Y REDIRIGE AL DASHBOARD CORRESPONDIENTE
 
   useEffect(() => {
-    if (authLoading) return
+    if (authLoading || isLoggingIn) return
     if (user && (ctxUserType === 'driver' || ctxUserType === 'passenger')) {
       const redirectPath = ctxUserType === 'driver' ? '/driver/dashboard' : '/passenger/dashboard'
       router.replace(redirectPath)
@@ -47,18 +53,19 @@ export default function LoginPage() {
     }
 
     setLoading(true)
+    setIsLoggingIn(true)
     setError("")
 
     try {
-      const result = await loginUser(email, password)
+      const result = await loginUser(email, password, userType)
       if (result.success) {
         // REDIRECCIÓN POST-LOGIN: LEER PARAMETRO 'redirect' Y NAVEGAR A LA RUTA CORRESPONDIENTE
         const urlParams = new URLSearchParams(window.location.search)
         const redirectParam = urlParams.get('redirect')
-
+  
         const defaultPath = userType === "driver" ? "/driver/dashboard" : "/passenger/dashboard"
         const redirectPath = redirectParam || defaultPath
-
+  
         console.log("Redirigiendo a:", redirectPath)
         router.replace(redirectPath)
       } else {
@@ -69,6 +76,7 @@ export default function LoginPage() {
       setError("Error inesperado. Por favor intenta de nuevo.")
     } finally {
       setLoading(false)
+      setIsLoggingIn(false)
     }
   }
 
@@ -99,16 +107,13 @@ export default function LoginPage() {
 
       <div className="w-full max-w-md relative z-10">
   {/* ENCABEZADO: TITULO Y SUBTITULO */}
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-3">¡Bienvenido de vuelta!</h1>
-          <p className="text-gray-600 text-lg">Inicia sesión en tu cuenta de SafeRide</p>
-        </div>
-
+        
         
 
         <Card className="shadow-2xl border-0 bg-white/80 backdrop-blur-sm">
           <CardHeader className="space-y-6 pb-6">
-            <Tabs value={userType} onValueChange={setUserType}>
+            <CardTitle className="text-2xl font-bold text-center text-gray-900">Login <Image src="/saferide-icon.svg" width={24} height={24} alt="SafeRide" className="inline ml-2" /></CardTitle>
+            <Tabs value={userType} onValueChange={handleUserTypeChange}>
               <TabsList className="grid w-full grid-cols-2 bg-gray-100/80 backdrop-blur-sm p-1 rounded-xl">
                 <TabsTrigger
                   value="passenger"
@@ -223,11 +228,8 @@ export default function LoginPage() {
                 </Link>
               </p>
             </div>
-          </CardContent>
-        </Card>
-
-  {/* AVISO DE SEGURIDAD: TERMINOS Y POLITICA DE PRIVACIDAD */}
-  <div className="mt-8 text-center">
+            {/* AVISO DE SEGURIDAD: TERMINOS Y POLITICA DE PRIVACIDAD */}
+           <div className="mt-8 text-center">
           <p className="text-xs text-gray-500 leading-relaxed">
             Al iniciar sesión, aceptas nuestros{" "}
             <Link href="/terms" className="text-blue-600 hover:text-purple-600 hover:underline transition-colors">
@@ -239,6 +241,9 @@ export default function LoginPage() {
             </Link>
           </p>
         </div>
+          </CardContent>
+        </Card>
+  
       </div>
     </div>
   )

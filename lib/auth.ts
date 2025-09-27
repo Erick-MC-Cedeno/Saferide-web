@@ -145,7 +145,7 @@ export const registerUser = async (userData: Omit<UserData, "uid">, password: st
 }
 
 // INICIA SESIÓN CON EMAIL Y CONTRASEÑA USANDO SUPABASE; MAPEADO DE ERRORES A MENSAJES AMIGABLES EN ESPAÑOL
-export const loginUser = async (email: string, password: string) => {
+export const loginUser = async (email: string, password: string, userType: "passenger" | "driver") => {
   try {
     if (!supabase) {
       return { success: false, error: "Servicios de autenticación no están disponibles." }
@@ -162,6 +162,14 @@ export const loginUser = async (email: string, password: string) => {
       }
 
       return { success: false, error: message }
+    }
+
+    if (data.user) {
+      const userData = await getUserData(data.user.id, userType);
+      if (!userData) {
+        await supabase.auth.signOut();
+        return { success: false, error: "El rol seleccionado no coincide con tu tipo de cuenta. Por favor, selecciona el rol correcto." };
+      }
     }
 
     return { success: true, user: data.user }

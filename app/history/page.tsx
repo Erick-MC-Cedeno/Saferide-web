@@ -433,7 +433,7 @@ function HistoryContent() {
 
             {/* Stats Cards */}
             {stats && (
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
                 <Card className="shadow-lg">
                   <CardContent className="p-4 text-center">
                     <Car className="h-8 w-8 text-blue-600 mx-auto mb-2" />

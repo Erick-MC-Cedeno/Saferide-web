@@ -719,8 +719,6 @@ function PassengerDashboardContent() {
   const handleRequestRide = async () => {
     if (!pickup || !destination || !pickupCoords || !destinationCoords || !user || !userData) return
 
-    // debug log removed
-
     // Paso 1: Obtener datos de conductores usando driverData
     setRideStatus("searching")
 

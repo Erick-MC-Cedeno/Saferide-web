@@ -260,7 +260,7 @@ function ActivityContent() {
             <h2 className="text-xl font-semibold text-gray-900 mb-6">Overview</h2>
 
             {stats && (
-              <div className="grid grid-cols-3 gap-6 mb-8">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mb-8">
                 <Card className="p-6">
                   <div>
                     <p className="text-sm text-gray-600 mb-2">Total trips</p>
@@ -304,25 +304,25 @@ function ActivityContent() {
                   <table className="w-full">
                     <thead className="bg-gray-50">
                       <tr>
-                        <th className="px-6 py-4 text-left text-sm font-medium text-gray-500">Driver</th>
-                        <th className="px-6 py-4 text-left text-sm font-medium text-gray-500">Date</th>
-                        <th className="px-6 py-4 text-left text-sm font-medium text-gray-500">Duration</th>
-                        <th className="px-6 py-4 text-left text-sm font-medium text-gray-500">Cost</th>
-                        <th className="px-6 py-4 text-left text-sm font-medium text-gray-500">Rating</th>
+                        <th className="px-4 py-3 sm:px-6 sm:py-4 text-left text-sm font-medium text-gray-500">Driver</th>
+                        <th className="px-4 py-3 sm:px-6 sm:py-4 text-left text-sm font-medium text-gray-500">Date</th>
+                        <th className="px-4 py-3 sm:px-6 sm:py-4 text-left text-sm font-medium text-gray-500">Duration</th>
+                        <th className="px-4 py-3 sm:px-6 sm:py-4 text-left text-sm font-medium text-gray-500">Cost</th>
+                        <th className="px-4 py-3 sm:px-6 sm:py-4 text-left text-sm font-medium text-gray-500">Rating</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200">
                       {rides.map((ride) => (
                         <tr key={ride.id} className="hover:bg-gray-50">
-                          <td className="px-6 py-4 text-sm text-gray-900">{ride.driver_name || "Sin asignar"}</td>
-                          <td className="px-6 py-4 text-sm text-gray-600">
+                          <td className="px-4 py-3 sm:px-6 sm:py-4 text-sm text-gray-900">{ride.driver_name || "Sin asignar"}</td>
+                          <td className="px-4 py-3 sm:px-6 sm:py-4 text-sm text-gray-600">
                             {format(new Date(ride.requested_at), "MMM d, yyyy", { locale: es })}
                           </td>
-                          <td className="px-6 py-4 text-sm text-gray-600">{ride.estimated_duration} min</td>
-                          <td className="px-6 py-4 text-sm text-gray-900">
+                          <td className="px-4 py-3 sm:px-6 sm:py-4 text-sm text-gray-600">{ride.estimated_duration} min</td>
+                          <td className="px-4 py-3 sm:px-6 sm:py-4 text-sm text-gray-900">
                             {formatCurrency(ride.actual_fare || ride.estimated_fare)}
                           </td>
-                          <td className="px-6 py-4">
+                          <td className="px-4 py-3 sm:px-6 sm:py-4">
                             {(() => {
                               console.log("[v0] Ride rating data:", {
                                 id: ride.id,

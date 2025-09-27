@@ -103,6 +103,12 @@ function PassengerDashboardContent() {
   const [completedRide, setCompletedRide] = useState<RideRow | null>(null)
   const [rating, setRating] = useState(0)
   const [comment, setComment] = useState("")
+
+  // Sidebar must always be collapsed for passenger dashboard
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(true)
+  const [currentView, setCurrentView] = useState<string>("rides")
+
+
   // We only store these values for updates/read later; the UI currently doesn't
   // reference the *value* directly in this component, so keep only the setters
   // to avoid unused variable warnings while still populating the data.
@@ -1043,9 +1049,7 @@ function PassengerDashboardContent() {
     return "Usuario"
   }
 
-  // Sidebar must always be collapsed for passenger dashboard
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(true)
-  const [currentView, setCurrentView] = useState<string>("rides")
+  
 
   return (
     <div className="h-screen flex bg-gray-50">

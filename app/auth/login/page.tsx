@@ -84,14 +84,15 @@ export default function LoginPage() {
   // ESTADO DE CARGA: MUESTRA PANTALLA DE INICIALIZACIÓN MIENTRAS SE VERIFICA AUTH
   if (authLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center -mt-32">
-        <div className="text-center">
-          <div className="flex items-center justify-center space-x-3 mb-6">
-            <Loader2 className="h-10 w-10 animate-spin text-blue-600" />
-            <Sparkles className="h-8 w-8 text-purple-500 animate-pulse" />
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center mt-4">
+          <div className="relative inline-block mb-8">
+            <Image src="/saferide-icon.svg" alt="SafeRide" width={120} height={36} priority={true} />
+            <div className="absolute inset-0 flex items-center justify-center">
+              <Loader2 className="h-10 w-10 animate-spin text-blue-600" />
+            </div>
           </div>
-          <h2 className="text-3xl font-bold text-blue-600 mb-3">SafeRide</h2>
-          <p className="text-lg text-gray-600 animate-pulse">Inicializando servicios...</p>
+          <p className="text-lg text-gray-600 animate-pulse">Cargando...</p>
         </div>
       </div>
     )

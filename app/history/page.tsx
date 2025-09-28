@@ -2,18 +2,12 @@
 
 import { useState, useEffect, useCallback } from "react"
 import { Button } from "@/components/ui/button"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog"
+// Dialog removed: details view removed per request
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import {
@@ -30,7 +24,6 @@ import {
   User,
   Route,
   TrendingUp,
-  Eye,
   Menu,
   Settings,
   LogOut,
@@ -92,7 +85,7 @@ function HistoryContent() {
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState<string>("all")
   const [dateRange, setDateRange] = useState<{ from?: Date; to?: Date }>({})
-  const [selectedRide, setSelectedRide] = useState<Ride | null>(null)
+  // details view removed; no selectedRide state needed
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true)
   const [currentView, setCurrentView] = useState<string>("history")
 
@@ -314,18 +307,15 @@ function HistoryContent() {
         {!sidebarCollapsed && (
           <div className="p-6 border-b border-gray-200">
             <div className="flex items-center space-x-3">
-              <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center">
-                <span className="text-white font-semibold text-lg">
-                  {String(
-                    ((userInfo ?? {})?.name ?? (userInfo?.full_name ?? fallbackName))
-                  ).charAt(0) || "U"}
-                </span>
-              </div>
+              <Avatar className="w-12 h-12">
+                <AvatarImage src={(userData as Record<string, unknown> | null)?.profile_image as string | undefined} alt="Foto de perfil" />
+                <AvatarFallback className="bg-blue-600 text-white font-semibold text-lg">
+                  {String(((userInfo ?? {})?.name ?? (userInfo?.full_name ?? fallbackName))).charAt(0) || "U"}
+                </AvatarFallback>
+              </Avatar>
               <div>
                 <h3 className="font-semibold text-gray-900">
-                  {String(
-                    ((userInfo ?? {})?.name ?? (userInfo?.full_name ?? fallbackName))
-                  ) || "Usuario"}
+                  {String(((userInfo ?? {})?.name ?? (userInfo?.full_name ?? fallbackName))) || "Usuario"}
                 </h3>
                 <p className="text-sm text-gray-500 hover:text-blue-600 cursor-pointer">Ver perfil</p>
               </div>
@@ -336,63 +326,98 @@ function HistoryContent() {
         {/* User Profile - Collapsed */}
         {sidebarCollapsed && (
           <div className="p-3 border-b border-gray-200 flex justify-center">
-            <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center">
-              <span className="text-white font-semibold text-sm">
-                {String(
-                  ((userInfo ?? {})?.name ?? (userInfo?.full_name ?? fallbackName))
-                ).charAt(0) || "U"}
-              </span>
-            </div>
+            <Avatar className="w-10 h-10">
+              <AvatarImage src={(userData as Record<string, unknown> | null)?.profile_image as string | undefined} alt="Foto de perfil" />
+              <AvatarFallback className="bg-blue-600 text-white font-semibold text-sm">
+                {String(((userInfo ?? {})?.name ?? (userInfo?.full_name ?? fallbackName))).charAt(0) || "U"}
+              </AvatarFallback>
+            </Avatar>
           </div>
         )}
 
         {/* Navigation */}
         <nav className="flex-1 p-4">
           <div className="space-y-2">
-            <button
-              onClick={() => {
-                setCurrentView("rides")
-                handleNavigation("/passenger/dashboard")
-              }}
-              className={`w-full flex items-center ${sidebarCollapsed ? "justify-center relative" : "space-x-3"} ${sidebarCollapsed ? "px-2" : "px-4"} py-3 rounded-lg text-left transition-colors ${
-                currentView === "rides" ? "bg-blue-500 text-white" : "text-gray-700 hover:bg-gray-100"
-              }`}
-            >
-              <Car
-                className={`${sidebarCollapsed ? "h-6 w-6" : "h-5 w-5"} ${currentView === "rides" ? "text-white stroke-current" : "!text-gray-700 !stroke-current"}`}
-              />
-              {!sidebarCollapsed && <span className="font-medium">Rides</span>}
-            </button>
+            {userType === "driver" ? (
+              <>
+                <button
+                  onClick={() => {
+                    setCurrentView("dashboard")
+                    handleNavigation("/driver/dashboard")
+                  }}
+                  className={`w-full flex items-center ${sidebarCollapsed ? "justify-center relative" : "space-x-3"} ${sidebarCollapsed ? "px-2" : "px-4"} py-3 rounded-lg text-left transition-colors ${
+                    currentView === "dashboard" ? "bg-blue-500 text-white" : "text-gray-700 hover:bg-gray-100"
+                  }`}
+                >
+                  <Car
+                    className={`${sidebarCollapsed ? "h-6 w-6" : "h-5 w-5"} ${currentView === "dashboard" ? "text-white stroke-current" : "!text-gray-700 !stroke-current"}`}
+                  />
+                  {!sidebarCollapsed && <span className="font-medium">Dashboard</span>}
+                </button>
 
-            <button
-              onClick={() => {
-                setCurrentView("activity")
-                handleNavigation("/passenger/activity")
-              }}
-              className={`w-full flex items-center ${sidebarCollapsed ? "justify-center relative" : "space-x-3"} ${sidebarCollapsed ? "px-2" : "px-4"} py-3 rounded-lg text-left transition-colors ${
-                currentView === "activity" ? "bg-blue-500 text-white" : "text-gray-700 hover:bg-gray-100"
-              }`}
-            >
-              <Clock
-                className={`${sidebarCollapsed ? "h-6 w-6" : "h-5 w-5"} ${currentView === "activity" ? "text-white stroke-current" : "!text-gray-700 !stroke-current"}`}
-              />
-              {!sidebarCollapsed && <span className="font-medium">Activity</span>}
-            </button>
+                <button
+                  onClick={() => {
+                    setCurrentView("history")
+                    handleNavigation("/driver/history")
+                  }}
+                  className={`w-full flex items-center ${sidebarCollapsed ? "justify-center relative" : "space-x-3"} ${sidebarCollapsed ? "px-2" : "px-4"} py-3 rounded-lg text-left transition-colors ${
+                    currentView === "history" ? "bg-blue-500 text-white" : "text-gray-700 hover:bg-gray-100"
+                  }`}
+                >
+                  <History
+                    className={`${sidebarCollapsed ? "h-6 w-6" : "h-5 w-5"} ${currentView === "history" ? "text-white stroke-current" : "!text-gray-700 !stroke-current"}`}
+                  />
+                  {!sidebarCollapsed && <span className="font-medium">History</span>}
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  onClick={() => {
+                    setCurrentView("rides")
+                    handleNavigation("/passenger/dashboard")
+                  }}
+                  className={`w-full flex items-center ${sidebarCollapsed ? "justify-center relative" : "space-x-3"} ${sidebarCollapsed ? "px-2" : "px-4"} py-3 rounded-lg text-left transition-colors ${
+                    currentView === "rides" ? "bg-blue-500 text-white" : "text-gray-700 hover:bg-gray-100"
+                  }`}
+                >
+                  <Car
+                    className={`${sidebarCollapsed ? "h-6 w-6" : "h-5 w-5"} ${currentView === "rides" ? "text-white stroke-current" : "!text-gray-700 !stroke-current"}`}
+                  />
+                  {!sidebarCollapsed && <span className="font-medium">Rides</span>}
+                </button>
 
-            <button
-              onClick={() => {
-                setCurrentView("history")
-                // Already on history page, no navigation needed
-              }}
-              className={`w-full flex items-center ${sidebarCollapsed ? "justify-center relative" : "space-x-3"} ${sidebarCollapsed ? "px-2" : "px-4"} py-3 rounded-lg text-left transition-colors ${
-                currentView === "history" ? "bg-blue-500 text-white" : "text-gray-700 hover:bg-gray-100"
-              }`}
-            >
-              <History
-                className={`${sidebarCollapsed ? "h-6 w-6" : "h-5 w-5"} ${currentView === "history" ? "text-white stroke-current" : "!text-gray-700 !stroke-current"}`}
-              />
-              {!sidebarCollapsed && <span className="font-medium">History</span>}
-            </button>
+                <button
+                  onClick={() => {
+                    setCurrentView("activity")
+                    handleNavigation("/passenger/activity")
+                  }}
+                  className={`w-full flex items-center ${sidebarCollapsed ? "justify-center relative" : "space-x-3"} ${sidebarCollapsed ? "px-2" : "px-4"} py-3 rounded-lg text-left transition-colors ${
+                    currentView === "activity" ? "bg-blue-500 text-white" : "text-gray-700 hover:bg-gray-100"
+                  }`}
+                >
+                  <Clock
+                    className={`${sidebarCollapsed ? "h-6 w-6" : "h-5 w-5"} ${currentView === "activity" ? "text-white stroke-current" : "!text-gray-700 !stroke-current"}`}
+                  />
+                  {!sidebarCollapsed && <span className="font-medium">Activity</span>}
+                </button>
+
+                <button
+                  onClick={() => {
+                    setCurrentView("history")
+                    // Already on history page, no navigation needed
+                  }}
+                  className={`w-full flex items-center ${sidebarCollapsed ? "justify-center relative" : "space-x-3"} ${sidebarCollapsed ? "px-2" : "px-4"} py-3 rounded-lg text-left transition-colors ${
+                    currentView === "history" ? "bg-blue-500 text-white" : "text-gray-700 hover:bg-gray-100"
+                  }`}
+                >
+                  <History
+                    className={`${sidebarCollapsed ? "h-6 w-6" : "h-5 w-5"} ${currentView === "history" ? "text-white stroke-current" : "!text-gray-700 !stroke-current"}`}
+                  />
+                  {!sidebarCollapsed && <span className="font-medium">History</span>}
+                </button>
+              </>
+            )}
           </div>
         </nav>
 
@@ -414,9 +439,10 @@ function HistoryContent() {
         <div className="p-4 border-t border-gray-200">
           <button
             onClick={handleLogout}
-            className={`w-full flex items-center ${sidebarCollapsed ? "justify-center" : "space-x-3"} px-4 py-3 rounded-lg text-left text-gray-700 hover:bg-gray-100 transition-colors`}
+            aria-label={sidebarCollapsed ? "Cerrar sesión" : undefined}
+            className={`w-full flex items-center ${sidebarCollapsed ? "justify-center" : "space-x-3"} px-3 py-3 rounded-lg text-left text-gray-700 hover:bg-gray-100 transition-colors`}
           >
-            <LogOut className={`${sidebarCollapsed ? "h-6 w-6 !text-gray-700 !stroke-current" : "h-5 w-5"}`} />
+            <LogOut className={`${sidebarCollapsed ? "h-6 w-6 text-gray-700" : "h-5 w-5 text-gray-700"}`} />
             {!sidebarCollapsed && <span className="font-medium">Logout</span>}
           </button>
         </div>
@@ -584,237 +610,94 @@ function HistoryContent() {
                     <p className="text-gray-600">No se encontraron viajes con los filtros aplicados.</p>
                   </div>
                 ) : (
-                  <div className="space-y-4">
-                    {filteredRides.map((ride) => (
-                      <div key={ride.id} className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1 space-y-2">
-                            <div className="flex items-center space-x-2">
-                              <Badge className={getStatusColor(ride.status)}>{getStatusText(ride.status)}</Badge>
-                              <span className="text-sm text-gray-600">
-                                {format(new Date(ride.requested_at), "dd/MM/yyyy HH:mm", { locale: es })}
-                              </span>
-                            </div>
+                  <>
+                    {/* Desktop table */}
+                    <div className="hidden sm:block">
+                      <table className="w-full">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Estado</th>
+                            <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Fecha</th>
+                            <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Origen</th>
+                            <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Destino</th>
+                            <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Conductor</th>
+                            <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Tarifa</th>
+                            <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Duración</th>
+                            <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Rating</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-200">
+                          {filteredRides.map((ride) => (
+                            <tr key={ride.id} className="hover:bg-gray-50">
+                              <td className="px-4 py-3 text-sm text-gray-700"> <Badge className={getStatusColor(ride.status)}>{getStatusText(ride.status)}</Badge> </td>
+                              <td className="px-4 py-3 text-sm text-gray-600">{format(new Date(ride.requested_at), "dd/MM/yyyy HH:mm", { locale: es })}</td>
+                              <td className="px-4 py-3 text-sm text-gray-600">{ride.pickup_address}</td>
+                              <td className="px-4 py-3 text-sm text-gray-600">{ride.destination_address}</td>
+                              <td className="px-4 py-3 text-sm text-gray-900">{userType === "driver" ? ride.passenger_name : ride.driver_name || "Sin asignar"}</td>
+                              <td className="px-4 py-3 text-sm text-gray-900">{formatCurrency(ride.actual_fare || ride.estimated_fare)}</td>
+                              <td className="px-4 py-3 text-sm text-gray-600">{ride.estimated_duration} min</td>
+                              <td className="px-4 py-3 text-sm">{ride.passenger_rating != null ? <div className="flex items-center space-x-1"><span className="text-sm text-gray-900">{Number.isFinite(Number(ride.passenger_rating)) ? Number(ride.passenger_rating).toFixed(1) : String(ride.passenger_rating)}</span><Star className="h-4 w-4 fill-yellow-400 text-yellow-400" /></div> : <span className="text-sm text-gray-400">-</span>}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
 
-                            <div className="grid md:grid-cols-2 gap-4">
-                              <div className="space-y-1">
-                                <div className="flex items-center space-x-2">
-                                  <MapPin className="h-4 w-4 text-green-600" />
-                                  <span className="text-sm font-medium">Origen:</span>
-                                </div>
-                                <p className="text-sm text-gray-600 ml-6">{ride.pickup_address}</p>
-                              </div>
-
-                              <div className="space-y-1">
-                                <div className="flex items-center space-x-2">
-                                  <MapPin className="h-4 w-4 text-red-600" />
-                                  <span className="text-sm font-medium">Destino:</span>
-                                </div>
-                                <p className="text-sm text-gray-600 ml-6">{ride.destination_address}</p>
-                              </div>
-                            </div>
-
-                            <div className="flex items-center space-x-4 text-sm">
-                              <div className="flex items-center space-x-1">
-                                <DollarSign className="h-4 w-4 text-green-600" />
-                                <span>{formatCurrency(ride.actual_fare || ride.estimated_fare)}</span>
-                              </div>
-
-                              <div className="flex items-center space-x-1">
-                                <Clock className="h-4 w-4 text-blue-600" />
-                                <span>{ride.estimated_duration} min</span>
-                              </div>
-
-                              <div className="flex items-center space-x-1">
-                                <Route className="h-4 w-4 text-purple-600" />
-                                <span>{calculateDistance(ride.pickup_address, ride.destination_address)} km</span>
-                              </div>
-
-                              {ride.status === "completed" && (
-                                <div className="flex items-center space-x-1">
-                                  <Star className="h-4 w-4 text-yellow-600" />
-                                  <span>
-                                    {userType === "driver"
-                                      ? ride.driver_rating || "N/A"
-                                      : ride.passenger_rating || "N/A"}
-                                  </span>
-                                </div>
-                              )}
-
-                              <div className="flex items-center space-x-1">
-                                <User className="h-4 w-4 text-gray-600" />
-                                <span>
-                                  {userType === "driver" ? ride.passenger_name : ride.driver_name || "Sin asignar"}
+                    {/* Mobile cards */}
+                    <div className="sm:hidden space-y-4">
+                      {filteredRides.map((ride) => (
+                        <div key={ride.id} className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1 space-y-2">
+                              <div className="flex items-center space-x-2">
+                                <Badge className={getStatusColor(ride.status)}>{getStatusText(ride.status)}</Badge>
+                                <span className="text-sm text-gray-600">
+                                  {format(new Date(ride.requested_at), "dd/MM/yyyy HH:mm", { locale: es })}
                                 </span>
                               </div>
-                            </div>
-                          </div>
 
-                          <Dialog>
-                            <DialogTrigger asChild>
-                              <Button variant="outline" size="sm" onClick={() => setSelectedRide(ride)}>
-                                <Eye className="h-4 w-4 mr-2" />
-                                Ver detalles
-                              </Button>
-                            </DialogTrigger>
-                            <DialogContent className="max-w-2xl">
-                              <DialogHeader>
-                                <DialogTitle>Detalles del Viaje</DialogTitle>
-                                <DialogDescription>
-                                  Información completa del viaje del{" "}
-                                  {format(new Date(ride.requested_at), "dd/MM/yyyy HH:mm", { locale: es })}
-                                </DialogDescription>
-                              </DialogHeader>
-
-                              {selectedRide && (
-                                <div className="space-y-6">
-                                  <div className="grid md:grid-cols-2 gap-4">
-                                    <div className="space-y-3">
-                                      <h4 className="font-semibold text-gray-900">Información del Viaje</h4>
-                                      <div className="space-y-2 text-sm">
-                                        <div className="flex justify-between">
-                                          <span className="text-gray-600">Estado:</span>
-                                          <Badge className={getStatusColor(selectedRide.status)}>
-                                            {getStatusText(selectedRide.status)}
-                                          </Badge>
-                                        </div>
-                                        <div className="flex justify-between">
-                                          <span className="text-gray-600">Fecha solicitado:</span>
-                                          <span>
-                                            {format(new Date(selectedRide.requested_at), "dd/MM/yyyy HH:mm", {
-                                              locale: es,
-                                            })}
-                                          </span>
-                                        </div>
-                                        {selectedRide.completed_at && (
-                                          <div className="flex justify-between">
-                                            <span className="text-gray-600">Fecha completado:</span>
-                                            <span>
-                                              {format(new Date(selectedRide.completed_at), "dd/MM/yyyy HH:mm", {
-                                                locale: es,
-                                              })}
-                                            </span>
-                                          </div>
-                                        )}
-                                        <div className="flex justify-between">
-                                          <span className="text-gray-600">Duración estimada:</span>
-                                          <span>{selectedRide.estimated_duration} minutos</span>
-                                        </div>
-                                      </div>
-                                    </div>
-
-                                    <div className="space-y-3">
-                                      <h4 className="font-semibold text-gray-900">Información de Pago</h4>
-                                      <div className="space-y-2 text-sm">
-                                        <div className="flex justify-between">
-                                          <span className="text-gray-600">Tarifa estimada:</span>
-                                          <span>{formatCurrency(selectedRide.estimated_fare)}</span>
-                                        </div>
-                                        {selectedRide.actual_fare && (
-                                          <div className="flex justify-between">
-                                            <span className="text-gray-600">Tarifa final:</span>
-                                            <span className="font-semibold">
-                                              {formatCurrency(selectedRide.actual_fare)}
-                                            </span>
-                                          </div>
-                                        )}
-                                        <div className="flex justify-between">
-                                          <span className="text-gray-600">Distancia:</span>
-                                          <span>
-                                            {calculateDistance(
-                                              selectedRide.pickup_address,
-                                              selectedRide.destination_address,
-                                            )}{" "}
-                                            km
-                                          </span>
-                                        </div>
-                                      </div>
-                                    </div>
-                                  </div>
-
-                                  <div className="space-y-3">
-                                    <h4 className="font-semibold text-gray-900">Ubicaciones</h4>
-                                    <div className="space-y-3">
-                                      <div className="flex items-start space-x-3">
-                                        <div className="w-3 h-3 bg-green-500 rounded-full mt-1"></div>
-                                        <div>
-                                          <p className="font-medium text-sm">Origen</p>
-                                          <p className="text-sm text-gray-600">{selectedRide.pickup_address}</p>
-                                        </div>
-                                      </div>
-                                      <div className="flex items-start space-x-3">
-                                        <div className="w-3 h-3 bg-red-500 rounded-full mt-1"></div>
-                                        <div>
-                                          <p className="font-medium text-sm">Destino</p>
-                                          <p className="text-sm text-gray-600">{selectedRide.destination_address}</p>
-                                        </div>
-                                      </div>
-                                    </div>
-                                  </div>
-
-                                  <div className="grid md:grid-cols-2 gap-4">
-                                    <div className="space-y-3">
-                                      <h4 className="font-semibold text-gray-900">Pasajero</h4>
-                                      <div className="space-y-2 text-sm">
-                                        <div className="flex justify-between">
-                                          <span className="text-gray-600">Nombre:</span>
-                                          <span>{selectedRide.passenger_name}</span>
-                                        </div>
-                                        {selectedRide.passenger_rating && (
-                                          <div className="flex justify-between">
-                                            <span className="text-gray-600">Calificación:</span>
-                                            <div className="flex items-center space-x-1">
-                                              <Star className="h-4 w-4 text-yellow-500" />
-                                              <span>{selectedRide.passenger_rating}</span>
-                                            </div>
-                                          </div>
-                                        )}
-                                        {selectedRide.passenger_comment && (
-                                          <div>
-                                            <span className="text-gray-600">Comentario:</span>
-                                            <p className="text-sm mt-1 p-2 bg-gray-50 rounded">
-                                              {selectedRide.passenger_comment}
-                                            </p>
-                                          </div>
-                                        )}
-                                      </div>
-                                    </div>
-
-                                    <div className="space-y-3">
-                                      <h4 className="font-semibold text-gray-900">Conductor</h4>
-                                      <div className="space-y-2 text-sm">
-                                        <div className="flex justify-between">
-                                          <span className="text-gray-600">Nombre:</span>
-                                          <span>{selectedRide.driver_name || "Sin asignar"}</span>
-                                        </div>
-                                        {selectedRide.driver_rating && (
-                                          <div className="flex justify-between">
-                                            <span className="text-gray-600">Calificación:</span>
-                                            <div className="flex items-center space-x-1">
-                                              <Star className="h-4 w-4 text-yellow-500" />
-                                              <span>{selectedRide.driver_rating}</span>
-                                            </div>
-                                          </div>
-                                        )}
-                                        {selectedRide.driver_comment && (
-                                          <div>
-                                            <span className="text-gray-600">Comentario:</span>
-                                            <p className="text-sm mt-1 p-2 bg-gray-50 rounded">
-                                              {selectedRide.driver_comment}
-                                            </p>
-                                          </div>
-                                        )}
-                                      </div>
-                                    </div>
-                                  </div>
+                              <div className="space-y-2">
+                                <div className="flex items-center space-x-2">
+                                  <MapPin className="h-4 w-4 text-green-600" />
+                                  <span className="text-sm font-medium truncate">Origen:</span>
                                 </div>
-                              )}
-                            </DialogContent>
-                          </Dialog>
+                                <p className="text-sm text-gray-600 ml-6 truncate">{ride.pickup_address}</p>
+                                <div className="flex items-center space-x-2 mt-2">
+                                  <MapPin className="h-4 w-4 text-red-600" />
+                                  <span className="text-sm font-medium truncate">Destino:</span>
+                                </div>
+                                <p className="text-sm text-gray-600 ml-6 truncate">{ride.destination_address}</p>
+                              </div>
+
+                              <div className="flex items-center space-x-4 text-sm">
+                                <div className="flex items-center space-x-1">
+                                  <DollarSign className="h-4 w-4 text-green-600" />
+                                  <span>{formatCurrency(ride.actual_fare || ride.estimated_fare)}</span>
+                                </div>
+
+                                <div className="flex items-center space-x-1">
+                                  <Clock className="h-4 w-4 text-blue-600" />
+                                  <span>{ride.estimated_duration} min</span>
+                                </div>
+
+                                <div className="flex items-center space-x-1">
+                                  <Route className="h-4 w-4 text-purple-600" />
+                                  <span>{calculateDistance(ride.pickup_address, ride.destination_address)} km</span>
+                                </div>
+
+                                <div className="flex items-center space-x-1">
+                                  <User className="h-4 w-4 text-gray-600" />
+                                  <span className="truncate">{userType === "driver" ? ride.passenger_name : ride.driver_name || "Sin asignar"}</span>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Details removed */}
+                          </div>
                         </div>
-                      </div>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
+                  </>
                 )}
               </CardContent>
             </Card>

@@ -987,9 +987,10 @@ function DriverDashboardContent() {
         <div className="p-4 border-t border-gray-200">
           <button
             onClick={handleLogout}
-            className={`w-full flex items-center ${sidebarCollapsed ? "justify-center" : "space-x-3"} px-4 py-3 rounded-lg text-left text-gray-700 hover:bg-gray-100 transition-colors`}
+            aria-label={sidebarCollapsed ? "Cerrar sesión" : undefined}
+            className={`w-full flex items-center ${sidebarCollapsed ? "justify-center" : "space-x-3"} px-3 py-3 rounded-lg text-left text-gray-700 hover:bg-gray-100 transition-colors`}
           >
-            <LogOut className={`${sidebarCollapsed ? "h-6 w-6" : "h-5 w-5"}`} />
+            <LogOut className={`${sidebarCollapsed ? "h-6 w-6 text-gray-700" : "h-5 w-5 text-gray-700"}`} />
             {!sidebarCollapsed && <span className="font-medium">Logout</span>}
           </button>
         </div>

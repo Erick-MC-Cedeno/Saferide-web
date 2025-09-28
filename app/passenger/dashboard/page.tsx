@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, useCallback, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
@@ -1047,6 +1047,16 @@ function PassengerDashboardContent() {
     return "Usuario"
   }
 
+  const getProfileImage = () => {
+    try {
+      const ud = userData as Record<string, unknown> | null
+      const img = ud && typeof ud['profile_image'] === 'string' && ud['profile_image'] ? (ud['profile_image'] as string) : null
+      return img || "/placeholder.svg?height=40&width=40"
+    } catch {
+      return "/placeholder.svg?height=40&width=40"
+    }
+  }
+
   
 
   return (
@@ -1071,6 +1081,7 @@ function PassengerDashboardContent() {
           <div className="p-6 border-b border-gray-200">
             <div className="flex items-center space-x-3">
               <Avatar className="h-12 w-12">
+                <AvatarImage src={getProfileImage()} alt="Foto de perfil" className="object-cover" />
                 <AvatarFallback className="bg-gradient-to-r from-blue-500 to-indigo-500 text-white font-bold">
                   {String(getDisplayName()).charAt(0) || "U"}
                 </AvatarFallback>
@@ -1094,6 +1105,7 @@ function PassengerDashboardContent() {
         {sidebarCollapsed && (
           <div className="p-3 border-b border-gray-200 flex justify-center">
             <Avatar className="h-10 w-10">
+              <AvatarImage src={getProfileImage()} alt="Foto de perfil" className="object-cover" />
               <AvatarFallback className="bg-gradient-to-r from-blue-500 to-indigo-500 text-white font-bold text-sm">
                 {String(getDisplayName()).charAt(0) || "U"}
               </AvatarFallback>
@@ -1171,9 +1183,10 @@ function PassengerDashboardContent() {
               setCurrentView("logout")
               handleNavigation("logout")
             }}
-            className={`w-full flex items-center ${sidebarCollapsed ? "justify-center" : "space-x-3"} px-4 py-3 rounded-lg text-left text-gray-700 hover:bg-gray-100 transition-colors`}
+            aria-label={sidebarCollapsed ? "Cerrar sesión" : undefined}
+            className={`w-full flex items-center ${sidebarCollapsed ? "justify-center" : "space-x-3"} px-3 py-3 rounded-lg text-left text-gray-700 hover:bg-gray-100 transition-colors`}
           >
-            <LogOut className={`${sidebarCollapsed ? "h-6 w-6" : "h-5 w-5"} ${sidebarCollapsed ? "" : ""}`} />
+            <LogOut className={`${sidebarCollapsed ? "h-6 w-6 text-gray-700" : "h-5 w-5 text-gray-700"}`} />
             {!sidebarCollapsed && <span className="font-medium">Logout</span>}
           </button>
         </div>
@@ -1207,6 +1220,7 @@ function PassengerDashboardContent() {
           <div className="p-6 border-b border-gray-200">
             <div className="flex items-center space-x-3">
               <Avatar className="h-12 w-12">
+                <AvatarImage src={getProfileImage()} alt="Foto de perfil" className="object-cover" />
                 <AvatarFallback className="bg-gradient-to-r from-blue-500 to-indigo-500 text-white font-bold">
                   {String(getDisplayName()).charAt(0) || "U"}
                 </AvatarFallback>
@@ -1233,6 +1247,7 @@ function PassengerDashboardContent() {
         {sidebarCollapsed && (
           <div className="p-3 border-b border-gray-200 flex justify-center">
             <Avatar className="h-10 w-10">
+              <AvatarImage src={getProfileImage()} alt="Foto de perfil" className="object-cover" />
               <AvatarFallback className="bg-gradient-to-r from-blue-500 to-indigo-500 text-white font-bold text-sm">
                 {String(getDisplayName()).charAt(0) || "U"}
               </AvatarFallback>
@@ -1310,9 +1325,9 @@ function PassengerDashboardContent() {
               setCurrentView("logout")
               handleNavigation("logout")
             }}
-            className={`w-full flex items-center ${sidebarCollapsed ? "justify-center" : "space-x-3"} px-4 py-3 rounded-lg text-left text-gray-700 hover:bg-gray-100 transition-colors`}
+            className={`w-full flex items-center ${sidebarCollapsed ? "justify-center" : "space-x-3"} px-3 py-3 rounded-lg text-left text-gray-700 hover:bg-gray-100 transition-colors`}
           >
-            <LogOut className={`${sidebarCollapsed ? "h-6 w-6" : "h-5 w-5"} ${sidebarCollapsed ? "" : ""}`} />
+            <LogOut className={`${sidebarCollapsed ? "h-6 w-6 text-gray-700" : "h-5 w-5 text-gray-700"}`} />
             {!sidebarCollapsed && <span className="font-medium">Logout</span>}
           </button>
         </div>

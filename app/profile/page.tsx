@@ -612,25 +612,51 @@ function ProfileContent() {
 
         <nav className="flex-1 p-4">
           <div className="space-y-2">
-            <button
-              onClick={() => {
-                handleNavigation("/passenger/dashboard")
-              }}
-              className={`w-full flex items-center ${sidebarCollapsed ? "justify-center relative" : "space-x-3"} ${sidebarCollapsed ? "px-2" : "px-4"} py-3 rounded-lg text-left transition-colors text-gray-700 hover:bg-gray-100`}
-            >
-              <Car className={`${sidebarCollapsed ? "h-6 w-6 !text-gray-700 !stroke-current" : "h-5 w-5"}`} />
-              {!sidebarCollapsed && <span className="font-medium">Rides</span>}
-            </button>
+            {userType === "driver" ? (
+              <>
+                <button
+                  onClick={() => {
+                    handleNavigation("/driver/dashboard")
+                  }}
+                  className={`w-full flex items-center ${sidebarCollapsed ? "justify-center relative" : "space-x-3"} ${sidebarCollapsed ? "px-2" : "px-4"} py-3 rounded-lg text-left transition-colors text-gray-700 hover:bg-gray-100`}
+                >
+                  <Car className={`${sidebarCollapsed ? "h-6 w-6 !text-gray-700 !stroke-current" : "h-5 w-5"}`} />
+                  {!sidebarCollapsed && <span className="font-medium">Dashboard</span>}
+                </button>
 
-            <button
-              onClick={() => {
-                handleNavigation("/passenger/activity")
-              }}
-              className={`w-full flex items-center ${sidebarCollapsed ? "justify-center relative" : "space-x-3"} ${sidebarCollapsed ? "px-2" : "px-4"} py-3 rounded-lg text-left transition-colors text-gray-700 hover:bg-gray-100`}
-            >
-              <Clock className={`${sidebarCollapsed ? "h-6 w-6 !text-gray-700 !stroke-current" : "h-5 w-5"}`} />
-              {!sidebarCollapsed && <span className="font-medium">Activity</span>}
-            </button>
+                <button
+                  onClick={() => {
+                    handleNavigation("/driver/history")
+                  }}
+                  className={`w-full flex items-center ${sidebarCollapsed ? "justify-center relative" : "space-x-3"} ${sidebarCollapsed ? "px-2" : "px-4"} py-3 rounded-lg text-left transition-colors text-gray-700 hover:bg-gray-100`}
+                >
+                  <Clock className={`${sidebarCollapsed ? "h-6 w-6 !text-gray-700 !stroke-current" : "h-5 w-5"}`} />
+                  {!sidebarCollapsed && <span className="font-medium">History</span>}
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  onClick={() => {
+                    handleNavigation("/passenger/dashboard")
+                  }}
+                  className={`w-full flex items-center ${sidebarCollapsed ? "justify-center relative" : "space-x-3"} ${sidebarCollapsed ? "px-2" : "px-4"} py-3 rounded-lg text-left transition-colors text-gray-700 hover:bg-gray-100`}
+                >
+                  <Car className={`${sidebarCollapsed ? "h-6 w-6 !text-gray-700 !stroke-current" : "h-5 w-5"}`} />
+                  {!sidebarCollapsed && <span className="font-medium">Rides</span>}
+                </button>
+
+                <button
+                  onClick={() => {
+                    handleNavigation("/passenger/activity")
+                  }}
+                  className={`w-full flex items-center ${sidebarCollapsed ? "justify-center relative" : "space-x-3"} ${sidebarCollapsed ? "px-2" : "px-4"} py-3 rounded-lg text-left transition-colors text-gray-700 hover:bg-gray-100`}
+                >
+                  <Clock className={`${sidebarCollapsed ? "h-6 w-6 !text-gray-700 !stroke-current" : "h-5 w-5"}`} />
+                  {!sidebarCollapsed && <span className="font-medium">Activity</span>}
+                </button>
+              </>
+            )}
 
             <button
               onClick={() => setCurrentView("profile")}
@@ -661,29 +687,30 @@ function ProfileContent() {
         <div className="mt-auto p-4 border-t border-gray-200">
           <button
             onClick={handleLogout}
-            className={`w-full flex items-center ${sidebarCollapsed ? "justify-center" : "space-x-3"} px-4 py-3 rounded-lg text-left text-gray-700 hover:bg-gray-100 transition-colors`}
+            aria-label={sidebarCollapsed ? "Cerrar sesión" : undefined}
+            className={`w-full flex items-center ${sidebarCollapsed ? "justify-center" : "space-x-3"} px-3 py-3 rounded-lg text-left text-gray-700 hover:bg-gray-100 transition-colors`}
           >
-            <LogOut className={`${sidebarCollapsed ? "h-6 w-6 !text-gray-700 !stroke-current" : "h-5 w-5"}`} />
+            <LogOut className={`${sidebarCollapsed ? "h-6 w-6 text-gray-700" : "h-5 w-5 text-gray-700"}`} />
             {!sidebarCollapsed && <span className="font-medium">Logout</span>}
           </button>
         </div>
       </div>
 
       <div className="flex-1 overflow-auto">
-        <div className="p-8">
+        <div className="p-4 sm:p-8">
           <div className="mb-8">
             <h1 className="text-3xl font-bold text-gray-900 mb-2">Mi Perfil</h1>
             <p className="text-gray-600">Gestiona tu información personal y revisa tus estadísticas</p>
           </div>
 
-          <div className="grid lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-1">
               <Card className="shadow-lg">
                 <CardHeader className="text-center">
                   <div className="relative mx-auto mb-4">
-                    <Avatar className="h-24 w-24 mx-auto">
+                    <Avatar className="h-20 w-20 sm:h-24 sm:w-24 mx-auto ring-4 ring-blue-200">
                       <AvatarImage src={imagePreview || profile.profileImage || "/placeholder.svg"} />
-                      <AvatarFallback className="text-xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white">
+                      <AvatarFallback className="text-2xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white">
                         {getInitials(profile.name)}
                       </AvatarFallback>
                     </Avatar>
@@ -698,7 +725,7 @@ function ProfileContent() {
                     <Button
                       size="sm"
                       variant="outline"
-                      className="absolute -bottom-2 -right-2 rounded-full h-8 w-8 p-0 bg-transparent"
+                      className="absolute -bottom-4 -right-4 sm:-bottom-3 sm:-right-3 rounded-full h-8 w-8 p-0 bg-transparent"
                       onClick={() => {
                         document.getElementById("profile-image-upload")?.click()
                       }}
@@ -753,7 +780,7 @@ function ProfileContent() {
 
             <div className="lg:col-span-2 space-y-6">
               <Card className="shadow-lg">
-                <CardHeader className="flex flex-row items-center justify-between">
+                <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
                   <div>
                     <CardTitle className="flex items-center space-x-2">
                       <User className="h-5 w-5 text-blue-600" />
@@ -761,30 +788,32 @@ function ProfileContent() {
                     </CardTitle>
                     <CardDescription>Tu información básica de contacto</CardDescription>
                   </div>
-                  {!editing ? (
-                    <Button variant="outline" size="sm" onClick={() => setEditing(true)}>
-                      <Edit3 className="h-4 w-4 mr-2" />
-                      Editar
-                    </Button>
-                  ) : (
-                    <div className="space-x-2">
-                      <Button variant="outline" size="sm" onClick={cancelEdit}>
-                        <X className="h-4 w-4 mr-2" />
-                        Cancelar
+                  <div className="w-full sm:w-auto">
+                    {!editing ? (
+                      <Button variant="outline" size="sm" onClick={() => setEditing(true)} className="w-full sm:w-auto">
+                        <Edit3 className="h-4 w-4 mr-2" />
+                        Editar
                       </Button>
-                      <Button size="sm" onClick={saveProfile} disabled={saving}>
-                        {saving ? (
-                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                        ) : (
-                          <Save className="h-4 w-4 mr-2" />
-                        )}
-                        Guardar
-                      </Button>
-                    </div>
-                  )}
+                    ) : (
+                      <div className="flex flex-col sm:flex-row sm:space-x-2 space-y-2 sm:space-y-0 w-full">
+                        <Button variant="outline" size="sm" onClick={cancelEdit} className="w-full sm:w-auto">
+                          <X className="h-4 w-4 mr-2" />
+                          Cancelar
+                        </Button>
+                        <Button size="sm" onClick={saveProfile} disabled={saving} className="w-full sm:w-auto">
+                          {saving ? (
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                          ) : (
+                            <Save className="h-4 w-4 mr-2" />
+                          )}
+                          Guardar
+                        </Button>
+                      </div>
+                    )}
+                  </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="grid md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="name">Nombre completo</Label>
                       {editing ? (

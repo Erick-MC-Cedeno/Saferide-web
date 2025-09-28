@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Card } from "@/components/ui/card"
 import { Star, Clock, Settings, LogOut, Menu, Car } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
@@ -161,18 +162,18 @@ function ActivityContent() {
         {!sidebarCollapsed && (
           <div className="p-6 border-b border-gray-200">
             <div className="flex items-center space-x-3">
-              <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center">
-                <span className="text-white font-semibold text-lg">
-                  {String(
-                    ((userInfo ?? {})?.name ?? (userInfo?.full_name ?? fallbackName))
-                  ).charAt(0) || "U"}
-                </span>
-              </div>
+              <Avatar className="w-12 h-12">
+                <AvatarImage
+                  src={(userData as Record<string, unknown> | null)?.profile_image as string | undefined}
+                  alt="Foto de perfil"
+                />
+                <AvatarFallback className="bg-blue-600 text-white font-semibold text-lg">
+                  {String(((userInfo ?? {})?.name ?? (userInfo?.full_name ?? fallbackName))).charAt(0) || "U"}
+                </AvatarFallback>
+              </Avatar>
               <div>
                 <h3 className="font-semibold text-gray-900">
-                  {String(
-                    ((userInfo ?? {})?.name ?? (userInfo?.full_name ?? fallbackName))
-                  ) || "Usuario"}
+                  {String(((userInfo ?? {})?.name ?? (userInfo?.full_name ?? fallbackName))) || "Usuario"}
                 </h3>
                 <button
                   onClick={() => handleNavigation("/profile")}
@@ -187,13 +188,15 @@ function ActivityContent() {
 
         {sidebarCollapsed && (
           <div className="p-3 border-b border-gray-200 flex justify-center">
-            <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center">
-              <span className="text-white font-semibold text-sm">
-                {String(
-                  ((userInfo ?? {})?.name ?? (userInfo?.full_name ?? fallbackName))
-                ).charAt(0) || "U"}
-              </span>
-            </div>
+            <Avatar className="w-10 h-10">
+              <AvatarImage
+                src={(userData as Record<string, unknown> | null)?.profile_image as string | undefined}
+                alt="Foto de perfil"
+              />
+              <AvatarFallback className="bg-blue-600 text-white font-semibold text-sm">
+                {String(((userInfo ?? {})?.name ?? (userInfo?.full_name ?? fallbackName))).charAt(0) || "U"}
+              </AvatarFallback>
+            </Avatar>
           </div>
         )}
 
@@ -244,9 +247,10 @@ function ActivityContent() {
         <div className="mt-auto p-4 border-t border-gray-200">
           <button
             onClick={handleLogout}
-            className={`w-full flex items-center ${sidebarCollapsed ? "justify-center" : "space-x-3"} px-4 py-3 rounded-lg text-left text-gray-700 hover:bg-gray-100 transition-colors`}
+            aria-label={sidebarCollapsed ? "Cerrar sesión" : undefined}
+            className={`w-full flex items-center ${sidebarCollapsed ? "justify-center" : "space-x-3"} px-3 py-3 rounded-lg text-left text-gray-700 hover:bg-gray-100 transition-colors`}
           >
-            <LogOut className={`${sidebarCollapsed ? "h-6 w-6 !text-gray-700 !stroke-current" : "h-5 w-5"}`} />
+            <LogOut className={`${sidebarCollapsed ? "h-6 w-6 text-gray-700" : "h-5 w-5 text-gray-700"}`} />
             {!sidebarCollapsed && <span className="font-medium">Logout</span>}
           </button>
         </div>
@@ -301,55 +305,81 @@ function ActivityContent() {
             ) : (
               <Card>
                 <div className="overflow-hidden">
-                  <table className="w-full">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-4 py-3 sm:px-6 sm:py-4 text-left text-sm font-medium text-gray-500">Driver</th>
-                        <th className="px-4 py-3 sm:px-6 sm:py-4 text-left text-sm font-medium text-gray-500">Date</th>
-                        <th className="px-4 py-3 sm:px-6 sm:py-4 text-left text-sm font-medium text-gray-500">Duration</th>
-                        <th className="px-4 py-3 sm:px-6 sm:py-4 text-left text-sm font-medium text-gray-500">Cost</th>
-                        <th className="px-4 py-3 sm:px-6 sm:py-4 text-left text-sm font-medium text-gray-500">Rating</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-200">
-                      {rides.map((ride) => (
-                        <tr key={ride.id} className="hover:bg-gray-50">
-                          <td className="px-4 py-3 sm:px-6 sm:py-4 text-sm text-gray-900">{ride.driver_name || "Sin asignar"}</td>
-                          <td className="px-4 py-3 sm:px-6 sm:py-4 text-sm text-gray-600">
-                            {format(new Date(ride.requested_at), "MMM d, yyyy", { locale: es })}
-                          </td>
-                          <td className="px-4 py-3 sm:px-6 sm:py-4 text-sm text-gray-600">{ride.estimated_duration} min</td>
-                          <td className="px-4 py-3 sm:px-6 sm:py-4 text-sm text-gray-900">
-                            {formatCurrency(ride.actual_fare || ride.estimated_fare)}
-                          </td>
-                          <td className="px-4 py-3 sm:px-6 sm:py-4">
-                            {(() => {
-                              console.log("[v0] Ride rating data:", {
-                                id: ride.id,
-                                passenger_rating: ride.passenger_rating,
-                                driver_rating: ride.driver_rating,
-                                status: ride.status,
-                              })
+                  {/* Desktop table */}
+                  <div className="hidden sm:block">
+                    <table className="w-full">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-4 py-3 sm:px-6 sm:py-4 text-left text-sm font-medium text-gray-500">Driver</th>
+                          <th className="px-4 py-3 sm:px-6 sm:py-4 text-left text-sm font-medium text-gray-500">Date</th>
+                          <th className="px-4 py-3 sm:px-6 sm:py-4 text-left text-sm font-medium text-gray-500">Duration</th>
+                          <th className="px-4 py-3 sm:px-6 sm:py-4 text-left text-sm font-medium text-gray-500">Cost</th>
+                          <th className="px-4 py-3 sm:px-6 sm:py-4 text-left text-sm font-medium text-gray-500">Rating</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-200">
+                        {rides.map((ride) => (
+                          <tr key={ride.id} className="hover:bg-gray-50">
+                            <td className="px-4 py-3 sm:px-6 sm:py-4 text-sm text-gray-900">{ride.driver_name || "Sin asignar"}</td>
+                            <td className="px-4 py-3 sm:px-6 sm:py-4 text-sm text-gray-600">
+                              {format(new Date(ride.requested_at), "MMM d, yyyy", { locale: es })}
+                            </td>
+                            <td className="px-4 py-3 sm:px-6 sm:py-4 text-sm text-gray-600">{ride.estimated_duration} min</td>
+                            <td className="px-4 py-3 sm:px-6 sm:py-4 text-sm text-gray-900">
+                              {formatCurrency(ride.actual_fare || ride.estimated_fare)}
+                            </td>
+                            <td className="px-4 py-3 sm:px-6 sm:py-4">
+                              {(() => {
+                                if (ride.passenger_rating != null) {
+                                  const r = Number(ride.passenger_rating)
+                                  return (
+                                    <div className="flex items-center space-x-1">
+                                      <span className="text-sm text-gray-900">
+                                        {Number.isFinite(r) ? r.toFixed(1) : String(ride.passenger_rating)}
+                                      </span>
+                                      <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                                    </div>
+                                  )
+                                } else {
+                                  return <span className="text-sm text-gray-400">-</span>
+                                }
+                              })()}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
 
-                              if (ride.passenger_rating != null) {
-                                const r = Number(ride.passenger_rating)
-                                return (
+                  {/* Mobile list */}
+                  <div className="sm:hidden space-y-4">
+                    {rides.map((ride) => (
+                      <div key={ride.id} className="p-4 border rounded-lg bg-white shadow-sm">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between">
+                              <h3 className="text-sm font-medium text-gray-900 truncate">{ride.driver_name || "Sin asignar"}</h3>
+                              <div className="text-sm text-gray-900">{formatCurrency(ride.actual_fare || ride.estimated_fare)}</div>
+                            </div>
+                            <p className="text-sm text-gray-600">{format(new Date(ride.requested_at), "dd/MM/yyyy HH:mm", { locale: es })}</p>
+                            <div className="mt-2 flex items-center justify-between text-sm text-gray-600">
+                              <div>{ride.estimated_duration} min</div>
+                              <div>
+                                {ride.passenger_rating != null ? (
                                   <div className="flex items-center space-x-1">
-                                    <span className="text-sm text-gray-900">
-                                      {Number.isFinite(r) ? r.toFixed(1) : String(ride.passenger_rating)}
-                                    </span>
+                                    <span className="text-sm text-gray-900">{Number.isFinite(Number(ride.passenger_rating)) ? Number(ride.passenger_rating).toFixed(1) : String(ride.passenger_rating)}</span>
                                     <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
                                   </div>
-                                )
-                              } else {
-                                return <span className="text-sm text-gray-400">-</span>
-                              }
-                            })()}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                                ) : (
+                                  <span className="text-sm text-gray-400">-</span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </Card>
             )}

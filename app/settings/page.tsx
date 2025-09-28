@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react"
 import { Button } from "@/components/ui/button"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
@@ -14,13 +15,11 @@ import {
   Globe,
   Shield,
   CreditCard,
-  MapPin,
   Volume2,
   Smartphone,
   Mail,
   MessageSquare,
   MessageCircle,
-  Eye,
   Lock,
   Trash2,
   Download,
@@ -40,16 +39,8 @@ interface UserSettings {
   notifications: {
     push: boolean
     email: boolean
-    sms: boolean
     chatNotifications: boolean
-    rideUpdates: boolean
-    promotions: boolean
     safety: boolean
-  }
-  privacy: {
-    shareLocation: boolean
-    showProfile: boolean
-    allowMessages: boolean
   }
   preferences: {
     language: string
@@ -78,16 +69,8 @@ const defaultSettings: UserSettings = {
   notifications: {
     push: true,
     email: true,
-    sms: false,
     chatNotifications: true,
-    rideUpdates: true,
-    promotions: false,
     safety: true,
-  },
-  privacy: {
-    shareLocation: true,
-    showProfile: true,
-    allowMessages: true,
   },
   preferences: {
     language: "es",
@@ -394,16 +377,6 @@ function SettingsContent() {
     })
   }
 
-  const updatePrivacySetting = (key: keyof UserSettings["privacy"], value: boolean) => {
-    setSettings((prev) => ({
-      ...prev,
-      privacy: {
-        ...prev.privacy,
-        [key]: value,
-      },
-    }))
-  }
-
   const updatePreferenceSetting = (key: keyof UserSettings["preferences"], value: string | boolean) => {
     setSettings((prev) => ({
       ...prev,
@@ -516,20 +489,15 @@ function SettingsContent() {
         {!sidebarCollapsed && (
           <div className="p-6 border-b border-gray-200">
             <div className="flex items-center space-x-3">
-              <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center">
-                <span className="text-white font-semibold text-lg">
-                  {String(
-                    ((userData as { name?: string; full_name?: string } | null) ?? {})?.name ??
-                      String(((userData as { full_name?: string } | null)?.full_name ?? user?.email ?? "")).split("@")[0],
-                  ).charAt(0) || "U"}
-                </span>
-              </div>
+              <Avatar className="w-12 h-12">
+                <AvatarImage src={(userData as Record<string, unknown> | null)?.profile_image as string | undefined} alt="Foto de perfil" />
+                <AvatarFallback className="bg-blue-600 text-white font-semibold text-lg">
+                  {String(((userData as { name?: string; full_name?: string } | null) ?? {})?.name ?? String(((userData as { full_name?: string } | null)?.full_name ?? user?.email ?? "")).split("@")[0]).charAt(0) || "U"}
+                </AvatarFallback>
+              </Avatar>
               <div>
                 <h3 className="font-semibold text-gray-900">
-                  {String(
-                    ((userData as { name?: string; full_name?: string } | null) ?? {})?.name ??
-                      String(((userData as { full_name?: string } | null)?.full_name ?? user?.email ?? "")).split("@")[0],
-                  ) || "Usuario"}
+                  {String(((userData as { name?: string; full_name?: string } | null) ?? {})?.name ?? String(((userData as { full_name?: string } | null)?.full_name ?? user?.email ?? "")).split("@")[0]) || "Usuario"}
                 </h3>
                 <p className="text-sm text-gray-500 hover:text-blue-600 cursor-pointer">Ver perfil</p>
               </div>
@@ -539,48 +507,82 @@ function SettingsContent() {
 
         {sidebarCollapsed && (
           <div className="p-3 border-b border-gray-200 flex justify-center">
-            <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center">
-              <span className="text-white font-semibold text-sm">
-                {String(
-                  ((userData as { name?: string; full_name?: string } | null) ?? {})?.name ??
-                    String(((userData as { full_name?: string } | null)?.full_name ?? user?.email ?? "")).split("@")[0],
-                ).charAt(0) || "U"}
-              </span>
-            </div>
+            <Avatar className="w-10 h-10">
+              <AvatarImage src={(userData as Record<string, unknown> | null)?.profile_image as string | undefined} alt="Foto de perfil" />
+              <AvatarFallback className="bg-blue-600 text-white font-semibold text-sm">
+                {String(((userData as { name?: string; full_name?: string } | null) ?? {})?.name ?? String(((userData as { full_name?: string } | null)?.full_name ?? user?.email ?? "")).split("@")[0]).charAt(0) || "U"}
+              </AvatarFallback>
+            </Avatar>
           </div>
         )}
 
         <nav className="flex-1 p-4">
           <div className="space-y-2">
-            <button
-              onClick={() => {
-                setCurrentView("rides")
-                handleNavigation("/passenger/dashboard")
-              }}
-              className={`w-full flex items-center ${sidebarCollapsed ? "justify-center relative" : "space-x-3"} ${sidebarCollapsed ? "px-2" : "px-4"} py-3 rounded-lg text-left transition-colors ${
-                currentView === "rides" ? "bg-blue-500 text-white" : "text-gray-700 hover:bg-gray-100"
-              }`}
-            >
-              <Car
-                className={`${sidebarCollapsed ? "h-6 w-6" : "h-5 w-5"} ${currentView === "rides" ? "text-white stroke-current" : "!text-gray-700 !stroke-current"}`}
-              />
-              {!sidebarCollapsed && <span className="font-medium">Rides</span>}
-            </button>
+            {userType === "driver" ? (
+              <>
+                <button
+                  onClick={() => {
+                    setCurrentView("dashboard")
+                    handleNavigation("/driver/dashboard")
+                  }}
+                  className={`w-full flex items-center ${sidebarCollapsed ? "justify-center relative" : "space-x-3"} ${sidebarCollapsed ? "px-2" : "px-4"} py-3 rounded-lg text-left transition-colors ${
+                    currentView === "dashboard" ? "bg-blue-500 text-white" : "text-gray-700 hover:bg-gray-100"
+                  }`}
+                >
+                  <Car
+                    className={`${sidebarCollapsed ? "h-6 w-6" : "h-5 w-5"} ${currentView === "dashboard" ? "text-white stroke-current" : "!text-gray-700 !stroke-current"}`}
+                  />
+                  {!sidebarCollapsed && <span className="font-medium">Dashboard</span>}
+                </button>
 
-            <button
-              onClick={() => {
-                setCurrentView("activity")
-                handleNavigation("/passenger/activity")
-              }}
-              className={`w-full flex items-center ${sidebarCollapsed ? "justify-center relative" : "space-x-3"} ${sidebarCollapsed ? "px-2" : "px-4"} py-3 rounded-lg text-left transition-colors ${
-                currentView === "activity" ? "bg-blue-500 text-white" : "text-gray-700 hover:bg-gray-100"
-              }`}
-            >
-              <Clock
-                className={`${sidebarCollapsed ? "h-6 w-6" : "h-5 w-5"} ${currentView === "activity" ? "text-white stroke-current" : "!text-gray-700 !stroke-current"}`}
-              />
-              {!sidebarCollapsed && <span className="font-medium">Activity</span>}
-            </button>
+                <button
+                  onClick={() => {
+                    setCurrentView("history")
+                    handleNavigation("/driver/history")
+                  }}
+                  className={`w-full flex items-center ${sidebarCollapsed ? "justify-center relative" : "space-x-3"} ${sidebarCollapsed ? "px-2" : "px-4"} py-3 rounded-lg text-left transition-colors ${
+                    currentView === "history" ? "bg-blue-500 text-white" : "text-gray-700 hover:bg-gray-100"
+                  }`}
+                >
+                  <Clock
+                    className={`${sidebarCollapsed ? "h-6 w-6" : "h-5 w-5"} ${currentView === "history" ? "text-white stroke-current" : "!text-gray-700 !stroke-current"}`}
+                  />
+                  {!sidebarCollapsed && <span className="font-medium">History</span>}
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  onClick={() => {
+                    setCurrentView("rides")
+                    handleNavigation("/passenger/dashboard")
+                  }}
+                  className={`w-full flex items-center ${sidebarCollapsed ? "justify-center relative" : "space-x-3"} ${sidebarCollapsed ? "px-2" : "px-4"} py-3 rounded-lg text-left transition-colors ${
+                    currentView === "rides" ? "bg-blue-500 text-white" : "text-gray-700 hover:bg-gray-100"
+                  }`}
+                >
+                  <Car
+                    className={`${sidebarCollapsed ? "h-6 w-6" : "h-5 w-5"} ${currentView === "rides" ? "text-white stroke-current" : "!text-gray-700 !stroke-current"}`}
+                  />
+                  {!sidebarCollapsed && <span className="font-medium">Rides</span>}
+                </button>
+
+                <button
+                  onClick={() => {
+                    setCurrentView("activity")
+                    handleNavigation("/passenger/activity")
+                  }}
+                  className={`w-full flex items-center ${sidebarCollapsed ? "justify-center relative" : "space-x-3"} ${sidebarCollapsed ? "px-2" : "px-4"} py-3 rounded-lg text-left transition-colors ${
+                    currentView === "activity" ? "bg-blue-500 text-white" : "text-gray-700 hover:bg-gray-100"
+                  }`}
+                >
+                  <Clock
+                    className={`${sidebarCollapsed ? "h-6 w-6" : "h-5 w-5"} ${currentView === "activity" ? "text-white stroke-current" : "!text-gray-700 !stroke-current"}`}
+                  />
+                  {!sidebarCollapsed && <span className="font-medium">Activity</span>}
+                </button>
+              </>
+            )}
           </div>
         </nav>
 
@@ -601,9 +603,10 @@ function SettingsContent() {
         <div className="mt-auto p-4 border-t border-gray-200">
           <button
             onClick={handleLogout}
-            className={`w-full flex items-center ${sidebarCollapsed ? "justify-center" : "space-x-3"} px-4 py-3 rounded-lg text-left text-gray-700 hover:bg-gray-100 transition-colors`}
+            aria-label={sidebarCollapsed ? "Cerrar sesión" : undefined}
+            className={`w-full flex items-center ${sidebarCollapsed ? "justify-center" : "space-x-3"} px-3 py-3 rounded-lg text-left text-gray-700 hover:bg-gray-100 transition-colors`}
           >
-            <LogOut className={`${sidebarCollapsed ? "h-6 w-6 !text-gray-700 !stroke-current" : "h-5 w-5"}`} />
+            <LogOut className={`${sidebarCollapsed ? "h-6 w-6 text-gray-700" : "h-5 w-5 text-gray-700"}`} />
             {!sidebarCollapsed && <span className="font-medium">Logout</span>}
           </button>
         </div>
@@ -656,43 +659,10 @@ function SettingsContent() {
                       />
                     </div>
 
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-0.5">
-                        <Label className="flex items-center space-x-2">
-                          <MessageSquare className="h-4 w-4" />
-                          <span>SMS</span>
-                        </Label>
-                        <p className="text-sm text-gray-600">Recibe mensajes de texto</p>
-                      </div>
-                      <Switch
-                        checked={settings.notifications.sms}
-                        onCheckedChange={(value) => updateNotificationSetting("sms", value)}
-                      />
-                    </div>
                   </div>
 
                   <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-0.5">
-                        <Label>Actualizaciones de viajes</Label>
-                        <p className="text-sm text-gray-600">Estados de tus viajes</p>
-                      </div>
-                      <Switch
-                        checked={settings.notifications.rideUpdates}
-                        onCheckedChange={(value) => updateNotificationSetting("rideUpdates", value)}
-                      />
-                    </div>
 
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-0.5">
-                        <Label>Promociones</Label>
-                        <p className="text-sm text-gray-600">Ofertas y descuentos</p>
-                      </div>
-                      <Switch
-                        checked={settings.notifications.promotions}
-                        onCheckedChange={(value) => updateNotificationSetting("promotions", value)}
-                      />
-                    </div>
 
                     <div className="flex items-center justify-between">
                       <div className="space-y-0.5">
@@ -725,58 +695,7 @@ function SettingsContent() {
               </CardContent>
             </Card>
 
-            <Card className="shadow-lg">
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <Eye className="h-5 w-5 text-green-600" />
-                  <span>Privacidad</span>
-                </CardTitle>
-                <CardDescription>Controla tu información personal y visibilidad</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="grid md:grid-cols-2 gap-6">
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-0.5">
-                        <Label className="flex items-center space-x-2">
-                          <MapPin className="h-4 w-4" />
-                          <span>Compartir ubicación</span>
-                        </Label>
-                        <p className="text-sm text-gray-600">Permite que otros vean tu ubicación</p>
-                      </div>
-                      <Switch
-                        checked={settings.privacy.shareLocation}
-                        onCheckedChange={(value) => updatePrivacySetting("shareLocation", value)}
-                      />
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-0.5">
-                        <Label>Mostrar perfil</Label>
-                        <p className="text-sm text-gray-600">Tu perfil es visible para otros usuarios</p>
-                      </div>
-                      <Switch
-                        checked={settings.privacy.showProfile}
-                        onCheckedChange={(value) => updatePrivacySetting("showProfile", value)}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-0.5">
-                        <Label>Permitir mensajes</Label>
-                        <p className="text-sm text-gray-600">Otros usuarios pueden enviarte mensajes</p>
-                      </div>
-                      <Switch
-                        checked={settings.privacy.allowMessages}
-                        onCheckedChange={(value) => updatePrivacySetting("allowMessages", value)}
-                      />
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            {/* Privacidad removed per request */}
 
             <Card className="shadow-lg">
               <CardHeader>

@@ -633,6 +633,8 @@ function PassengerDashboardContent() {
     }
   }, [rides, user?.uid])
 
+
+
   // FUNCTION SOLICITARVIAJE
   const solicitarViaje = async () => {
     // debug log removed
@@ -715,6 +717,8 @@ function PassengerDashboardContent() {
     }
   }
 
+
+
   // HANDLE REQUEST RIDE MODIFICADO SEGÚN EL FLUJO ESPECIFICADO
   const handleRequestRide = async () => {
     if (!pickup || !destination || !pickupCoords || !destinationCoords || !user || !userData) return
@@ -723,7 +727,7 @@ function PassengerDashboardContent() {
     setRideStatus("searching")
 
     try {
-      // debug log removed
+      
       const driverResult = await driverData(pickupCoords?.lat, pickupCoords?.lng, DEFAULT_RADIUS_KM)
 
       if (!driverResult.success) {
@@ -777,6 +781,8 @@ function PassengerDashboardContent() {
       })
     }
   }
+
+
 
   // HANDLE CANCEL RIDE MODIFICADO SEGÚN EL FLUJO ESPECIFICADO
   const handleCancelRide = async (rideId: string, reason?: string) => {
@@ -958,7 +964,7 @@ function PassengerDashboardContent() {
     return R * c
   }
 
-  // HANDLE USE MY LOCATION
+  // HANDLE USE MY LOCATION — faster UX: quick cached/low-accuracy position first, then refine in background
   const handleUseMyLocation = async () => {
     if (typeof window === "undefined" || !navigator.geolocation) {
       toast({
@@ -969,39 +975,106 @@ function PassengerDashboardContent() {
       return
     }
 
-    toast({ title: "Obteniendo ubicación", description: "Esperando permiso del navegador..." })
+    // Show quick feedback immediately
+    toast({ title: "Obteniendo ubicación rápida...", description: "Permitir acceso para mejorar la precisión" })
 
-    const getPosition = () =>
+    const getPosition = (options: PositionOptions) =>
       new Promise<GeolocationPosition>((resolve, reject) => {
-        navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: true, timeout: 10000 })
+        try {
+          navigator.geolocation.getCurrentPosition(resolve, reject, options)
+        } catch (e) {
+          reject(e)
+        }
       })
 
     try {
-      const pos = await getPosition()
-      const lat = pos.coords.latitude
-      const lon = pos.coords.longitude
-
-      const apiKey = process.env.NEXT_PUBLIC_GEOAPIFY_API_KEY
-      let address = "Ubicación actual"
-      if (apiKey) {
-        try {
-          const res = await fetch(`https://api.geoapify.com/v1/geocode/reverse?lat=${lat}&lon=${lon}&apiKey=${apiKey}`)
-          if (res.ok) {
-            const data = await res.json()
-            if (data?.features && data.features.length > 0) {
-              address = data.features[0].properties.formatted || address
-            }
-          }
-        } catch (err) {
-          console.warn("Geoapify reverse geocode failed:", err)
-        }
+      // First attempt: quick, possibly cached, low-accuracy (fast perceived result)
+      let pos: GeolocationPosition | null = null
+      try {
+        pos = await getPosition({ enableHighAccuracy: false, timeout: 3000, maximumAge: 60000 })
+      } catch (quickErr) {
+        // quick attempt failed/timeout — we'll fall back to a longer attempt below
+        pos = null
       }
 
-      setPickup(address)
-      setPickupCoords({ lat, lng: lon })
-      toast({ title: "Ubicación usada", description: address })
+      if (pos) {
+        const lat = pos.coords.latitude
+        const lon = pos.coords.longitude
+        // Immediately update UI/map with coarse address and coords so user sees a fast response
+        setPickup("Ubicación actual")
+        setPickupCoords({ lat, lng: lon })
+        // Fire off nearby drivers lookup without waiting for reverse geocode
+        showNearbyDriversInMap(lat, lon).catch(() => {})
+      }
+
+      // Start background tasks: high-accuracy position and reverse geocode. They won't block the UI.
+      ;(async () => {
+        try {
+          const highPos = await getPosition({ enableHighAccuracy: true, timeout: 10000 })
+          const highLat = highPos.coords.latitude
+          const highLon = highPos.coords.longitude
+          // If we didn't have a quick pos or the high-accuracy pos differs noticeably, update
+          const shouldUpdateCoords = !pos || Math.abs((pos.coords.latitude ?? 0) - highLat) > 0.0005 || Math.abs((pos.coords.longitude ?? 0) - highLon) > 0.0005
+          if (shouldUpdateCoords) {
+            setPickupCoords({ lat: highLat, lng: highLon })
+            // refresh drivers with better accuracy
+            showNearbyDriversInMap(highLat, highLon).catch(() => {})
+          }
+        } catch (highErr) {
+          // ignore background high-accuracy failure — user already has a quick location
+        }
+      })()
+
+      // Reverse geocode in background and update pickup text when available (do not block)
+      ;(async () => {
+        try {
+          // choose coords to reverse geocode: prefer the latest pickupCoords or quick pos
+          const coordsForReverse = ((): { lat: number; lon: number } | null => {
+            const pc = pickupCoords
+            if (pc) return { lat: pc.lat, lon: pc.lng }
+            if (pos) return { lat: pos.coords.latitude, lon: pos.coords.longitude }
+            return null
+          })()
+
+          if (!coordsForReverse) return
+
+          const apiKey = process.env.NEXT_PUBLIC_GEOAPIFY_API_KEY
+          if (!apiKey) return
+
+          const { lat, lon } = coordsForReverse
+          try {
+            const res = await fetch(`https://api.geoapify.com/v1/geocode/reverse?lat=${lat}&lon=${lon}&apiKey=${apiKey}`)
+            if (!res.ok) return
+            const data = await res.json()
+            if (data?.features && data.features.length > 0) {
+              const address = data.features[0].properties.formatted || "Ubicación actual"
+              setPickup(address)
+              toast({ title: "Ubicación actualizada", description: address })
+            }
+          } catch (err) {
+            console.warn("Geoapify reverse geocode failed:", err)
+          }
+        } catch (err) {
+          // ignore reverse geocode background errors
+        }
+      })()
+
+      // If neither quick nor background provided coords (e.g., both timed out), try a fallback blocking attempt
+      if (!pos) {
+        try {
+          const fallback = await getPosition({ enableHighAccuracy: true, timeout: 10000 })
+          const lat = fallback.coords.latitude
+          const lon = fallback.coords.longitude
+          setPickup("Ubicación actual")
+          setPickupCoords({ lat, lng: lon })
+          showNearbyDriversInMap(lat, lon).catch(() => {})
+        } catch (fallbackErr) {
+          console.error("Error obteniendo ubicación:", fallbackErr)
+          toast({ title: "Error", description: "No fue posible obtener tu ubicación", variant: "destructive" })
+        }
+      }
     } catch (err: unknown) {
-      console.error("Error obteniendo ubicación:", err)
+      console.error("Error en handleUseMyLocation:", err)
       toast({ title: "Error", description: "No fue posible obtener tu ubicación", variant: "destructive" })
     }
   }
@@ -1356,20 +1429,7 @@ function PassengerDashboardContent() {
             }}
           />
 
-          <div className="absolute top-4 right-4 flex flex-col space-y-2">
-            <button className="bg-white w-12 h-12 rounded-full shadow-lg hover:shadow-xl transition-shadow flex items-center justify-center">
-              <Plus className="h-5 w-5 text-gray-600" />
-            </button>
-            <button className="bg-white w-12 h-12 rounded-full shadow-lg hover:shadow-xl transition-shadow flex items-center justify-center">
-              <Minus className="h-5 w-5 text-gray-600" />
-            </button>
-            <button className="bg-white w-12 h-12 rounded-full shadow-lg hover:shadow-xl transition-shadow flex items-center justify-center">
-              <MapPin className="h-5 w-5 text-gray-600" />
-            </button>
-            <button className="bg-white w-12 h-12 rounded-full shadow-lg hover:shadow-xl transition-shadow flex items-center justify-center">
-              <Share className="h-5 w-5 text-gray-600" />
-            </button>
-          </div>
+          {/* Floating map controls removed per request to keep map UI clean */}
 
           {/* Driver Arrival Notification */}
           {currentRide && currentRide.status === "accepted" && (

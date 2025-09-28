@@ -71,6 +71,9 @@ export function MapComponent({
           center: defaultLocation,
           zoom: 13,
           mapId: "DEMO_MAP_ID", // Requerido para marcadores avanzados
+          // Hide default UI controls to remove + / - zoom buttons and other default icons
+          disableDefaultUI: true,
+          zoomControl: false,
           mapTypeControl: false,
           streetViewControl: false,
           fullscreenControl: false,

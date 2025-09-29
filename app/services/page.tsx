@@ -3,26 +3,8 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import {
-  Car,
-  Star,
-  Users,
-  Zap,
-  Phone,
-  Calendar,
-  Package,
-  Truck,
-  Plane,
-  Heart,
-  CheckCircle,
-  Crown,
-  Sparkles,
-  Clock,
-  Infinity,
-  Shield,
-  MapPin,
-  CreditCard,
-} from "lucide-react"
+import { Car, Star, Users, Zap, Phone, Calendar, Package, Truck, Plane, Heart, CheckCircle, Crown, Sparkles, Clock, Infinity, Shield, MapPin, CreditCard } from "lucide-react"
+import DevChatButton from "@/components/DevChatButton"
 import Link from "next/link"
 import { useState, useEffect } from "react"
 
@@ -108,49 +90,20 @@ export default function ServicesPage() {
       features: ["Entrega en el mismo día", "Seguimiento en tiempo real", "Confirmación de entrega"],
     },
     {
-      icon: Truck,
-      title: "SafeCargo",
-      description: "Transporte de carga y servicios de mudanza",
-      color: "from-indigo-500 to-blue-600",
-      features: ["Vehículos de carga", "Ayuda con carga/descarga", "Seguro incluido"],
+      icon: Car,
+      title: "Quik Drives en cualquier lugar",
+      description:
+        "Servicio rápido y flexible de SafeRide: solicita un vehículo al instante para cualquier destino dentro de la ciudad o sus alrededores, con seguimiento en tiempo real.",
+      color: "from-blue-500 to-indigo-600",
+      features: ["Solicitud instantánea", "Seguimiento en tiempo real", "Llegada rápida"],
     },
-    {
-      icon: Plane,
-      title: "SafeAirport",
-      description: "Traslados cómodos y puntuales al aeropuerto",
-      color: "from-green-500 to-emerald-600",
-      features: ["Servicio puntual", "Monitoreo de vuelos", "Tarifas fijas"],
-    },
-    {
-      icon: Heart,
-      title: "SafeCare",
-      description: "Transporte médico especializado y de emergencia",
-      color: "from-red-500 to-red-600",
-      features: ["Conductores capacitados", "Vehículos adaptados", "Servicio de emergencia"],
-    },
-    {
-      icon: Calendar,
-      title: "SafeSchedule",
-      description: "Viajes programados y servicios recurrentes",
-      color: "from-yellow-500 to-amber-600",
-      features: ["Horarios fijos", "Recordatorios automáticos", "Descuentos por frecuencia"],
-    },
-    {
-      icon: Phone,
-      title: "SafeCall",
-      description: "Solicitud telefónica disponible las 24 horas",
-      color: "from-violet-500 to-purple-600",
-      features: ["Atención 24/7", "Sin necesidad de app", "Confirmación por SMS"],
-    },
+    // Servicios eliminados según solicitud: SafeCargo, SafeAirport, SafeCare, SafeSchedule, SafeCall
   ]
 
   const benefits = [
-    { icon: Shield, text: "Conductores verificados con antecedentes penales limpios" },
-    { icon: Car, text: "Vehículos inspeccionados regularmente con seguro completo" },
     { icon: MapPin, text: "Seguimiento GPS en tiempo real para tu seguridad" },
     { icon: Phone, text: "Soporte técnico 24/7 disponible en español" },
     { icon: CreditCard, text: "Tarifas fijas transparentes sin costos ocultos" },
-    { icon: Star, text: "Múltiples métodos de pago seguros y confiables" },
     { icon: Users, text: "Sistema de calificaciones y comentarios verificados" },
     { icon: Sparkles, text: "Botón de emergencia integrado para tu protección" },
   ]
@@ -235,6 +188,10 @@ export default function ServicesPage() {
           </div>
         </div>
       </section>
+      {/* Floating Action Button - abrir saferide AI */}
+      <div className="fixed bottom-6 right-6 z-50">
+        <DevChatButton className="animate-bounce" />
+      </div>
 
       {/* Subscription Plans */}
       <section className="py-24 px-4 sm:px-6 lg:px-8 relative">
@@ -351,19 +308,17 @@ export default function ServicesPage() {
               isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-10"
             }`}
           >
-            <h2 className="text-4xl font-bold text-gray-900 mb-6">Servicios Adicionales</h2>
+            <h2 className="text-4xl font-bold text-gray-900 mb-6">Nuestros Servicios</h2>
             <p className="text-xl text-gray-600 leading-relaxed">
               Soluciones especializadas para todas tus necesidades de transporte
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="flex flex-wrap justify-center gap-8">
             {additionalServices.map((service, index) => (
               <Card
                 key={index}
-                className={`hover:shadow-2xl transition-all duration-700 delay-${
-                  index * 100
-                } border-0 bg-white/90 backdrop-blur-sm transform hover:scale-105 hover:-translate-y-1 ${
+                className={`w-full sm:w-80 hover:shadow-2xl transition-all duration-700 delay-${index * 100} border-0 bg-white/90 backdrop-blur-sm transform hover:scale-105 hover:-translate-y-1 ${
                   isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-20"
                 }`}
               >
@@ -374,7 +329,11 @@ export default function ServicesPage() {
                     <service.icon className="h-10 w-10 text-white" />
                   </div>
                   <CardTitle className="text-xl font-bold text-gray-900 mb-3">{service.title}</CardTitle>
-                  <CardDescription className="text-gray-600 mb-4 leading-relaxed">
+                  <CardDescription className={
+                    (service.title || "").toLowerCase().includes("quik")
+                      ? "text-sm text-gray-600 mb-4 leading-relaxed"
+                      : "text-gray-600 mb-4 leading-relaxed"
+                  }>
                     {service.description}
                   </CardDescription>
                   <div className="space-y-2">

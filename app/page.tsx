@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import DevChatButton from "@/components/DevChatButton"
 import {
   Car,
   Shield,
@@ -24,7 +25,6 @@ import {
   Sparkles,
 } from "lucide-react"
 import Link from "next/link"
-import { DevelopmentNotice } from "@/components/DevelopmentNotice"
 
 export default function HomePage() {
   const [currentStat, setCurrentStat] = useState(0)
@@ -159,7 +159,6 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 overflow-hidden">
-      <DevelopmentNotice />
 
       {/* Animated Background Elements */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
@@ -744,14 +743,11 @@ export default function HomePage() {
 
             {/* Floating Action Button */}
             <div className="fixed bottom-6 right-6 z-50">
-              <Button
-                size="lg"
-                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-full w-16 h-16 shadow-2xl hover:shadow-3xl transform hover:scale-110 transition-all duration-300 animate-bounce"
-              >
-                <Link href="/auth/register">
-                  <Car className="h-8 w-8" />
-                </Link>
-              </Button>
+              <div>
+                {/* Reusable dev chat button */}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <DevChatButton className="animate-bounce" />
+              </div>
             </div>
           </div>
         </div>

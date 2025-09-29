@@ -1,5 +1,5 @@
 "use client"
-
+import DevChatButton from "@/components/DevChatButton"
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -639,6 +639,11 @@ export default function SupportPage() {
         </div>
       </section>
 
+      {/* Floating Action Button - abrir saferide AI */}
+      <div className="fixed bottom-6 right-6 z-50">
+        <DevChatButton className="animate-bounce" />
+      </div>
+
       <style jsx>{`
         @keyframes fade-in-up {
           from {
@@ -658,3 +663,5 @@ export default function SupportPage() {
     </div>
   )
 }
+
+// Floating Action Button: abrir saferide AI (se colocó aquí para que aparezca en la página de Soporte)

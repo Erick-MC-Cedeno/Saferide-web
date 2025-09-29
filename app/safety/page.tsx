@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button"
 import {
   Shield,
   CheckCircle,
-  AlertTriangle,
   Phone,
   MapPin,
   UserCheck,
@@ -21,6 +20,7 @@ import {
   Zap,
 } from "lucide-react"
 import Link from "next/link"
+import DevChatButton from "@/components/DevChatButton"
 
 export default function SafetyPage() {
   const safetyFeatures = [
@@ -121,36 +121,7 @@ export default function SafetyPage() {
     },
   ]
 
-  const emergencySteps = [
-    {
-      step: "1",
-      title: "Presiona el Botón de Emergencia",
-      description: "Ubicado en la pantalla principal de la app",
-      icon: AlertTriangle,
-      color: "from-red-500 to-orange-500",
-    },
-    {
-      step: "2",
-      title: "Confirmación Automática",
-      description: "El sistema detecta la emergencia y activa protocolos",
-      icon: CheckCircle,
-      color: "from-orange-500 to-yellow-500",
-    },
-    {
-      step: "3",
-      title: "Notificación Inmediata",
-      description: "Se notifica a contactos de emergencia y autoridades",
-      icon: Phone,
-      color: "from-yellow-500 to-green-500",
-    },
-    {
-      step: "4",
-      title: "Seguimiento Activo",
-      description: "Monitoreo continuo hasta resolver la situación",
-      icon: Eye,
-      color: "from-green-500 to-blue-500",
-    },
-  ]
+  // emergencySteps removed per user request
 
   const safetyTips = [
     "Verifica que el conductor y vehículo coincidan con la app",
@@ -214,7 +185,7 @@ export default function SafetyPage() {
             >
               <Link href="/support" className="flex items-center">
                 Reportar Incidente
-                <AlertTriangle className="ml-2 h-5 w-5 group-hover:animate-bounce" />
+                <Zap className="ml-2 h-5 w-5 group-hover:animate-bounce" />
               </Link>
             </Button>
           </div>
@@ -322,61 +293,12 @@ export default function SafetyPage() {
         </div>
       </section>
 
-      {/* Emergency Protocol */}
-      <section className="py-20 px-4 sm:px-6 lg:px-8 relative">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
-            <div className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-red-100 to-orange-100 rounded-full text-red-700 text-sm font-medium mb-6 animate-pulse">
-              <AlertTriangle className="w-4 h-4 mr-2 animate-bounce" />
-              Protocolo de Emergencia
-            </div>
-            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6 animate-fade-in">
-              Protocolo de Emergencia
-            </h2>
-            <p className="text-xl text-gray-600 animate-fade-in delay-200">
-              Pasos automáticos que se activan en caso de emergencia
-            </p>
-          </div>
+      {/* Floating Action Button - abrir saferide AI */}
+      <div className="fixed bottom-6 right-6 z-50">
+        <DevChatButton className="animate-bounce" />
+      </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-            {emergencySteps.map((step, index) => (
-              <div key={index} className="relative">
-                <Card
-                  className="group hover:shadow-2xl transition-all duration-500 border-0 bg-white/90 backdrop-blur-sm text-center h-full transform hover:-translate-y-4 animate-fade-in"
-                  style={{ animationDelay: `${index * 200}ms` }}
-                >
-                  <CardHeader className="pb-6">
-                    <div className="relative">
-                      <div
-                        className={`w-20 h-20 mx-auto rounded-2xl bg-gradient-to-r ${step.color} flex items-center justify-center mb-6 group-hover:scale-110 group-hover:rotate-6 transition-all duration-300 shadow-lg`}
-                      >
-                        <step.icon className="h-10 w-10 text-white group-hover:animate-pulse" />
-                      </div>
-                      <Badge className="absolute -top-3 -right-3 bg-gradient-to-r from-red-500 to-orange-500 text-white w-10 h-10 rounded-full flex items-center justify-center p-0 text-lg font-bold animate-bounce group-hover:animate-spin">
-                        {step.step}
-                      </Badge>
-                    </div>
-                    <CardTitle className="text-xl font-bold text-gray-900 group-hover:text-red-600 transition-colors duration-300">
-                      {step.title}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="pt-0">
-                    <p className="text-gray-600 group-hover:text-gray-700 transition-colors duration-300">
-                      {step.description}
-                    </p>
-                  </CardContent>
-                </Card>
-                {index < emergencySteps.length - 1 && (
-                  <div className="hidden lg:block absolute top-1/2 -right-4 transform -translate-y-1/2 z-10">
-                    <div className="w-8 h-1 bg-gradient-to-r from-red-300 to-orange-300 rounded-full animate-pulse"></div>
-                    <div className="absolute -right-1 -top-1 w-3 h-3 bg-gradient-to-r from-orange-400 to-red-400 rounded-full animate-ping"></div>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+      {/* Emergency Protocol removed */}
 
       {/* Safety Tips */}
       <section className="py-20 px-4 sm:px-6 lg:px-8 bg-white/60 backdrop-blur-sm relative">
@@ -421,7 +343,7 @@ export default function SafetyPage() {
         <div className="max-w-4xl mx-auto text-center relative z-10">
           <div className="bg-white/10 backdrop-blur-lg rounded-3xl p-10 border border-white/20 shadow-2xl animate-fade-in">
             <div className="relative mb-8">
-              <AlertTriangle className="w-20 h-20 text-white mx-auto animate-bounce" />
+              <Zap className="w-20 h-20 text-white mx-auto animate-bounce" />
               <div className="absolute -top-2 -right-2 w-6 h-6 bg-yellow-400 rounded-full animate-ping"></div>
               <div className="absolute -bottom-2 -left-2 w-4 h-4 bg-white rounded-full animate-ping delay-500"></div>
             </div>

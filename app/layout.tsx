@@ -7,6 +7,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary"
 import { PWARegister } from "@/components/PWARegister"
 import { PWAInstallPrompt } from "@/components/PWAInstallPrompt"
 import { ConditionalNavbar } from "@/components/ConditionalNavbar"
+import { DevelopmentNotice } from "@/components/DevelopmentNotice"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -48,6 +49,7 @@ export default function RootLayout({
           <PWAInstallPrompt />
           <AuthProvider>
             <ConditionalNavbar />
+            <DevelopmentNotice />
             <main>{children}</main>
           </AuthProvider>
         </ErrorBoundary>

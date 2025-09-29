@@ -24,6 +24,7 @@ export function PWAInstallPrompt() {
   const [visible, setVisible] = React.useState(false) // SI EL BANNER ESTÁ VISIBLE
   const [isIos, setIsIos] = React.useState(false) // FLAG: SE DETECTÓ iOS / iPadOS
   const [isAndroid, setIsAndroid] = React.useState(false) // FLAG: SE DETECTÓ ANDROID
+  const [isInstalled, setIsInstalled] = React.useState(false) // FLAG: LA PWA YA ESTÁ INSTALADA
   const [showInstructions, setShowInstructions] = React.useState(false) // SI SE MUESTRAN LAS INSTRUCCIONES MANUALES
   const [showDebug, setShowDebug] = React.useState(false) // PANEL DE DEPURACIÓN (ACTIVABLE POR QUERY PARAM)
 
@@ -61,6 +62,25 @@ export function PWAInstallPrompt() {
     // if it's desktop, ensure android flag is false
     if (isDesktop) setIsAndroid(false)
 
+    // Comprueba si la app ya está instalada (standalone / navigator.standalone)
+    const checkInstalled = () => {
+      try {
+        const nav: any = navigator as any
+        const displayStandalone = window.matchMedia && window.matchMedia('(display-mode: standalone)').matches
+        const iosStandalone = !!nav.standalone
+        return !!displayStandalone || !!iosStandalone
+      } catch {
+        return false
+      }
+    }
+
+    const alreadyInstalled = checkInstalled()
+    setIsInstalled(alreadyInstalled)
+    if (alreadyInstalled) {
+      // If installed, don't show the banner or attach beforeinstallprompt logic
+      return
+    }
+
     // BLOQUE: MANEJO DEL EVENTO `beforeinstallprompt`
     // CAPTURAMOS EL EVENTO, LLAMAMOS A preventDefault() Y LO ALMACENAMOS EN `deferredPrompt`
     // ASÍ EL BOTÓN 'INSTALAR' PUEDE LLAMAR A prompt() EN RESPUESTA AL GESTO DEL USUARIO.
@@ -70,11 +90,11 @@ export function PWAInstallPrompt() {
         console.info('PWAInstallPrompt: beforeinstallprompt recibido')
       }
 
+      // Determine platform fresh here (avoid stale closure over state)
+      const { isAndroid: handlerIsAndroid } = detectPlatform()
       // Only call preventDefault when we know we want to show a custom install flow (Android is primary target).
-      // Calling preventDefault() and then never calling prompt() can trigger browser warnings. By restricting
-      // preventDefault() to Android we reduce false-positive warnings while still allowing a custom flow there.
       try {
-        if (isAndroid && typeof e.preventDefault === 'function') {
+        if (handlerIsAndroid && typeof e.preventDefault === 'function') {
           e.preventDefault()
         }
       } catch {
@@ -100,6 +120,14 @@ export function PWAInstallPrompt() {
 
     window.addEventListener('beforeinstallprompt', onBeforeInstallPrompt as EventListener)
 
+    // Escuchar si la app se instala nativamente (por ejemplo, desde el menú del navegador)
+    const onAppInstalled = () => {
+      setIsInstalled(true)
+      setVisible(false)
+      setDeferredPrompt(null)
+    }
+    window.addEventListener('appinstalled', onAppInstalled)
+
     // BLOQUE: LÓGICA PARA MOSTRAR SUGERENCIA EN IOS/DESKTOP DESPUÉS DE PEQUEÑO RETRASO
     let iosTimer: number | undefined
     if (isiOS) {
@@ -111,18 +139,12 @@ export function PWAInstallPrompt() {
       }, 1500)
     }
     // Show for desktop early so users see the hint
-    if (isDesktop) {
-      iosTimer = window.setTimeout(() => {
-        if ((typeof window !== 'undefined') && new URLSearchParams(window.location.search).get('pwa_debug') === '1') {
-          console.info('PWAInstallPrompt: MOSTRANDO SUGERENCIA DE INSTALACIÓN EN DESKTOP')
-        }
-        setVisible(true)
-      }, 800)
-    }
+    // No mostrar sugerencia en desktop por defecto (opciones nativas del navegador)
 
     // Cleanup
     return () => {
       window.removeEventListener('beforeinstallprompt', onBeforeInstallPrompt as EventListener)
+      window.removeEventListener('appinstalled', onAppInstalled)
       if (iosTimer) window.clearTimeout(iosTimer)
     }
   }, [])
@@ -168,8 +190,9 @@ export function PWAInstallPrompt() {
       // ANDROID: SI NO HAY deferredPrompt MOSTRAR LOS PASOS MANUALES
       setShowInstructions(true)
     } else {
-      // DESKTOP: FLUJO DE RESPALDO - MOSTRAR INSTRUCCIONES GENERALES
-      setShowInstructions(true)
+      // DESKTOP: no mostramos instrucciones específicas para desktop
+      // Ocultar el banner (el usuario en desktop verá opciones nativas del navegador)
+      setVisible(false)
     }
   }
 
@@ -218,12 +241,7 @@ export function PWAInstallPrompt() {
                       <div className="font-medium">Instalación en Android</div>
                       <div className="mt-1">1. Abre el menú del navegador (⋮) en la esquina superior. 2. Selecciona &quot;Añadir a la pantalla de inicio&quot; o &quot;Instalar app&quot;. 3. Sigue las indicaciones.</div>
                     </div>
-                  ) : (
-                    <div>
-                      <div className="font-medium">Instalación en Desktop</div>
-                      <div className="mt-1">En navegadores compatibles (Chrome/Edge) puedes encontrar &quot;Instalar&quot; en el menú de la barra de direcciones o en las opciones del navegador.</div>
-                    </div>
-                  )}
+                  ) : null}
                   <div className="mt-3 flex gap-2 flex-col sm:flex-row">
                     <button onClick={() => setShowInstructions(false)} className="w-full sm:w-auto px-3 py-2 text-sm rounded-md border border-slate-200 dark:border-slate-700">Atrás</button>
                     <button onClick={handleDismiss} className="w-full sm:w-auto px-3 py-2 text-sm text-slate-500">Cerrar</button>
@@ -231,24 +249,12 @@ export function PWAInstallPrompt() {
                 </div>
               ) : (
                 <>
-                      {isIos ? (
-                    <button onClick={handleInstallClick} className="inline-flex items-center gap-2 justify-center px-4 py-3 rounded-md text-sm font-semibold text-white bg-gradient-to-r from-cyan-500 to-emerald-400 shadow-md hover:from-cyan-600 hover:to-emerald-500 w-full sm:w-auto">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 3v12" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><path d="M5 12l7-7 7 7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                      Cómo instalar
-                    </button>
-                      ) : (
-                    (deferredPrompt && deferredPrompt?.prompt) ? (
+                    {(deferredPrompt && deferredPrompt?.prompt) ? (
                       <button onClick={handleInstallClick} className="inline-flex items-center gap-2 justify-center px-4 py-3 rounded-md text-sm font-semibold text-white bg-gradient-to-r from-cyan-500 to-emerald-400 shadow-md hover:from-cyan-600 hover:to-emerald-500 w-full sm:w-auto">
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 3v12" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><path d="M5 12l7-7 7 7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
                         Instalar
                       </button>
-                    ) : (
-                      <button onClick={handleInstallClick} className="inline-flex items-center gap-2 justify-center px-4 py-3 rounded-md text-sm font-semibold text-white bg-gradient-to-r from-cyan-500 to-emerald-400 shadow-md hover:from-cyan-600 hover:to-emerald-500 w-full sm:w-auto">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 3v12" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><path d="M5 12l7-7 7 7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                        Cómo instalar
-                      </button>
-                    )
-                      )}
+                    ) : null}
                   <button onClick={handleDismiss} className="px-3 py-3 rounded-md text-sm font-medium text-slate-700 dark:text-slate-300 border border-slate-100 dark:border-slate-800 w-full sm:w-auto">Cerrar</button>
                 </>
               )}

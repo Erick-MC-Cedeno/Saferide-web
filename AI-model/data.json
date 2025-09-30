@@ -1,0 +1,1096 @@
+{
+  "conversations": [
+    {
+      "prompt": "Hola",
+      "completion": "Hola, como estas?",
+      "intent": "saludos",
+      "pattern": ["hola", "buenas", "saludos", "que tal", "como estas"],
+      "task": "saludo",
+      "meaning": "inicio de conversacion amigable",
+      "examples": []
+    },
+    {
+      "prompt": "Muy bien gracias",
+      "completion": "Perfecto en que te puedo ayudar?",
+      "intent": "saludos",
+      "pattern": ["muy bien", "gracias", "muchas gracias"],
+      "task": "saludo",
+      "meaning": "inicio de conversacion amigable",
+      "examples": []
+    },
+    {
+      "prompt": "Gracias",
+      "completion": "De nada algo mas en lo que pueda ayudarte?",
+      "intent": "saludos",
+      "pattern": ["gracias", "muchas gracias", "muy bien"],
+      "task": "saludo",
+      "meaning": "inicio de conversacion amigable",
+      "examples": []
+    },
+    {
+      "prompt": "Hola, que tal?",
+      "completion": "Todo bien, gracias. Y tu?",
+      "intent": "saludos",
+      "pattern": ["hola", "que tal", "como estas", "buenas tardes", "buenas noches"],
+      "task": "saludo",
+      "meaning": "inicio de conversacion amigable",
+      "examples": ["Usuario: Hola, que tal?\nBot: Todo bien, gracias. Y tu?"]
+    },
+    {
+      "prompt": "Buenos dias",
+      "completion": "Buenos dias, como te puedo ayudar hoy?",
+      "intent": "saludos",
+      "pattern": ["buenos dias", "buenas tardes", "buenas noches", "saludos", "hola"],
+      "task": "saludo",
+      "meaning": "inicio de conversacion amigable",
+      "examples": ["Usuario: Buenos dias\nBot: Buenos dias, como te puedo ayudar hoy?"]
+    },
+    {
+      "prompt": "Buenas tardes",
+      "completion": "Buenas tardes, en que puedo ayudarte?",
+      "intent": "saludos",
+      "pattern": ["buenas tardes", "buenos dias", "buenas noches", "saludos", "hola"],
+      "task": "saludo",
+      "meaning": "inicio de conversacion amigable",
+      "examples": ["Usuario: Buenas tardes\nBot: Buenas tardes, en que puedo ayudarte?"]
+    },
+
+    {
+    "prompt": "Hola",
+    "completion": "Hola, bienvenido a SafeRide. En que puedo ayudarte hoy?",
+    "intent": "saludos",
+    "pattern": ["hola", "saludos", "buenas"],
+    "task": "saludo",
+    "meaning": "saludo inicial profesional",
+    "examples": ["Usuario: Hola\nBot: Hola, bienvenido a SafeRide. En que puedo ayudarte hoy?"]
+  },
+  {
+    "prompt": "Buenos dias",
+    "completion": "Buenos dias, gracias por comunicarte con SafeRide. En que puedo asistirte?",
+    "intent": "saludos",
+    "pattern": ["buenos dias", "muy buenos dias"],
+    "task": "saludo",
+    "meaning": "saludo matutino formal",
+    "examples": []
+  },
+  {
+    "prompt": "Buenas tardes",
+    "completion": "Buenas tardes, un placer atenderte. Soy tu asistente de SafeRide, que consulta deseas realizar?",
+    "intent": "saludos",
+    "pattern": ["buenas tardes", "muy buenas tardes"],
+    "task": "saludo",
+    "meaning": "saludo formal vespertino",
+    "examples": []
+  },
+  {
+    "prompt": "Buenas noches",
+    "completion": "Buenas noches, gracias por comunicarte con SafeRide. Como puedo ayudarte?",
+    "intent": "saludos",
+    "pattern": ["buenas noches", "muy buenas noches"],
+    "task": "saludo",
+    "meaning": "saludo formal nocturno",
+    "examples": []
+  },
+  {
+    "prompt": "Que tal",
+    "completion": "Todo bien, gracias por preguntar. Bienvenido a SafeRide, deseas informacion sobre nuestros servicios?",
+    "intent": "saludos",
+    "pattern": ["que tal", "como estas", "como va"],
+    "task": "saludo",
+    "meaning": "saludo neutro y profesional",
+    "examples": []
+  },
+  {
+    "prompt": "Gracias",
+    "completion": "Con gusto, estamos aqui para ayudarte en lo que necesites con SafeRide.",
+    "intent": "saludos",
+    "pattern": ["gracias", "muchas gracias"],
+    "task": "saludo",
+    "meaning": "agradecimiento cordial",
+    "examples": []
+  },
+  {
+    "prompt": "Todo bien",
+    "completion": "Me alegra escuchar eso. Como asistente de SafeRide, puedo guiarte en temas de seguridad, viajes o pagos.",
+    "intent": "saludos",
+    "pattern": ["todo bien", "todo en orden", "todo correcto"],
+    "task": "saludo",
+    "meaning": "respuesta positiva al saludo",
+    "examples": []
+  },
+  {
+    "prompt": "No muy bien",
+    "completion": "Lamento escuchar eso. Si lo deseas, puedo ayudarte a resolver cualquier inconveniente con SafeRide.",
+    "intent": "saludos",
+    "pattern": ["no muy bien", "mal", "ando mal"],
+    "task": "saludo",
+    "meaning": "respuesta negativa en saludo con soporte",
+    "examples": []
+  },
+
+  {
+    "prompt": "¿Cómo puedo solicitar un viaje?",
+    "completion": "En el Passenger Dashboard selecciona tu dirección de recogida y destino, y luego presiona el botón 'Request a Ride'. El sistema buscará un conductor disponible cercano.",
+    "intent": "solicitar_viaje",
+    "pattern": ["solicitar viaje", "pedir un viaje", "quiero un ride"],
+    "task": "Explicar cómo funciona la solicitud de viaje",
+    "meaning": "El usuario quiere saber cómo pedir un viaje desde la app.",
+    "examples": ["¿Cómo pido un ride?", "Quiero pedir un viaje"]
+  },
+  {
+    "prompt": "¿Cómo elijo un conductor?",
+    "completion": "Cuando solicites un viaje y haya conductores disponibles, se abrirá un diálogo con la lista de opciones. Podrás ver nombre, vehículo, calificación y seleccionar al que prefieras.",
+    "intent": "seleccionar_conductor",
+    "pattern": ["elegir conductor", "selección de chofer", "qué conductor me toca"],
+    "task": "Explicar cómo funciona la elección de conductor",
+    "meaning": "El usuario quiere entender cómo elegir quién lo llevará.",
+    "examples": ["¿Puedo elegir al chofer?", "Cómo selecciono un conductor"]
+  },
+  {
+    "prompt": "¿Cómo veo los detalles de mi viaje?",
+    "completion": "En el panel derecho se muestran los detalles de tu viaje: dirección de recogida, destino, tarifa estimada, tiempo aproximado y estado del viaje.",
+    "intent": "detalles_viaje",
+    "pattern": ["detalles del viaje", "info del ride", "información de mi viaje"],
+    "task": "Explicar cómo acceder a la información del viaje",
+    "meaning": "El usuario quiere ver la información de su ride actual.",
+    "examples": ["Dónde veo la tarifa", "Cuánto tardará mi viaje"]
+  },
+  {
+    "prompt": "¿Puedo chatear con el conductor?",
+    "completion": "Sí. Cuando tu viaje esté en progreso o aceptado, podrás abrir el chat desde el botón correspondiente y comunicarte directamente con tu conductor.",
+    "intent": "chat_conductor",
+    "pattern": ["hablar con el conductor", "chat con chofer", "enviar mensaje al conductor"],
+    "task": "Explicar cómo funciona el chat",
+    "meaning": "El usuario quiere comunicarse con el conductor vía chat.",
+    "examples": ["¿Dónde abro el chat?", "Cómo mando un mensaje al chofer"]
+  },
+  {
+    "prompt": "¿Cómo califico a mi conductor?",
+    "completion": "Al finalizar el viaje, se abrirá un diálogo para que dejes una calificación de 1 a 5 estrellas y un comentario opcional sobre tu experiencia.",
+    "intent": "calificar_conductor",
+    "pattern": ["calificar chofer", "dar estrellas", "poner reseña"],
+    "task": "Explicar cómo se califica a un conductor",
+    "meaning": "El usuario quiere evaluar a su conductor después del viaje.",
+    "examples": ["¿Dónde califico al conductor?", "Cómo pongo estrellas al chofer"]
+  },
+  {
+    "prompt": "¿Qué significan los estados del viaje?",
+    "completion": "Un viaje puede estar en varios estados: 'pending' (solicitado, esperando conductor), 'accepted' (un conductor lo aceptó), 'in-progress' (el viaje está en curso) y 'completed' (el viaje finalizó).",
+    "intent": "estados_viaje",
+    "pattern": ["estado del viaje", "qué significa pending", "ride status"],
+    "task": "Explicar el significado de los estados de viaje",
+    "meaning": "El usuario quiere entender qué significa cada estado del viaje.",
+    "examples": ["Qué significa in-progress", "Cómo sé si ya aceptaron mi ride"]
+  },
+  {
+    "prompt": "¿Qué pasa si cancelo un viaje?",
+    "completion": "Si cancelas un viaje, este cambiará su estado a 'cancelled' y no se te asignará un conductor. Dependiendo de las políticas, podría aplicarse un cargo por cancelación.",
+    "intent": "cancelar_viaje",
+    "pattern": ["cancelar ride", "anular viaje", "parar el viaje"],
+    "task": "Explicar cómo funciona la cancelación",
+    "meaning": "El usuario quiere saber qué ocurre al cancelar.",
+    "examples": ["¿Cómo cancelo un viaje?", "Qué pasa si cancelo"]
+  },
+
+  {
+    "prompt": "No veo conductores disponibles",
+    "completion": "Si no aparecen conductores disponibles, puede deberse a que en tu zona no hay choferes en línea en este momento. Te recomendamos intentar nuevamente en unos minutos o probar con otra ubicación cercana.",
+    "intent": "sin_conductores",
+    "pattern": ["no hay conductores", "no veo choferes", "ningún driver disponible"],
+    "task": "Explicar qué hacer si no hay conductores en la zona",
+    "meaning": "El usuario quiere entender por qué no ve conductores cerca.",
+    "examples": ["¿Por qué no aparecen choferes?", "No hay drivers en mi zona"]
+  },
+  {
+    "prompt": "El mapa no carga",
+    "completion": "Si el mapa no carga correctamente, revisa tu conexión a internet y asegúrate de que la app tenga permisos de ubicación activados. Si el problema persiste, intenta reiniciar la aplicación.",
+    "intent": "mapa_no_carga",
+    "pattern": ["mapa no funciona", "no carga el mapa", "problema con el mapa"],
+    "task": "Dar solución cuando el mapa no carga",
+    "meaning": "El usuario tiene problemas con la visualización del mapa.",
+    "examples": ["¿Por qué no carga el mapa?", "El mapa no aparece"]
+  },
+  {
+    "prompt": "No puedo pagar el viaje",
+    "completion": "Si tienes problemas con el pago, revisa que tu método de pago esté activo y con saldo suficiente. También puedes registrar otro método desde la configuración de tu cuenta.",
+    "intent": "problema_pago",
+    "pattern": ["no puedo pagar", "error en el pago", "pago rechazado"],
+    "task": "Explicar qué hacer cuando falla un pago",
+    "meaning": "El usuario quiere saber cómo resolver un error al pagar.",
+    "examples": ["¿Por qué no puedo pagar?", "Mi tarjeta fue rechazada"]
+  },
+  {
+    "prompt": "¿Cómo actualizo mi dirección de recogida?",
+    "completion": "Puedes actualizar tu dirección de recogida directamente en el mapa antes de confirmar la solicitud del viaje. Solo arrastra el pin a la ubicación correcta o escribe la nueva dirección.",
+    "intent": "cambiar_recogida",
+    "pattern": ["cambiar dirección de recogida", "actualizar pick-up", "modificar lugar de salida"],
+    "task": "Explicar cómo actualizar la dirección de recogida",
+    "meaning": "El usuario quiere modificar la ubicación de recogida antes del viaje.",
+    "examples": ["¿Cómo cambio el pick-up?", "Quiero otra dirección de salida"]
+  },
+  {
+    "prompt": "¿Qué hago si el conductor no llega?",
+    "completion": "Si el conductor no llega en el tiempo estimado, puedes contactarlo desde el chat o por llamada. También puedes cancelar el viaje y solicitar uno nuevo.",
+    "intent": "conductor_no_llega",
+    "pattern": ["conductor no llega", "chofer no aparece", "no llegó el driver"],
+    "task": "Dar solución cuando el conductor no llega",
+    "meaning": "El usuario quiere saber qué hacer si el chofer no aparece.",
+    "examples": ["¿Qué pasa si no llega el chofer?", "El conductor no vino"]
+  },
+  {
+    "prompt": "¿Puedo cambiar mi destino durante el viaje?",
+    "completion": "Sí, puedes actualizar tu destino desde el panel del viaje en curso. Esto puede modificar la tarifa final y la duración estimada.",
+    "intent": "cambiar_destino",
+    "pattern": ["cambiar destino", "modificar dirección de llegada", "nuevo destino"],
+    "task": "Explicar cómo cambiar destino en un viaje en curso",
+    "meaning": "El usuario quiere modificar la dirección de destino durante un viaje.",
+    "examples": ["¿Puedo cambiar la dirección?", "Quiero otro destino"]
+  },
+  {
+    "prompt": "¿Cómo sé quién es mi conductor?",
+    "completion": "En los detalles del viaje verás el nombre del conductor, su vehículo, modelo y matrícula. También podrás ver su calificación y foto de perfil.",
+    "intent": "info_conductor",
+    "pattern": ["quién es mi chofer", "datos del conductor", "cómo reconozco al driver"],
+    "task": "Explicar cómo identificar al conductor asignado",
+    "meaning": "El usuario quiere saber cómo reconocer a su conductor.",
+    "examples": ["¿Quién es mi conductor?", "Cómo sé qué auto viene"]
+  },
+  {
+    "prompt": "¿Qué pasa si olvido un objeto en el vehículo?",
+    "completion": "Si olvidaste un objeto en el vehículo, puedes reportarlo desde la sección de soporte en la app o contactar al conductor directamente desde tu historial de viajes.",
+    "intent": "objeto_perdido",
+    "pattern": ["olvidé algo", "perdí un objeto", "dejé mis cosas en el auto"],
+    "task": "Explicar cómo reportar un objeto perdido",
+    "meaning": "El usuario necesita recuperar un objeto olvidado en un viaje.",
+    "examples": ["Olvidé mi celular en el auto", "Perdí mi mochila en el ride"]
+  },
+
+  {
+    "prompt": "¿Cómo acepto un viaje?",
+    "completion": "Cuando recibas una solicitud, verás una notificación en tu pantalla con los detalles del pasajero. Solo presiona 'Aceptar' para confirmar el viaje.",
+    "intent": "aceptar_viaje",
+    "pattern": ["aceptar viaje", "cómo tomo un ride", "confirmar solicitud", "agarrar un viaje", "tomar un cliente"],
+    "task": "Explicar cómo aceptar una solicitud de viaje",
+    "meaning": "El conductor quiere saber cómo aceptar un viaje entrante.",
+    "examples": ["¿Dónde acepto un ride?", "Cómo tomo el próximo pasajero", "¿Dónde presiono para aceptar?"]
+  },
+  {
+    "prompt": "¿Cómo rechazo un viaje?",
+    "completion": "Si no puedes tomar un viaje, simplemente presiona 'Rechazar'. Esto liberará la solicitud para que otro conductor la tome.",
+    "intent": "rechazar_viaje",
+    "pattern": ["no aceptar viaje", "rechazar ride", "no quiero tomar cliente"],
+    "task": "Explicar cómo rechazar una solicitud de viaje",
+    "meaning": "El conductor quiere saber cómo rechazar un viaje entrante.",
+    "examples": ["¿Dónde rechazo el viaje?", "No puedo tomar este cliente"]
+  },
+  {
+    "prompt": "¿Qué pasa si el pasajero no aparece?",
+    "completion": "Si el pasajero no aparece después de 5 minutos, puedes cancelar el viaje sin penalización desde la app. También puedes llamarlo para confirmar.",
+    "intent": "pasajero_no_aparece",
+    "pattern": ["cliente no está", "pasajero no llega", "no aparece el rider"],
+    "task": "Explicar qué hacer si un pasajero no se presenta",
+    "meaning": "El conductor necesita instrucciones cuando el pasajero no aparece.",
+    "examples": ["El cliente no salió", "¿Qué hago si no viene el pasajero?"]
+  },
+  {
+    "prompt": "¿Cómo inicio la navegación al destino?",
+    "completion": "Una vez que aceptes el viaje, presiona el botón 'Iniciar navegación'. La app abrirá tu mapa preferido con la ruta hacia el destino.",
+    "intent": "iniciar_navegacion",
+    "pattern": ["usar gps", "cómo llegar", "iniciar ruta"],
+    "task": "Explicar cómo iniciar la navegación al destino del pasajero",
+    "meaning": "El conductor quiere saber cómo comenzar la navegación hacia el destino.",
+    "examples": ["¿Dónde activo el GPS?", "Cómo empiezo la ruta"]
+  },
+  {
+    "prompt": "¿Puedo contactar al pasajero?",
+    "completion": "Sí, desde los detalles del viaje puedes enviar un mensaje o llamar al pasajero si necesitas más información sobre el punto de recogida.",
+    "intent": "contactar_pasajero",
+    "pattern": ["hablar con cliente", "llamar pasajero", "mensaje al rider"],
+    "task": "Explicar cómo comunicarse con el pasajero desde la app",
+    "meaning": "El conductor quiere contactar al pasajero antes o durante el viaje.",
+    "examples": ["¿Cómo llamo al pasajero?", "Quiero enviar un mensaje al cliente"]
+  },
+  {
+    "prompt": "¿Cómo cancelo un viaje?",
+    "completion": "Puedes cancelar un viaje desde el panel de viaje activo. Pulsa 'Cancelar viaje' y selecciona el motivo. Hazlo solo cuando sea necesario.",
+    "intent": "cancelar_viaje",
+    "pattern": ["cancelar ride", "terminar viaje antes", "anular viaje"],
+    "task": "Explicar cómo cancelar un viaje en la aplicación",
+    "meaning": "El conductor necesita cancelar un viaje en curso o pendiente.",
+    "examples": ["¿Dónde está la opción de cancelar?", "Quiero anular este viaje"]
+  },
+  {
+    "prompt": "¿Cómo marco un viaje como completado?",
+    "completion": "Cuando llegues al destino del pasajero, presiona 'Finalizar viaje' en tu aplicación para cerrar correctamente el trayecto.",
+    "intent": "finalizar_viaje",
+    "pattern": ["terminar ride", "finalizar viaje", "cerrar trayecto"],
+    "task": "Explicar cómo marcar un viaje como completado",
+    "meaning": "El conductor quiere cerrar un viaje cuando ha llegado al destino.",
+    "examples": ["¿Cómo termino el viaje?", "Dónde marco finalizado"]
+  },
+  {
+    "prompt": "¿Cómo califico al pasajero?",
+    "completion": "Al finalizar el viaje, la app te pedirá que califiques al pasajero con estrellas y, si deseas, agregar un comentario.",
+    "intent": "calificar_pasajero",
+    "pattern": ["dar rating pasajero", "evaluar cliente", "poner estrellas rider"],
+    "task": "Explicar cómo calificar a un pasajero después de un viaje",
+    "meaning": "El conductor quiere saber cómo dejar una calificación al pasajero.",
+    "examples": ["¿Dónde pongo la calificación?", "Quiero dejarle un comentario al cliente"]
+  },
+  {
+    "prompt": "¿Cómo activo mi disponibilidad?",
+    "completion": "En la pantalla principal encontrarás un botón para cambiar tu estado entre 'Disponible' y 'No disponible'. Solo estando disponible recibirás solicitudes.",
+    "intent": "activar_disponibilidad",
+    "pattern": ["conectarme a la app", "estar disponible", "activar turnos"],
+    "task": "Explicar cómo activar la disponibilidad del conductor",
+    "meaning": "El conductor quiere empezar a recibir viajes.",
+    "examples": ["¿Cómo me conecto?", "Quiero empezar mi turno"]
+  },
+  {
+    "prompt": "¿Cómo pongo en pausa mi disponibilidad?",
+    "completion": "Puedes cambiar tu estado a 'No disponible' desde la pantalla principal. De esa manera no recibirás solicitudes hasta que vuelvas a activarlo.",
+    "intent": "pausar_disponibilidad",
+    "pattern": ["desconectarme", "pausar turnos", "dejar de recibir viajes"],
+    "task": "Explicar cómo pausar la disponibilidad de viajes",
+    "meaning": "El conductor quiere dejar de recibir solicitudes temporalmente.",
+    "examples": ["Quiero descansar un rato", "¿Cómo me desconecto de la app?"]
+  },
+  {
+    "prompt": "¿Cómo sé dónde recoger al pasajero?",
+    "completion": "En la pantalla de detalles del viaje verás la ubicación de recogida exacta en el mapa y la dirección escrita.",
+    "intent": "ubicacion_recogida",
+    "pattern": ["dónde recojo", "punto de encuentro", "dirección de recogida"],
+    "task": "Explicar cómo ubicar el punto de recogida del pasajero",
+    "meaning": "El conductor quiere confirmar la ubicación de recogida.",
+    "examples": ["¿Dónde está el pasajero?", "¿Cuál es la dirección de recogida?"]
+  },
+  {
+    "prompt": "¿Cómo sé cuántos pasajeros debo llevar?",
+    "completion": "En los detalles del viaje encontrarás el número de pasajeros. Generalmente es 1, pero algunos viajes permiten más.",
+    "intent": "numero_pasajeros",
+    "pattern": ["cuántos clientes", "cuántos pasajeros", "número de personas"],
+    "task": "Explicar cómo saber cuántos pasajeros hay en un viaje",
+    "meaning": "El conductor quiere confirmar cuántos pasajeros tiene que transportar.",
+    "examples": ["¿Es solo una persona?", "¿Cuántos se suben?"]
+  },
+  {
+    "prompt": "¿Qué hago si el pasajero quiere cambiar el destino?",
+    "completion": "Si el pasajero pide cambiar el destino, puedes actualizarlo desde la app. Esto ajustará la tarifa y la ruta automáticamente.",
+    "intent": "cambiar_destino_pasajero",
+    "pattern": ["cambiar destino", "otro lugar", "modificar destino"],
+    "task": "Explicar cómo manejar cambios de destino solicitados por el pasajero",
+    "meaning": "El conductor necesita instrucciones cuando el pasajero cambia de destino.",
+    "examples": ["El cliente quiere otro destino", "¿Puedo modificar la dirección?"]
+  },
+  {
+    "prompt": "¿Cómo reporto un problema de seguridad?",
+    "completion": "En la aplicación encontrarás un botón de seguridad para emergencias. También puedes reportar un incidente en la sección de soporte.",
+    "intent": "reportar_seguridad",
+    "pattern": ["problema de seguridad", "emergencia", "alerta"],
+    "task": "Explicar cómo reportar incidentes de seguridad",
+    "meaning": "El conductor quiere ayuda en una situación de riesgo.",
+    "examples": ["Tuve un problema con el pasajero", "Necesito reportar una emergencia"]
+  },
+  {
+    "prompt": "¿Cómo actualizo mis datos en la app?",
+    "completion": "Puedes actualizar tu foto, datos del vehículo y número de teléfono desde la sección de Perfil en la aplicación.",
+    "intent": "actualizar_datos",
+    "pattern": ["cambiar datos", "editar perfil", "actualizar vehículo"],
+    "task": "Explicar cómo actualizar la información personal del conductor",
+    "meaning": "El conductor quiere modificar su información en la app.",
+    "examples": ["Quiero cambiar mi foto", "Necesito actualizar el modelo de mi auto"]
+  },
+
+  {
+    "prompt": "Gracias, hasta luego",
+    "completion": "Gracias por contactarnos. SafeRide siempre está a tu disposición. Hasta luego.",
+    "intent": "despedida",
+    "pattern": ["gracias hasta luego", "hasta luego", "nos vemos"],
+    "task": "Cerrar conversación con cortesía",
+    "meaning": "El usuario se despide con agradecimiento.",
+    "examples": ["Hasta luego", "Nos vemos", "Gracias, adiós"]
+  },
+  {
+    "prompt": "Adiós",
+    "completion": "Adiós. Fue un placer atenderte en SafeRide.",
+    "intent": "despedida",
+    "pattern": ["adiós", "bye", "chau", "chao"],
+    "task": "Finalizar la conversación",
+    "meaning": "El usuario se despide brevemente.",
+    "examples": ["Adiós", "Bye", "Chao"]
+  },
+  {
+    "prompt": "Hasta mañana",
+    "completion": "Hasta mañana. SafeRide estará disponible cuando lo necesites.",
+    "intent": "despedida",
+    "pattern": ["hasta mañana", "mañana hablamos"],
+    "task": "Despedida contextual de tiempo",
+    "meaning": "El usuario indica que volverá mañana.",
+    "examples": ["Hasta mañana", "Mañana hablamos"]
+  },
+  {
+    "prompt": "Buenas noches",
+    "completion": "Buenas noches. Gracias por confiar en SafeRide.",
+    "intent": "despedida",
+    "pattern": ["buenas noches", "descansa"],
+    "task": "Cerrar conversación nocturna",
+    "meaning": "El usuario se despide en la noche.",
+    "examples": ["Buenas noches", "Que descanses"]
+  },
+  {
+    "prompt": "Eso es todo por ahora",
+    "completion": "Perfecto. Si requieres más asistencia, SafeRide estará disponible para ayudarte.",
+    "intent": "despedida",
+    "pattern": ["eso es todo", "por ahora nada más"],
+    "task": "Confirmar cierre de conversación",
+    "meaning": "El usuario comunica que terminó con las consultas.",
+    "examples": ["Eso es todo", "Nada más por ahora"]
+  },
+  {
+    "prompt": "Muchas gracias",
+    "completion": "Con gusto. SafeRide agradece tu confianza. Hasta la próxima.",
+    "intent": "despedida",
+    "pattern": ["muchas gracias", "gracias por todo"],
+    "task": "Cerrar conversación agradeciendo",
+    "meaning": "El usuario agradece y finaliza la interacción.",
+    "examples": ["Muchas gracias", "Gracias por todo"]
+  },
+  {
+    "prompt": "Nos vemos pronto",
+    "completion": "Nos vemos pronto. SafeRide estará listo para asistirte nuevamente.",
+    "intent": "despedida",
+    "pattern": ["nos vemos pronto", "hasta pronto"],
+    "task": "Cerrar con expectativa de regreso",
+    "meaning": "El usuario espera volver a interactuar en el corto plazo.",
+    "examples": ["Nos vemos pronto", "Hasta pronto"]
+  },
+  {
+    "prompt": "Eso es todo, gracias",
+    "completion": "De acuerdo. Gracias por comunicarte con SafeRide.",
+    "intent": "despedida",
+    "pattern": ["eso es todo gracias", "terminé gracias"],
+    "task": "Confirmar cierre y agradecer",
+    "meaning": "El usuario indica cierre con agradecimiento.",
+    "examples": ["Eso es todo, gracias", "He terminado, gracias"]
+  },
+
+    {
+      "prompt": "Como me registro en SafeRide?",
+      "completion": "Para registrarte en SafeRide abre la página de registro, escribe tu nombre completo, correo, teléfono y crea una contraseña fuerte. Luego selecciona si eres pasajero o conductor y haz clic en Crear Cuenta.",
+      "intent": "registro",
+      "pattern": ["como registrarme", "como me registro", "crear cuenta saferide", "abrir cuenta saferide", "registrar en saferide"],
+      "task": "explicar registro",
+      "meaning": "explicación paso a paso para crear una cuenta",
+      "examples": ["Usuario: Como me registro en SafeRide?\nBot: Abre la página de registro, completa tus datos y presiona Crear Cuenta."]
+    },
+    {
+      "prompt": "Que datos necesito para crear mi cuenta en SafeRide?",
+      "completion": "Debes ingresar tu nombre completo, correo electrónico válido, número de teléfono y una contraseña segura. Si eliges conductor, también tendrás que dar tu licencia, placa, modelo y año del vehículo.",
+      "intent": "registro",
+      "pattern": ["datos necesarios registro", "que necesito para registrarme", "campos registro saferide", "informacion para abrir cuenta"],
+      "task": "explicar campos",
+      "meaning": "información requerida para registrarse",
+      "examples": ["Usuario: Que datos necesito para crear mi cuenta?\nBot: Nombre, correo, teléfono, contraseña y si eres conductor datos del vehículo."]
+    },
+    {
+      "prompt": "Como me registro como pasajero?",
+      "completion": "Selecciona la pestaña Pasajero en el formulario, ingresa tu nombre, correo, teléfono y contraseña. Luego presiona Crear Cuenta y estarás registrado como pasajero en SafeRide.",
+      "intent": "registro",
+      "pattern": ["registrar como pasajero", "crear cuenta pasajero", "registro usuario normal saferide"],
+      "task": "explicar registro pasajero",
+      "meaning": "proceso de registro para pasajeros",
+      "examples": ["Usuario: Como me registro como pasajero?\nBot: Selecciona Pasajero, completa los datos personales y presiona Crear Cuenta."]
+    },
+    {
+      "prompt": "Como me registro como conductor?",
+      "completion": "En el registro selecciona la pestaña Conductor. Ingresa tu nombre, correo, teléfono y contraseña. Además completa número de licencia, placa, modelo y año de tu vehículo. Después presiona Crear Cuenta.",
+      "intent": "registro",
+      "pattern": ["registrar como conductor", "crear cuenta de conductor", "registro chofer saferide", "abrir cuenta de conductor"],
+      "task": "explicar registro conductor",
+      "meaning": "proceso de registro para conductores",
+      "examples": ["Usuario: Como me registro como conductor?\nBot: Selecciona Conductor, llena tus datos personales y la información de tu vehículo."]
+    },
+    {
+      "prompt": "Que requisitos tiene la contraseña en SafeRide?",
+      "completion": "La contraseña debe tener mínimo 8 caracteres, incluir una letra mayúscula, al menos un número y un carácter especial como !, @, # o $.",
+      "intent": "registro",
+      "pattern": ["requisitos contraseña", "como debe ser la contraseña", "que password usar", "validar clave"],
+      "task": "explicar contraseña",
+      "meaning": "criterios de validación de contraseña",
+      "examples": ["Usuario: Que requisitos tiene la contraseña?\nBot: Debe tener 8 caracteres, una mayúscula, un número y un símbolo especial."]
+    },
+    {
+      "prompt": "Que pasa despues de registrarme?",
+      "completion": "Al terminar tu registro SafeRide te redirige automáticamente al inicio de sesión, donde podrás ingresar con tu correo y contraseña para comenzar a usar la app.",
+      "intent": "registro",
+      "pattern": ["que pasa despues de crear cuenta", "despues de registrarme", "luego del registro", "que sigue despues de registro"],
+      "task": "explicar flujo",
+      "meaning": "informar el paso siguiente tras crear una cuenta",
+      "examples": ["Usuario: Que pasa despues de registrarme?\nBot: Serás redirigido al login para acceder con tu cuenta."]
+    },
+    {
+      "prompt": "Ya tengo cuenta en SafeRide como inicio sesión?",
+      "completion": "Si ya tienes cuenta ve a la página de login, ingresa tu correo y tu contraseña y haz clic en Iniciar Sesión.",
+      "intent": "registro",
+      "pattern": ["ya tengo cuenta", "como iniciar sesion", "entrar a saferide", "login saferide"],
+      "task": "explicar inicio de sesión",
+      "meaning": "explicación de cómo acceder a una cuenta ya creada",
+      "examples": ["Usuario: Ya tengo cuenta en SafeRide como inicio sesión?\nBot: Ingresa tu correo y contraseña en la página de login."]
+    },
+    {
+      "prompt": "Que hago si olvide mi contraseña?",
+      "completion": "En la pantalla de inicio de sesión selecciona la opción Olvidé mi contraseña, ingresa tu correo y recibirás un enlace para restablecerla.",
+      "intent": "registro",
+      "pattern": ["olvide mi clave", "no recuerdo la contraseña", "recuperar password", "resetear contraseña"],
+      "task": "recuperar acceso",
+      "meaning": "explicación de cómo restablecer la contraseña",
+      "examples": ["Usuario: Que hago si olvide mi contraseña?\nBot: Usa la opción Olvidé mi contraseña para recibir un enlace de recuperación."]
+    },
+
+    {
+      "prompt": "Quiero iniciar sesion",
+      "completion": "Claro, por favor ingresa tu correo y contraseña para continuar.",
+      "intent": "login",
+      "pattern": ["iniciar sesion", "loguearme", "entrar a mi cuenta", "acceder a mi cuenta", "quiero entrar", "hacer login", "como inicio sesion", "ya tengo cuenta"],
+      "task": "autenticacion",
+      "meaning": "el usuario quiere logearse en la aplicacion",
+      "examples": ["Usuario: Quiero iniciar sesion\nBot: Claro, por favor ingresa tu correo y contraseña para continuar."]
+    },
+    {
+      "prompt": "Olvide mi contraseña",
+      "completion": "No te preocupes, puedes restablecer tu contraseña en la seccion de '¿Olvidaste tu contraseña?'.",
+      "intent": "forgot_password",
+      "pattern": ["olvide mi contraseña", "recuperar contraseña", "no recuerdo mi clave", "resetear password", "no recuerdo la contraseña", "clave olvidada", "perdi mi password"],
+      "task": "recuperacion",
+      "meaning": "el usuario necesita restablecer su acceso",
+      "examples": ["Usuario: Olvide mi contraseña\nBot: Puedes restablecer tu contraseña en la opcion '¿Olvidaste tu contraseña?'"]
+    },
+    {
+      "prompt": "Como me registro",
+      "completion": "Puedes registrarte creando una nueva cuenta en la opcion 'Registrate aqui'.",
+      "intent": "register",
+      "pattern": ["registrarme", "crear cuenta", "hacer una cuenta nueva", "quiero registrarme", "como me registro", "abrir cuenta", "crear usuario"],
+      "task": "registro",
+      "meaning": "el usuario desea crear una cuenta nueva",
+      "examples": ["Usuario: Como me registro\nBot: Puedes hacerlo en la opcion 'Registrate aqui'"]
+    },
+    {
+      "prompt": "No puedo entrar a mi cuenta",
+      "completion": "Si tienes problemas para entrar, verifica tu correo y contraseña o usa la opcion de recuperar contraseña.",
+      "intent": "login_error",
+      "pattern": ["no puedo entrar", "no me deja loguearme", "error al iniciar sesion", "no funciona el login", "me rechaza el acceso", "no carga mi cuenta"],
+      "task": "soporte",
+      "meaning": "el usuario tiene dificultades al iniciar sesion",
+      "examples": []
+    },
+    {
+      "prompt": "Donde pongo mi correo",
+      "completion": "Debes escribir tu correo en el campo 'Correo Electronico' para iniciar sesion.",
+      "intent": "login_help",
+      "pattern": ["donde pongo mi correo", "donde ingreso mi email", "donde va el usuario", "campo correo", "donde escribo mi cuenta"],
+      "task": "ayuda_login",
+      "meaning": "el usuario necesita ayuda con el formulario",
+      "examples": []
+    },
+    {
+      "prompt": "Soy conductor y quiero entrar",
+      "completion": "Perfecto, selecciona 'Conductor' y escribe tus credenciales para continuar.",
+      "intent": "login_driver",
+      "pattern": ["soy conductor", "entrar como chofer", "quiero logearme como driver", "modo conductor", "soy chofer"],
+      "task": "autenticacion_driver",
+      "meaning": "el usuario quiere entrar como conductor",
+      "examples": []
+    },
+    {
+      "prompt": "Soy pasajero y quiero iniciar sesion",
+      "completion": "Excelente, selecciona 'Pasajero' y escribe tus datos de acceso.",
+      "intent": "login_passenger",
+      "pattern": ["soy pasajero", "entrar como usuario", "loguearme como pasajero", "modo pasajero", "soy cliente"],
+      "task": "autenticacion_passenger",
+      "meaning": "el usuario quiere entrar como pasajero",
+      "examples": []
+    },
+    {
+      "prompt": "Me sale error de contraseña",
+      "completion": "Verifica que la contraseña sea correcta o utiliza la opcion de recuperacion si la olvidaste.",
+      "intent": "login_error_password",
+      "pattern": ["error de contraseña", "clave incorrecta", "password incorrecto", "no acepta mi clave", "me rechaza la contraseña"],
+      "task": "soporte_password",
+      "meaning": "el usuario ingreso mal su clave o necesita recuperarla",
+      "examples": []
+    },
+    {
+      "prompt": "Puedo entrar con Google",
+      "completion": "Actualmente puedes iniciar sesion con tu correo y contraseña registrados en SafeRide.",
+      "intent": "login_oauth",
+      "pattern": ["entrar con google", "login con facebook", "usar gmail para entrar", "entrar con redes sociales"],
+      "task": "pregunta_oauth",
+      "meaning": "el usuario quiere saber si puede logearse con proveedores externos",
+      "examples": []
+    },
+    {
+      "prompt": "Mi correo no funciona",
+      "completion": "Asegurate de ingresar el correo correcto. Si no tienes cuenta, puedes registrarte.",
+      "intent": "login_error_email",
+      "pattern": ["correo no funciona", "mi email da error", "no reconoce mi correo", "email incorrecto"],
+      "task": "soporte_email",
+      "meaning": "el sistema no reconoce el correo ingresado",
+      "examples": []
+    },
+
+    {
+      "prompt": "Que es SafeRide?",
+      "completion": "SafeRide es una plataforma de transporte seguro en Nicaragua que conecta pasajeros con conductores verificados. Ofrecemos viajes confiables, planes de suscripción y servicios adicionales como entregas.",
+      "intent": "que_es",
+      "pattern": ["que es saferide", "que significa saferide", "explica saferide", "para que sirve saferide"],
+      "task": "explicar_servicio",
+      "meaning": "explicar que es SafeRide",
+      "examples": []
+    },
+    {
+      "prompt": "Como funciona SafeRide?",
+      "completion": "Funciona de forma simple: eliges tu plan, solicitas un viaje o servicio desde la app y un conductor verificado llega hasta ti. Todo con seguimiento en tiempo real.",
+      "intent": "como_funciona",
+      "pattern": ["como funciona saferide", "como se usa", "quiero saber como funciona", "como pedir viaje"],
+      "task": "explicar_funcionamiento",
+      "meaning": "explicar funcionamiento basico",
+      "examples": []
+    },
+    {
+      "prompt": "Que planes tiene SafeRide?",
+      "completion": "Ofrecemos tres planes: Estándar por 5 días, Plus por 15 días y Premium por 30 días. Todos incluyen solicitudes ilimitadas y beneficios únicos.",
+      "intent": "planes",
+      "pattern": ["planes de suscripcion", "que planes hay", "suscripciones disponibles", "opciones de plan"],
+      "task": "explicar_planes",
+      "meaning": "informar planes disponibles",
+      "examples": []
+    },
+    {
+      "prompt": "Cual es el plan mas popular?",
+      "completion": "El plan más popular es SafeRide Plus. Incluye solicitudes ilimitadas por 15 días, prioridad máxima en asignación de conductores y soporte 24/7.",
+      "intent": "plan_popular",
+      "pattern": ["cual es el plan mas usado", "mas popular", "el mejor plan", "cual recomiendan"],
+      "task": "explicar_plan_popular",
+      "meaning": "informar cual es el mas elegido",
+      "examples": []
+    },
+    {
+      "prompt": "Que incluye el plan Premium?",
+      "completion": "El plan Premium ofrece 30 días completos de solicitudes ilimitadas, conductores VIP, soporte dedicado 24/7, cancelaciones gratis y un programa de recompensas exclusivo.",
+      "intent": "plan_premium",
+      "pattern": ["detalles premium", "que trae premium", "premium incluye", "beneficios premium"],
+      "task": "explicar_plan_premium",
+      "meaning": "explicar beneficios del plan premium",
+      "examples": []
+    },
+    {
+      "prompt": "Puedo cancelar mi plan?",
+      "completion": "Sí, puedes cancelar tu plan en cualquier momento desde tu cuenta, sin cargos adicionales ni penalizaciones.",
+      "intent": "cancelacion",
+      "pattern": ["cancelar plan", "dar de baja suscripcion", "terminar plan", "cancelar servicio"],
+      "task": "cancelar_plan",
+      "meaning": "informar sobre cancelaciones",
+      "examples": []
+    },
+    {
+      "prompt": "Como pago mi suscripcion?",
+      "completion": "Aceptamos pagos con tarjeta de crédito, débito y métodos digitales compatibles. Los precios son en dólares y se muestran antes de confirmar.",
+      "intent": "pagos",
+      "pattern": ["como pagar", "metodos de pago", "tarjetas aceptadas", "formas de pago"],
+      "task": "explicar_pagos",
+      "meaning": "explicar metodos de pago",
+      "examples": []
+    },
+    {
+      "prompt": "Que servicios adicionales tienen?",
+      "completion": "Además de viajes, ofrecemos SafeDelivery para paquetes y Quik Drives para traslados rápidos dentro de la ciudad.",
+      "intent": "servicios",
+      "pattern": ["servicios adicionales", "que mas ofrecen", "ademas de viajes", "extra services"],
+      "task": "explicar_servicios",
+      "meaning": "mostrar servicios extra",
+      "examples": []
+    },
+    {
+      "prompt": "Tienen envio de paquetes?",
+      "completion": "Sí, con nuestro servicio SafeDelivery puedes enviar paquetes y documentos importantes con entrega segura y seguimiento en tiempo real.",
+      "intent": "servicio_delivery",
+      "pattern": ["envios", "mandar paquete", "safe delivery", "paquetes saferide"],
+      "task": "explicar_delivery",
+      "meaning": "explicar servicio delivery",
+      "examples": []
+    },
+    {
+      "prompt": "Que beneficios ofrece SafeRide?",
+      "completion": "Ofrecemos seguimiento GPS en tiempo real, soporte en español 24/7, tarifas transparentes, conductores certificados y botón de emergencia integrado.",
+      "intent": "beneficios",
+      "pattern": ["beneficios", "ventajas", "porque elegir saferide", "que gano con saferide"],
+      "task": "explicar_beneficios",
+      "meaning": "explicar ventajas",
+      "examples": []
+    },
+    {
+      "prompt": "Cuantos usuarios tiene SafeRide?",
+      "completion": "Actualmente tenemos más de 2,500 usuarios activos, 75,000 viajes completados y una calificación promedio de 4.9 estrellas.",
+      "intent": "estadisticas",
+      "pattern": ["estadisticas", "cuantos usuarios", "datos de usuarios", "calificacion"],
+      "task": "mostrar_estadisticas",
+      "meaning": "mostrar datos numericos",
+      "examples": []
+    },
+    {
+      "prompt": "Como empiezo a usar SafeRide?",
+      "completion": "Primero debes registrarte gratis, luego elegir un plan y finalmente puedes solicitar viajes o servicios desde la app.",
+      "intent": "empezar",
+      "pattern": ["como empezar", "quiero usar saferide", "que hago para registrarme", "como iniciar"],
+      "task": "explicar_inicio",
+      "meaning": "explicar paso inicial",
+      "examples": []
+    },
+    {
+      "prompt": "Como me registro?",
+      "completion": "Puedes registrarte gratis en la opción 'Registrarse' dentro de la app o página web, ingresando tu correo y contraseña.",
+      "intent": "registro",
+      "pattern": ["registrarse", "crear cuenta", "nueva cuenta", "registrarme en saferide"],
+      "task": "registro",
+      "meaning": "explicar como registrarse",
+      "examples": []
+    },
+    {
+      "prompt": "Olvide mi contraseña",
+      "completion": "Puedes restablecer tu contraseña en la opción '¿Olvidaste tu contraseña?' ingresando tu correo electrónico.",
+      "intent": "forgot_password",
+      "pattern": ["olvide contraseña", "recuperar clave", "resetear password", "no recuerdo contraseña"],
+      "task": "recuperar_contraseña",
+      "meaning": "ayuda con recuperacion",
+      "examples": []
+    },
+    {
+      "prompt": "Donde busco soporte?",
+      "completion": "Puedes contactar soporte en español 24/7 desde la sección de ayuda de la app o escribiendo al centro de soporte.",
+      "intent": "soporte",
+      "pattern": ["soporte", "atencion al cliente", "ayuda", "contactar soporte"],
+      "task": "soporte",
+      "meaning": "dar opciones de soporte",
+      "examples": []
+    },
+
+     {
+      "prompt": "Como contacto con SafeRide?",
+      "completion": "Puedes contactarnos por chat en vivo 24/7, llamada telefónica, correo electrónico o WhatsApp. Elige el canal que prefieras desde el Centro de Ayuda.",
+      "intent": "contacto",
+      "pattern": ["contactar soporte", "hablar con alguien", "necesito ayuda", "quiero soporte"],
+      "task": "contacto_general",
+      "meaning": "explicar como contactar soporte",
+      "examples": []
+    },
+    {
+      "prompt": "Tienen chat en vivo?",
+      "completion": "Sí, contamos con chat en vivo disponible las 24 horas del día con respuesta en menos de 2 minutos.",
+      "intent": "chat",
+      "pattern": ["chat en vivo", "soporte chat", "quiero chatear con agente", "abrir chat"],
+      "task": "soporte_chat",
+      "meaning": "explicar chat en vivo",
+      "examples": []
+    },
+    {
+      "prompt": "Quiero llamar a SafeRide",
+      "completion": "Puedes llamarnos al +505 2222-3333 entre las 6:00 AM y las 10:00 PM para hablar con un especialista.",
+      "intent": "llamada",
+      "pattern": ["telefono saferide", "llamar soporte", "quiero hablar por telefono", "contacto telefonico"],
+      "task": "soporte_llamada",
+      "meaning": "dar telefono de contacto",
+      "examples": []
+    },
+    {
+      "prompt": "Tienen WhatsApp?",
+      "completion": "Sí, puedes escribirnos a WhatsApp al número +505 8888-9999. Respondemos en menos de 5 minutos.",
+      "intent": "whatsapp",
+      "pattern": ["numero whatsapp", "whatsapp soporte", "quiero escribir por whatsapp"],
+      "task": "soporte_whatsapp",
+      "meaning": "explicar contacto via whatsapp",
+      "examples": []
+    },
+    {
+      "prompt": "Donde envio un correo?",
+      "completion": "Puedes escribirnos al correo soporte@saferide.ni para consultas detalladas. Tiempo de respuesta menor a 4 horas.",
+      "intent": "correo",
+      "pattern": ["correo soporte", "email saferide", "quiero mandar un mail", "contacto email"],
+      "task": "soporte_correo",
+      "meaning": "explicar contacto por correo",
+      "examples": []
+    },
+    {
+      "prompt": "Quiero reportar un problema",
+      "completion": "Puedes reportar un problema directamente desde el Centro de Ayuda seleccionando la opción 'Reportar Problema'.",
+      "intent": "reportar_problema",
+      "pattern": ["tengo un problema", "reportar falla", "reporte de error", "problema en viaje"],
+      "task": "accion_rapida",
+      "meaning": "explicar opcion de reportar",
+      "examples": []
+    },
+    {
+      "prompt": "Tengo un problema de pago",
+      "completion": "Si tienes problemas con cobros o métodos de pago, selecciona la opción 'Problema de Pago' y nuestro equipo te ayudará.",
+      "intent": "problema_pago",
+      "pattern": ["error pago", "cobro incorrecto", "problema con tarjeta", "pago fallido"],
+      "task": "accion_rapida_pago",
+      "meaning": "ayuda con cobros y pagos",
+      "examples": []
+    },
+    {
+      "prompt": "Olvide algo en el carro",
+      "completion": "Si olvidaste un objeto, selecciona la opción 'Objeto Perdido' en el Centro de Ayuda para coordinar la devolución.",
+      "intent": "objeto_perdido",
+      "pattern": ["perdi algo", "olvide objeto", "recuperar cosa perdida", "objeto olvidado"],
+      "task": "accion_rapida_objeto",
+      "meaning": "ayuda con objetos olvidados",
+      "examples": []
+    },
+    {
+      "prompt": "Quiero felicitar a mi conductor",
+      "completion": "Puedes usar la opción 'Elogiar Conductor' para reconocer el servicio de un conductor. Tu opinión nos ayuda a motivarlos.",
+      "intent": "elogiar_conductor",
+      "pattern": ["felicitar chofer", "elogiar conductor", "buen servicio", "dar reseña positiva"],
+      "task": "accion_rapida_elogio",
+      "meaning": "elogiar conductor",
+      "examples": []
+    },
+    {
+      "prompt": "Es seguro SafeRide?",
+      "completion": "Sí, todos nuestros conductores pasan verificaciones de antecedentes, exámenes médicos, capacitación en seguridad y están monitoreados en tiempo real.",
+      "intent": "seguridad",
+      "pattern": ["es seguro", "seguridad saferide", "confiable saferide", "viajes seguros"],
+      "task": "seguridad_general",
+      "meaning": "explicar medidas de seguridad",
+      "examples": []
+    },
+    {
+      "prompt": "Que hago en una emergencia?",
+      "completion": "En caso de emergencia, usa el botón de emergencia en la app o llama al 911. También puedes usar el Chat de Emergencia 24/7.",
+      "intent": "emergencia",
+      "pattern": ["emergencia", "problema urgente", "necesito ayuda ya", "boton emergencia"],
+      "task": "emergencia",
+      "meaning": "explicar protocolo de emergencia",
+      "examples": []
+    },
+    {
+      "prompt": "Donde encuentro preguntas frecuentes?",
+      "completion": "En el Centro de Ayuda puedes acceder a la sección de Preguntas Frecuentes organizadas por categorías como cuenta, viajes, pagos, seguridad y app.",
+      "intent": "faq",
+      "pattern": ["preguntas frecuentes", "faq", "dudas comunes", "ayuda basica"],
+      "task": "faq",
+      "meaning": "explicar FAQ",
+      "examples": []
+    },
+    {
+      "prompt": "Como envio un mensaje a soporte?",
+      "completion": "Puedes llenar el formulario de contacto con tu nombre, correo, asunto y mensaje. Nuestro equipo responde en menos de 4 horas.",
+      "intent": "formulario_contacto",
+      "pattern": ["formulario contacto", "mandar mensaje", "enviar consulta", "escribir a soporte"],
+      "task": "contacto_formulario",
+      "meaning": "explicar formulario",
+      "examples": []
+    },
+
+    {
+      "prompt": "Que es el blog de SafeRide?",
+      "completion": "El Blog de SafeRide es un espacio donde compartimos noticias, actualizaciones, consejos de seguridad, historias de conductores y novedades tecnológicas.",
+      "intent": "blog_info",
+      "pattern": ["que es el blog", "para que sirve el blog", "saferide blog", "pagina de noticias"],
+      "task": "informacion_general",
+      "meaning": "explicar la función del blog",
+      "examples": []
+    },
+    {
+      "prompt": "Quiero ver noticias",
+      "completion": "Claro, en el Blog puedes filtrar por la categoría 'Noticias' y ver todos los artículos recientes.",
+      "intent": "ver_noticias",
+      "pattern": ["ver noticias", "mostrar noticias", "articulos de noticias"],
+      "task": "filtrar_noticias",
+      "meaning": "mostrar noticias",
+      "examples": []
+    },
+    {
+      "prompt": "Muéstrame consejos de seguridad",
+      "completion": "Puedes entrar a la categoría 'Seguridad' donde encontrarás guías y protocolos tanto para pasajeros como para conductores.",
+      "intent": "ver_seguridad",
+      "pattern": ["consejos de seguridad", "articulos seguridad", "blog seguridad"],
+      "task": "filtrar_seguridad",
+      "meaning": "mostrar artículos de seguridad",
+      "examples": []
+    },
+    {
+      "prompt": "Quiero ver tecnología",
+      "completion": "En la categoría 'Tecnología' puedes leer sobre cómo usamos inteligencia artificial y otras innovaciones en SafeRide.",
+      "intent": "ver_tecnologia",
+      "pattern": ["articulos de tecnologia", "tecnologia saferide", "blog tecnologia"],
+      "task": "filtrar_tecnologia",
+      "meaning": "mostrar artículos de tecnologia",
+      "examples": []
+    },
+    {
+      "prompt": "Donde están las historias de conductores",
+      "completion": "En la categoría 'Conductores' encontrarás historias inspiradoras y experiencias de quienes trabajan con SafeRide.",
+      "intent": "ver_conductores",
+      "pattern": ["historias de conductores", "blog conductores", "articulos de choferes"],
+      "task": "filtrar_conductores",
+      "meaning": "mostrar artículos de conductores",
+      "examples": []
+    },
+    {
+      "prompt": "Cual es el artículo destacado?",
+      "completion": "El artículo destacado actual es 'SafeRide Alcanza 50,000 Viajes Completados en Nicaragua'.",
+      "intent": "articulo_destacado",
+      "pattern": ["articulo destacado", "noticia principal", "blog importante"],
+      "task": "destacado",
+      "meaning": "mostrar articulo principal",
+      "examples": []
+    },
+    {
+      "prompt": "Quiero buscar un artículo sobre IA",
+      "completion": "Puedes usar el buscador del blog escribiendo 'IA' o 'Inteligencia Artificial' para ver los artículos relacionados.",
+      "intent": "buscar_articulo",
+      "pattern": ["buscar articulo", "encontrar post", "donde esta el articulo"],
+      "task": "busqueda",
+      "meaning": "explicar cómo buscar",
+      "examples": []
+    },
+    {
+      "prompt": "Como me suscribo al newsletter?",
+      "completion": "Solo escribe tu correo en la sección de suscripción y recibirás noticias, consejos y novedades directamente en tu email.",
+      "intent": "suscripcion",
+      "pattern": ["suscribirme", "newsletter", "recibir noticias", "mandar actualizaciones"],
+      "task": "suscripcion_newsletter",
+      "meaning": "suscribirse al boletin",
+      "examples": []
+    },
+    {
+      "prompt": "Cuantos artículos hay en total?",
+      "completion": "Actualmente hay 24 artículos disponibles en el blog distribuidos en categorías como Seguridad, Tecnología, Conductores y Noticias.",
+      "intent": "total_articulos",
+      "pattern": ["cuantos articulos hay", "cantidad de posts", "numero de articulos"],
+      "task": "conteo_articulos",
+      "meaning": "mostrar cantidad de articulos",
+      "examples": []
+    },
+    {
+      "prompt": "Quiero cargar más artículos",
+      "completion": "Puedes presionar el botón 'Cargar Más Artículos' para ver publicaciones anteriores del blog.",
+      "intent": "cargar_mas",
+      "pattern": ["mas articulos", "cargar mas", "ver mas posts"],
+      "task": "mostrar_mas",
+      "meaning": "cargar mas posts",
+      "examples": []
+    },
+
+    {
+      "prompt": "Quiero información de SafeRide",
+      "completion": "Claro, puedo ayudarte con diferentes temas relacionados a SafeRide: \n- Qué es SafeRide y cómo funciona\n- Planes y servicios disponibles\n- Seguridad y soporte\n- Registro e inicio de sesión\n- Conductores y pasajeros\n- Noticias y Blog de SafeRide\n- Estadísticas y crecimiento\n¿Cuál de estos temas te interesa?",
+      "intent": "info_general",
+      "pattern": ["quiero informacion", "que es saferide", "informacion de la app", "cuentame de saferide", "que hace saferide"],
+      "task": "guia",
+      "meaning": "guía inicial para mostrar todo lo que cubre SafeRide",
+      "examples": ["Usuario: Quiero información de SafeRide\nBot: Puedo ayudarte con temas como planes, seguridad, registro, blog, conductores y más."]
+    },
+    {
+      "prompt": "Como me puede ayudar SafeRide?",
+      "completion": "SafeRide te ayuda ofreciéndote transporte seguro, conductores verificados, seguimiento GPS en tiempo real, soporte 24/7, tarifas transparentes y planes de suscripción flexibles.",
+      "intent": "beneficios",
+      "pattern": ["como me puede ayudar", "porque usar saferide", "ventajas de saferide", "que gano con saferide"],
+      "task": "explicar_beneficios",
+      "meaning": "explicar como ayuda SafeRide",
+      "examples": []
+    },
+    {
+      "prompt": "Que servicios ofrece SafeRide?",
+      "completion": "SafeRide ofrece viajes seguros para pasajeros, la opción de conducir y ganar dinero, entregas con SafeDelivery, planes de suscripción Estándar, Plus y Premium, además de un blog con noticias y consejos.",
+      "intent": "servicios",
+      "pattern": ["que servicios ofrece", "que puedo hacer con saferide", "que opciones hay en la app", "servicios disponibles"],
+      "task": "explicar_servicios",
+      "meaning": "describir todos los servicios disponibles",
+      "examples": []
+    },
+    {
+      "prompt": "Quiero registrarme en SafeRide",
+      "completion": "Puedes registrarte gratis creando tu cuenta en la sección 'Regístrate aquí'. Solo necesitas tu correo, contraseña y elegir si eres pasajero o conductor.",
+      "intent": "registro",
+      "pattern": ["registrarme", "crear cuenta", "como me registro", "registrar en saferide"],
+      "task": "registro_usuario",
+      "meaning": "explicar como registrarse",
+      "examples": []
+    },
+    {
+      "prompt": "Quiero iniciar sesión",
+      "completion": "Para iniciar sesión, ingresa tu correo electrónico y contraseña en la sección de Login. También puedes elegir entrar como conductor o pasajero.",
+      "intent": "login",
+      "pattern": ["iniciar sesion", "entrar a mi cuenta", "loguearme", "acceder a saferide"],
+      "task": "autenticacion",
+      "meaning": "ayudar con inicio de sesión",
+      "examples": []
+    },
+    {
+      "prompt": "Olvide mi contraseña",
+      "completion": "No te preocupes, puedes restablecer tu contraseña en la opción '¿Olvidaste tu contraseña?'. Recibirás un enlace en tu correo.",
+      "intent": "forgot_password",
+      "pattern": ["olvide contraseña", "recuperar password", "resetear clave", "no recuerdo contraseña"],
+      "task": "recuperacion",
+      "meaning": "recuperar acceso a la cuenta",
+      "examples": []
+    },
+    {
+      "prompt": "Que planes tiene SafeRide?",
+      "completion": "SafeRide ofrece tres planes de suscripción: Estándar (5 días), Plus (15 días) y Premium (30 días), todos con solicitudes ilimitadas y beneficios adicionales según el plan.",
+      "intent": "planes",
+      "pattern": ["planes disponibles", "suscripciones", "opciones de plan", "que plan elegir"],
+      "task": "explicar_planes",
+      "meaning": "informar sobre los planes",
+      "examples": []
+    },
+    {
+      "prompt": "Que tan seguro es SafeRide?",
+      "completion": "SafeRide es muy seguro: contamos con seguimiento GPS en tiempo real, soporte técnico 24/7 en español, conductores verificados y un botón de emergencia integrado en la app.",
+      "intent": "seguridad",
+      "pattern": ["es seguro", "saferide seguro", "como garantizan seguridad", "es confiable"],
+      "task": "explicar_seguridad",
+      "meaning": "explicar las medidas de seguridad",
+      "examples": []
+    },
+    {
+      "prompt": "Quiero ver noticias de SafeRide",
+      "completion": "Puedes entrar al Blog de SafeRide donde encontrarás noticias, consejos de seguridad, novedades tecnológicas y testimonios de conductores.",
+      "intent": "noticias",
+      "pattern": ["ver noticias", "blog saferide", "actualizaciones", "novedades"],
+      "task": "blog_noticias",
+      "meaning": "acceder a articulos del blog",
+      "examples": []
+    },
+    {
+      "prompt": "Cuantos usuarios usan SafeRide?",
+      "completion": "Actualmente SafeRide tiene más de 2,500 usuarios activos, más de 75,000 viajes completados y una calificación promedio de 4.9 estrellas.",
+      "intent": "estadisticas",
+      "pattern": ["cuantos usuarios", "estadisticas", "numero de viajes", "calificaciones saferide"],
+      "task": "mostrar_estadisticas",
+      "meaning": "informar datos de crecimiento",
+      "examples": []
+    },
+    {
+      "prompt": "Como puedo ser conductor?",
+      "completion": "Para ser conductor en SafeRide, solo debes registrarte como 'Conductor', completar tus datos y cumplir con los requisitos de verificación. Así podrás empezar a recibir viajes.",
+      "intent": "conductor",
+      "pattern": ["ser conductor", "trabajar en saferide", "manejar en saferide", "como ser chofer"],
+      "task": "explicar_conductor",
+      "meaning": "informar como aplicar a conductor",
+      "examples": []
+    },
+    {
+      "prompt": "Como puedo viajar con SafeRide?",
+      "completion": "Para viajar con SafeRide solo regístrate como 'Pasajero', elige tu plan o usa el modo estándar y podrás pedir viajes en cualquier momento desde la app.",
+      "intent": "pasajero",
+      "pattern": ["viajar con saferide", "ser pasajero", "como pido un viaje", "usar saferide para viajar"],
+      "task": "explicar_pasajero",
+      "meaning": "informar como usar el servicio de pasajeros",
+      "examples": []
+    }
+    
+  ]
+}

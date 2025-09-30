@@ -28,7 +28,7 @@ try:
             distinct_responses[int(i)] = r
     with open("data.json", "r", encoding="utf-8") as f:
         data = json.load(f)["conversations"]
-    model = tf.keras.models.load_model("best_model.keras")
+    model = tf.keras.models.load_model("chatbot_model_final.keras")
     nlp = spacy.load("es_core_news_sm")
     oov_index = tokenizer.word_index.get(OOV_TOKEN, 1)
     print("Recursos cargados exitosamente.")

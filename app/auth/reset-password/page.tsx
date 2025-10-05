@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardDescription } from "@/components/ui/card"
@@ -24,6 +24,7 @@ export default function ResetPasswordPage() {
   const [success, setSuccess] = useState(false)
   const [validToken, setValidToken] = useState(false)
   const [checkingToken, setCheckingToken] = useState(true)
+  const updateInProgressRef = useRef(false)
 
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -67,6 +68,46 @@ export default function ResetPasswordPage() {
     checkSession()
   }, [])
 
+  // LISTENER: Escucha cambios de estado de auth para reflejar correctamente
+  // el resultado de operaciones como updateUser (evita que quede el spinner)
+  useEffect(() => {
+    if (!supabase) return
+
+    const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
+      try {
+        // Eventos útiles: USER_UPDATED, PASSWORD_RECOVERY, SIGNED_OUT
+        // Si recibimos USER_UPDATED o PASSWORD_RECOVERY, asumimos éxito
+        if ((event === 'USER_UPDATED' || event === 'PASSWORD_RECOVERY') && updateInProgressRef.current) {
+          setLoading(false)
+          setSuccess(true)
+          setError('')
+          return
+        }
+
+        // Si recibimos SIGNED_OUT y estábamos en loading, considerarlo como
+        // finalización del flow (por seguridad muchas veces se hace signOut)
+        if (event === 'SIGNED_OUT') {
+          // No sobrescribimos un error existente en caso de fallo
+          setLoading(false)
+          if (!error && updateInProgressRef.current) setSuccess(true)
+          return
+        }
+
+        // En cualquier otro caso, asegurarnos de que no quede el spinner
+        if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+          setLoading(false)
+        }
+      } catch (e) {
+        console.error('Error en listener de auth state change:', e)
+        setLoading(false)
+      }
+    })
+
+    return () => {
+      listener?.subscription.unsubscribe()
+    }
+  }, [])
+
   // VALIDATE PASSWORD STRENGTH
   const validatePassword = (pass: string): string | null => {
     if (pass.length < 6) {
@@ -102,7 +143,10 @@ export default function ResetPasswordPage() {
       return
     }
 
-    setLoading(true)
+  // Mark that this component started an update flow so the auth listener
+  // can distinguish initial session events from an actual password change.
+  updateInProgressRef.current = true
+  setLoading(true)
 
     try {
       if (!supabase) {
@@ -132,7 +176,7 @@ export default function ResetPasswordPage() {
       }
 
       // SUCCESS - PASSWORD UPDATED
-      setLoading(false)
+  setLoading(false)
       setSuccess(true)
 
       // SIGN OUT USER AFTER PASSWORD CHANGE (OPTIONAL - IN BACKGROUND)
@@ -150,6 +194,12 @@ export default function ResetPasswordPage() {
       console.error("Unexpected error:", error)
       setError("Error inesperado. Por favor intenta de nuevo.")
       setLoading(false)
+    }
+    finally {
+      // Asegurar que el spinner no quede activo
+      setLoading(false)
+      // reset the update-in-progress flag after the attempt completes
+      updateInProgressRef.current = false
     }
   }
 

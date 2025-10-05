@@ -13,6 +13,10 @@ import Link from "next/link"
 import Image from "next/image"
 import { supabase } from "@/lib/supabase"
 
+// Usar la misma expresión regular que en el registro: al menos 8 caracteres,
+// una mayúscula, un número y un carácter especial
+const strongPasswordRegex = /^(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]).{8,}$/;
+
 export default function ResetPasswordPage() {
   // STATE MANAGEMENT
   const [password, setPassword] = useState("")
@@ -108,19 +112,10 @@ export default function ResetPasswordPage() {
     }
   }, [])
 
-  // VALIDATE PASSWORD STRENGTH
+  // VALIDATE PASSWORD STRENGTH - usar misma regla que en register
   const validatePassword = (pass: string): string | null => {
-    if (pass.length < 6) {
-      return "La contraseña debe tener al menos 6 caracteres"
-    }
-    if (!/[A-Z]/.test(pass)) {
-      return "La contraseña debe contener al menos una letra mayúscula"
-    }
-    if (!/[a-z]/.test(pass)) {
-      return "La contraseña debe contener al menos una letra minúscula"
-    }
-    if (!/[0-9]/.test(pass)) {
-      return "La contraseña debe contener al menos un número"
+    if (!strongPasswordRegex.test(pass)) {
+      return "La contraseña debe tener al menos 8 caracteres, una mayúscula, un número y un carácter especial."
     }
     return null
   }
@@ -329,7 +324,7 @@ export default function ResetPasswordPage() {
                       {showPassword ? <EyeOff className="h-4 w-4 text-gray-400" /> : <Eye className="h-4 w-4 text-gray-400" />}
                     </Button>
                   </div>
-                  <p className="text-xs text-gray-500">Mínimo 6 caracteres, incluyendo mayúsculas, minúsculas y números</p>
+                  <p className="text-xs text-gray-500">La contraseña debe tener al menos 8 caracteres, una mayúscula, un número y un carácter especial.</p>
                 </div>
 
                 <div className="space-y-2">

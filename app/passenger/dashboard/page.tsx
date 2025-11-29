@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useMemo, useCallback, useRef } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
@@ -16,508 +16,65 @@ import {
   MessageCircle,
   Settings,
   LogOut,
-  Plus,
-  Minus,
-  Share,
   Menu,
   History,
   X,
 } from "lucide-react"
 import { useRealTimeRides } from "@/hooks/useRealTimeRides"
 import { useAuth } from "@/lib/auth-context"
-import { supabase } from "@/lib/supabase"
-import type { Database } from "@/lib/supabase"
-// helper type for ride rows
-type RideRow = Database["public"]["Tables"]["rides"]["Row"]
 import { MapComponent } from "@/components/MapComponent"
 import { AddressAutocomplete } from "@/components/AddressAutocomplete"
 import { ProtectedRoute } from "@/components/ProtectedRoute"
 import { useToast } from "@/hooks/use-toast"
 import { RideChat } from "@/components/RideChat"
-import { useRouter } from "next/navigation" // Import useRouter
+import { useRouter } from "next/navigation"
+import { supabase } from "@/lib/supabase"
 
-// Extend window for webkitAudioContext and audioContext storage used by unlock logic
-declare global {
-  interface Window {
-    webkitAudioContext?: typeof AudioContext
-    audioContext?: AudioContext
-  }
-}
+import type { RideStatus, DriverApi } from "./types"
+import { usePassengerData, useDriverData, useChatNotifications } from "./hooks"
+import { calculateEstimatedFare, calculateEstimatedDuration, getDisplayName, getProfileImage } from "./utils"
+import { solicitarViaje, handleCancelRide, handleRateDriver, handleSkipRating, handleUseMyLocation } from "./actions"
 
-// DASHBOARD PASSENGER CONTENT
 function PassengerDashboardContent() {
-  const router = useRouter() // Initialize useRouter
+  const router = useRouter()
   const { user, userData } = useAuth()
   const { toast } = useToast()
-  // Types
-  type DriverApi = {
-    id?: string | number
-    uid?: string
-    name?: string
-    full_name?: string
-    driver_name?: string
-    current_location?: { coordinates?: number[] }
-    location?: { coordinates?: number[] }
-    coordinates?: number[] | null
-    lat?: number | string
-    lng?: number | string
-    is_online?: boolean
-    is_verified?: boolean
-    rating?: number
-    vehicle_model?: string
-  }
-
-  type DriverDataResult = {
-    success: boolean
-    data?: DriverApi[]
-    error?: string
-    noRangesConfigured?: boolean
-  }
-
-  type NewRidePayload = {
-    passenger_id: string
-    passenger_name?: string
-    pickup_address: string
-    pickup_coordinates: [number, number]
-    destination_address: string
-    destination_coordinates: [number, number]
-    status: string
-    estimated_fare?: number
-    estimated_duration?: number
-    driver_id?: string
-    driver_name?: string
-    accepted_at?: string
-  }
+  // use a loosely-typed wrapper so we can pass this toast to helper actions
+  // that expect a more permissive variant type without causing contravariance errors
+  const safeToast = (opts: any) => toast(opts as any)
+  
   const [pickup, setPickup] = useState("")
   const [destination, setDestination] = useState("")
   const [pickupCoords, setPickupCoords] = useState<{ lat: number; lng: number } | null>(null)
   const [destinationCoords, setDestinationCoords] = useState<{ lat: number; lng: number } | null>(null)
-  type RideStatus = "idle" | "searching" | "pending" | "accepted" | "in-progress"
   const [rideStatus, setRideStatus] = useState<RideStatus>("idle")
   const [availableDrivers, setAvailableDrivers] = useState<DriverApi[]>([])
   const [selectedDriver, setSelectedDriver] = useState("")
-  // Mensaje visible cuando no hay conductores en el área
   const [noDriversNearby, setNoDriversNearby] = useState("")
   const [showDriverSelection, setShowDriverSelection] = useState(false)
   const [showRatingDialog, setShowRatingDialog] = useState(false)
-  const [completedRide, setCompletedRide] = useState<RideRow | null>(null)
+  const [completedRide, setCompletedRide] = useState<any>(null)
   const [rating, setRating] = useState(0)
   const [comment, setComment] = useState("")
-
-  // Sidebar must always be collapsed for passenger dashboard
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true)
   const [currentView, setCurrentView] = useState<string>("rides")
-
-
-  // We only store these values for updates/read later; the UI currently doesn't
-  // reference the *value* directly in this component, so keep only the setters
-  // to avoid unused variable warnings while still populating the data.
-  const [, setRecentTrips] = useState<unknown[]>([])
-  const [, setPassengerStats] = useState<{ totalTrips: number; totalSpent: number; averageRating: number }>({
-    totalTrips: 0,
-    totalSpent: 0,
-    averageRating: 0,
-  })
-
-  // QUIK DESTINATIONS REMOVED
   const [showChatDialog, setShowChatDialog] = useState(false)
-  const [chatUnread, setChatUnread] = useState(0)
-  // We only need setter for last message in this component (the chat component
-  // displays messages), so keep setter to avoid unused variable warning.
-  const [, setChatLastMessage] = useState<string | null>(null)
-  const chatChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null)
-  const audioChatRef = useRef<HTMLAudioElement | null>(null)
-  const playChatUnlockAttachedRef = useRef<boolean>(false)
-  const [chatNotificationEnabled, setChatNotificationEnabled] = useState<boolean | null>(null)
+  const [driversForMap, setDriversForMap] = useState<Array<{ id: string; uid?: string; name: string; lat: number; lng: number }>>([])
+  const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false)
+  const [drawerHeight, setDrawerHeight] = useState(50)
+
+  usePassengerData()
+  const { driverData, showNearbyDriversInMap, DEFAULT_RADIUS_KM } = useDriverData()
   const { rides, cancelRide, refreshRides } = useRealTimeRides(undefined, user?.uid)
   const currentRide = rides.find((ride) => ["pending", "accepted", "in-progress"].includes(ride.status))
-  const [driversForMap, setDriversForMap] = useState<
-    Array<{ id: string; uid?: string; name: string; lat: number; lng: number }>
-  >([])
+  const { chatUnread, setChatUnread } = useChatNotifications(currentRide)
 
-  const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false)
-  const [drawerHeight, setDrawerHeight] = useState(50) // Percentage of screen height
-
-  // RESET RIDE STATUS WHEN NO CURRENT RIDE
   useEffect(() => {
     if (!currentRide && rideStatus !== "idle") {
       setRideStatus("idle")
     }
   }, [currentRide, rideStatus])
 
-  // Chat notifications (passenger listens for messages from driver)
-  useEffect(() => {
-    let mounted = true
-    const setup = async () => {
-      if (chatChannelRef.current) {
-        try {
-          await supabase.removeChannel(chatChannelRef.current)
-        } catch {}
-        chatChannelRef.current = null
-      }
-      if (!currentRide) return
-      try {
-        const channel = supabase
-          .channel(`ride-chat-notify-passenger-${currentRide.id}`)
-          .on(
-            "postgres_changes",
-            { event: "INSERT", schema: "public", table: "ride_messages", filter: `ride_id=eq.${currentRide.id}` },
-            (payload) => {
-              if (!mounted) return
-              // Narrow payload shape safely
-              const newRecord = (payload as { new?: Record<string, unknown> }).new ?? {}
-              const message = typeof newRecord.message === "string" ? newRecord.message : String(newRecord.message ?? "")
-              setChatLastMessage(message)
-              // if message comes from driver, increment unread for passenger
-              if (newRecord.sender_type === "driver") {
-                setChatUnread((c) => c + 1)
-                // Use in-memory state which is kept in sync via storage events and the toggle
-                if (chatNotificationEnabled === null || chatNotificationEnabled === true) {
-                  playChatAudioWithUnlock().catch(() => {})
-                }
-              }
-            },
-          )
-          .subscribe()
-        chatChannelRef.current = channel
-      } catch (_err) {
-        console.error("Error subscribing to chat notifications (passenger):", _err)
-      }
-    }
-    setup()
-    return () => {
-      mounted = false
-      if (chatChannelRef.current) {
-        supabase.removeChannel(chatChannelRef.current).catch(() => {})
-        chatChannelRef.current = null
-      }
-    }
-  }, [currentRide, chatNotificationEnabled]) // Changed dependency from currentRide.id to currentRide
-
-  // PRELOAD CHAT AUDIO AND HELPER TO UNLOCK/PLAY ON INTERACTION
-  useEffect(() => {
-    if (!audioChatRef.current) {
-      audioChatRef.current = new Audio()
-      audioChatRef.current.preload = "auto"
-      fetch("/api/sounds/saferidechattone")
-        .then((r) => r.json())
-        .then((j) => {
-          if (j?.base64) audioChatRef.current!.src = `data:audio/mpeg;base64,${j.base64}`
-        })
-        .catch((e) => console.warn("Could not load saferidechattone:", e))
-    }
-  }, [])
-
-  // LOAD CHAT NOTIFICATION PREFERENCE FROM LOCAL STORAGE
-  useEffect(() => {
-    try {
-      if (user?.uid) {
-        const chatKey = `saferide_chat_notification_${user.uid}`
-        const local = localStorage.getItem(chatKey)
-        if (local !== null) setChatNotificationEnabled(JSON.parse(local))
-        else setChatNotificationEnabled(true)
-      } else {
-        setChatNotificationEnabled(true)
-      }
-    } catch (e) {
-      console.warn("Could not read saferide_chat_notification from localStorage (passenger):", e)
-      setChatNotificationEnabled(true)
-    }
-    const onStorage = (e: StorageEvent) => {
-      try {
-        if (!user?.uid) return
-        const chatKey = `saferide_chat_notification_${user.uid}`
-        if (e.key === chatKey) {
-          try {
-            setChatNotificationEnabled(e.newValue ? JSON.parse(e.newValue) : null)
-          } catch {
-            // ignore parse errors
-          }
-        }
-      } catch {
-        // ignore
-      }
-    }
-
-    // LOAD CHAT NOTIFICATION SETTINGS FROM LOCAL STORAGE
-    const onPrefChanged = (ev: Event) => {
-      try {
-        if (!user?.uid) return
-        // Narrow event detail safely
-        const detail = (ev as CustomEvent & { detail?: Record<string, unknown> }).detail
-        const key = String(detail?.key ?? "")
-        const value = String(detail?.value ?? "")
-        const chatKey = `saferide_chat_notification_${user.uid}`
-        if (key === chatKey) {
-          try {
-            setChatNotificationEnabled(value ? JSON.parse(value) : null)
-          } catch {
-            // ignore parse errors
-          }
-        }
-      } catch {
-        // ignore
-      }
-    }
-    window.addEventListener("storage", onStorage)
-    window.addEventListener("saferide:pref-changed", onPrefChanged)
-    return () => {
-      window.removeEventListener("storage", onStorage)
-      window.removeEventListener("saferide:pref-changed", onPrefChanged)
-    }
-  }, [user?.uid])
-
-  // HELPER: TRY TO PLAY AUDIO IMMEDIATELY; IF BLOCKED BY AUTOPLAY POLICY,
-  const playChatAudioWithUnlock = async () => {
-    if (!audioChatRef.current) return
-    try {
-      await audioChatRef.current.play()
-      return
-  } catch (errUnknown) {
-  const err = errUnknown as { name?: string; message?: string }
-  const isNotAllowed = err && (err.name === "NotAllowedError" || String(err.message).includes("didn't interact"))
-      if (!isNotAllowed) {
-        console.warn("Chat audio play failed:", err)
-        return
-      }
-      if (playChatUnlockAttachedRef.current) return
-      playChatUnlockAttachedRef.current = true
-      const tryUnlock = async () => {
-          try {
-          // Access AudioContext in a type-safe manner using declared Window extensions
-          const Ctor = window.AudioContext ?? window.webkitAudioContext
-          const ctx = window.audioContext ?? (typeof Ctor === "function" ? new Ctor() : undefined)
-          if (ctx && typeof ctx.resume === "function") {
-            await ctx.resume()
-            ;(window as unknown as { audioContext?: AudioContext }).audioContext = ctx
-          }
-        } catch {
-          // ignore
-        }
-        try {
-          await audioChatRef.current!.play()
-        } catch (eUnknown) {
-          const e = eUnknown as Error
-          console.warn("Retry chat audio play after user interaction failed:", e)
-        } finally {
-          window.removeEventListener("pointerdown", tryUnlock)
-          window.removeEventListener("keydown", tryUnlock)
-          playChatUnlockAttachedRef.current = false
-        }
-      }
-      window.addEventListener("pointerdown", tryUnlock, { once: true })
-      window.addEventListener("keydown", tryUnlock, { once: true })
-      return
-    }
-  }
-
-  // LOAD PASSENGER STATISTICS AND RECENT TRIPS
-  useEffect(() => {
-    const loadPassengerData = async () => {
-      if (!supabase || !user?.uid) return
-      try {
-        // Get passenger stats
-        const { data: passengerRow } = await supabase
-          .from("passengers")
-          .select("total_trips, rating")
-          .eq("uid", user.uid)
-          .single()
-        const passengerInfo = (passengerRow ?? null) as unknown as { total_trips?: number; rating?: number } | null
-
-        // GET COMPLETED RIDES FOR SPENDING CALCULATION
-        const { data: completedRides } = await supabase
-          .from("rides")
-          .select(
-            "id, driver_name, passenger_rating, driver_rating, actual_fare, estimated_fare, estimated_duration, completed_at, pickup_address, destination_address",
-          )
-          .eq("passenger_id", user.uid)
-          .eq("status", "completed")
-          .order("completed_at", { ascending: false })
-
-        if (completedRides) {
-          type RideRow = {
-            actual_fare?: number | string | null
-            estimated_fare?: number | string | null
-            driver_rating?: number | null
-            passenger_rating?: number | null
-            completed_at?: string | null
-            id?: string
-            driver_name?: string | null
-            estimated_duration?: number | null
-            pickup_address?: string | null
-            destination_address?: string | null
-          }
-
-          const completed = (completedRides ?? []) as unknown as RideRow[]
-          const totalSpent = completed.reduce(
-            (sum, ride) => sum + Number(ride.actual_fare ?? ride.estimated_fare ?? 0),
-            0,
-          )
-          // Calculate average rating from driver ratings
-          const ratedRides = completed.filter((ride) => ride.driver_rating != null)
-          let averageRating =
-            ratedRides.length > 0
-              ? ratedRides.reduce((sum, ride) => sum + Number(ride.driver_rating ?? 0), 0) / ratedRides.length
-              : 0
-
-          // Fallback: if DB has passenger rating stored separately use it
-          if (!averageRating && passengerInfo && passengerInfo.rating) {
-            averageRating = Number(passengerInfo.rating)
-          }
-
-          setPassengerStats({
-            totalTrips: completed.length,
-            totalSpent,
-            averageRating,
-          })
-          setRecentTrips(completed.slice(0, 5))
-        }
-      } catch (error) {
-        console.error("Error loading passenger data:", error)
-      }
-    }
-    loadPassengerData()
-  }, [user?.uid])
-
-  // DEFAULT RADIUS (KM) READ FROM ENV FOR CLIENT SIDE
-  const DEFAULT_RADIUS_KM = useMemo(() => {
-    try {
-      const v = typeof process !== "undefined" ? process.env.NEXT_PUBLIC_RADIO : undefined
-      const parsed = v ? Number.parseFloat(v) : 1
-      return isNaN(parsed) ? 1 : parsed
-    } catch {
-      return 1
-    }
-  }, [])
-
-  // FUNCION PARA OPTENER LOS DATOS DE EL DRIVER
-  const driverData = useCallback(
-    async (lat?: number | null, lng?: number | null, radiusKm?: number): Promise<DriverDataResult> => {
-      try {
-        const params = new URLSearchParams()
-        const rad = typeof radiusKm === "number" ? radiusKm : DEFAULT_RADIUS_KM
-        if (typeof lat === "number" && typeof lng === "number") {
-          params.set("lat", String(lat))
-          params.set("lng", String(lng))
-          params.set("radiusKm", String(rad))
-        }
-
-        const url = "/api/drivers/all" + (params.toString() ? `?${params.toString()}` : "")
-        const response = await fetch(url)
-        const result = await response.json()
-
-        // Manejo especial: si el servidor responde que no hay rangos configurados,
-        // devolver un objeto con flag para que el UI lo maneje sin lanzar excepción.
-        if (!result.success) {
-          console.error("Error en driverData:", result.error)
-          if (result.error === "Aún no hay rangos configurados") {
-            return { success: false, noRangesConfigured: true, error: result.error }
-          }
-          throw new Error(result.error || "Error al obtener conductores")
-        }
-
-  // Ensure result.data is an array of DriverApi
-  const data = Array.isArray(result?.data) ? (result.data as DriverApi[]) : []
-  return { success: true, data }
-      } catch (error) {
-        console.error("Error en driverData:", error)
-        throw error
-      }
-    },
-    [DEFAULT_RADIUS_KM],
-  )
-
-  // HAVERSINE DISTANCE FUNCTION
-  const haversineDistance = useCallback((lat1: number, lng1: number, lat2: number, lng2: number) => {
-    const toRad = (v: number) => (v * Math.PI) / 180
-    const R = 6371 // km
-    const dLat = toRad(lat2 - lat1)
-    const dLon = toRad(lng2 - lng1)
-    const a =
-      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) * Math.sin(dLon / 2)
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
-    return R * c
-  }, [])
-  // SHOW NEARBY DRIVERS CALLS  /api/drivers/all, maps coordinates, filters by configured radius
-  const showNearbyDriversInMap = useCallback(
-    async (userLat?: number | null, userLng?: number | null) => {
-      try {
-        // If we have user coords, prefer server-side filtering for robustness
-        const res =
-          typeof userLat === "number" && typeof userLng === "number"
-            ? await driverData(userLat, userLng, DEFAULT_RADIUS_KM)
-            : await driverData()
-        // Manejo cuando el servidor indica que no hay rangos configurados
-  if (res && res.noRangesConfigured) {
-          toast({
-            title: "Rangos no configurados",
-            description: "Aún no hay rangos configurados en el servidor",
-            variant: "destructive",
-          })
-          setDriversForMap([])
-          setNoDriversNearby("Aún no hay rangos configurados")
-          return []
-        }
-
-  const mapped = (res.data ?? []).map((d: DriverApi) => {
-          // assumption: driver current_location.coordinates = [lng, lat]
-          const coords = d?.current_location?.coordinates || d?.location?.coordinates || d?.coordinates
-          let lat = 0
-          let lng = 0
-          if (Array.isArray(coords) && coords.length >= 2) {
-            lng = Number(coords[0])
-            lat = Number(coords[1])
-          } else if (d?.lat && d?.lng) {
-            lat = Number(d.lat)
-            lng = Number(d.lng)
-          }
-          return { ...d, lat, lng }
-        })
-
-        let nearby = mapped
-        if (typeof userLat === "number" && typeof userLng === "number") {
-          // If server already filtered, this is redundant but harmless. Keep for safety.
-          nearby = mapped.filter((d: DriverApi & { lat: number; lng: number }) => {
-            if (!d || isNaN(d.lat) || isNaN(d.lng)) return false
-            const dist = haversineDistance(userLat, userLng, d.lat, d.lng)
-            return dist <= DEFAULT_RADIUS_KM
-          })
-        }
-
-        // ONLY INCLUDE DRIVERS THAT ARE CURRENTLY ONLINE
-        nearby = nearby.filter((d: DriverApi) => Boolean(d.is_online))
-
-        // normalize for map: id/uid, name, lat, lng
-        const driversForMapNormalized = nearby.map((d: DriverApi & { lat: number; lng: number }, idx: number) => ({
-          id: String(d.id ?? d.uid ?? idx),
-          uid: d.uid,
-          name: String(d.name || d.full_name || d.driver_name || ""),
-          lat: d.lat,
-          lng: d.lng,
-        }))
-        // Cast to the expected driversForMap shape
-        setDriversForMap(
-          driversForMapNormalized as Array<{ id: string; uid?: string; name: string; lat: number; lng: number }>,
-        )
-        if ((driversForMapNormalized || []).length === 0) {
-          toast({
-            title: "Sin conductores cercanos",
-            description: `No se encontraron conductores a ≤ ${DEFAULT_RADIUS_KM} km`,
-            variant: "default",
-          })
-        }
-        return driversForMapNormalized
-      } catch (err) {
-        console.error("Error loading nearby drivers:", err)
-        setDriversForMap([])
-        return []
-      }
-    },
-    [driverData, DEFAULT_RADIUS_KM, haversineDistance, toast],
-  )
-
-  // AUTO LOAD NEARBY DRIVERS WHEN USER AUTHENTICATES
   useEffect(() => {
     if (!user) return
 
@@ -543,10 +100,11 @@ function PassengerDashboardContent() {
         }
 
         if (typeof lat === "number" && typeof lng === "number") {
-          await showNearbyDriversInMap(lat, lng)
+          const drivers = await showNearbyDriversInMap(lat, lng)
+          setDriversForMap(drivers)
         } else {
-          // fallback: fetch all drivers (server-side no coords)
-          await showNearbyDriversInMap()
+          const drivers = await showNearbyDriversInMap()
+          setDriversForMap(drivers)
         }
       } catch (err) {
         console.error("Error cargando conductores al autenticar:", err)
@@ -556,21 +114,16 @@ function PassengerDashboardContent() {
     loadOnAuth()
   }, [user, pickupCoords, showNearbyDriversInMap])
 
-  // LOAD AVAILABLE DRIVERS WHEN COORDINATES ARE SET - MODIFICADO PARA USAR DRIVERDATA
   useEffect(() => {
     const loadAvailableDrivers = async () => {
       if (!pickupCoords || !destinationCoords) return
 
-      // debug log removed
-
       try {
-        // Usar la función driverData pasando coordenadas para filtrar por 1km
-  const driverResult = await driverData(pickupCoords?.lat, pickupCoords?.lng, DEFAULT_RADIUS_KM)
+        const driverResult = await driverData(pickupCoords?.lat, pickupCoords?.lng, DEFAULT_RADIUS_KM)
 
-  if (driverResult && driverResult.noRangesConfigured) {
-          // Mostrar mensaje persistente en la UI además del toast
+        if (driverResult && driverResult.noRangesConfigured) {
           setNoDriversNearby("Aún no hay rangos configurados")
-          toast({
+          safeToast({
             title: "Rangos no configurados",
             description: "Aún no hay rangos configurados en el servidor",
             variant: "destructive",
@@ -579,28 +132,25 @@ function PassengerDashboardContent() {
           return
         }
 
-        // Filtrar conductores verificados o en línea
-  const verifiedDrivers = (driverResult.data ?? []).filter((driver) => driver.is_verified)
-  const onlineDrivers = (driverResult.data ?? []).filter((driver) => driver.is_online)
+        const verifiedDrivers = (driverResult.data ?? []).filter((driver) => driver.is_verified)
+        const onlineDrivers = (driverResult.data ?? []).filter((driver) => driver.is_online)
         const availableDriversToShow = verifiedDrivers.length > 0 ? verifiedDrivers : onlineDrivers
 
         setAvailableDrivers(availableDriversToShow)
 
         if (availableDriversToShow.length === 0) {
-          // Mostrar mensaje persistente en la UI además del toast
           setNoDriversNearby("No hay conductores disponibles en tu área")
-          toast({
+          safeToast({
             title: "Sin conductores",
             description: "No hay conductores disponibles en este momento",
             variant: "destructive",
           })
         } else {
-          // Limpiar mensaje si ahora hay conductores
           setNoDriversNearby("")
         }
       } catch (error) {
         console.error("Error de red al cargar conductores:", error)
-        toast({
+        safeToast({
           title: "Error de conexión",
           description: "No se pudo conectar con el servidor",
           variant: "destructive",
@@ -614,14 +164,11 @@ function PassengerDashboardContent() {
     }
   }, [pickupCoords, destinationCoords, driverData, DEFAULT_RADIUS_KM, toast])
 
-  // CHECK FOR COMPLETED RIDES TO SHOW RATING DIALOG
-  // SHOW DIALOG ONLY WHEN THE RIDE HAS NO PASSENGER RATING AND NO COMMENT (BOTH EMPTY/NULL)
   useEffect(() => {
     const completedRide = rides.find((ride) => {
       return (
         ride.status === "completed" &&
         ride.passenger_id === user?.uid &&
-        // only show if passenger_rating is truly null/undefined and there's no comment
         ride.passenger_rating == null &&
         !ride.passenger_comment
       )
@@ -633,101 +180,12 @@ function PassengerDashboardContent() {
     }
   }, [rides, user?.uid])
 
-
-
-  // FUNCTION SOLICITARVIAJE
-  const solicitarViaje = async () => {
-    // debug log removed
-
-    try {
-      const rideData: NewRidePayload = {
-        passenger_id: user.uid,
-        passenger_name: String(((userData as { name?: string } | null) ?? {})?.name ?? user?.email ?? ""),
-        pickup_address: pickup,
-        pickup_coordinates: [pickupCoords.lng, pickupCoords.lat],
-        destination_address: destination,
-        destination_coordinates: [destinationCoords.lng, destinationCoords.lat],
-        status: "pending",
-        estimated_fare: calculateEstimatedFare(pickupCoords, destinationCoords),
-        estimated_duration: calculateEstimatedDuration(pickupCoords, destinationCoords),
-      }
-
-      // Si hay conductor específico seleccionado, asignar directamente
-      if (selectedDriver) {
-        const driver = availableDrivers.find((d) => d.uid === selectedDriver)
-        if (driver) {
-          // Assign the driver_id/driver_name but keep status as 'pending'
-          // so the driver receives a pending request and must accept it.
-          rideData.driver_id = selectedDriver
-          rideData.driver_name = driver.name
-          // do NOT mark accepted here; driver should accept the request.
-        }
-      }
-
-  // Insert new ride using typed Supabase client
-  const { error } = await (supabase.from("rides") as any)
-        .insert([
-          rideData as Database["public"]["Tables"]["rides"]["Insert"],
-        ])
-        .select()
-
-      if (error) {
-        console.error("Error creando viaje:", error)
-        setRideStatus("idle")
-        toast({
-          title: "Error",
-          description: "No se pudo crear el viaje. Intenta de nuevo.",
-          variant: "destructive",
-        })
-        return
-      }
-
-      // Remove focus from any element inside the dialog before closing it so
-      // assistive technology doesn't get a focused element hidden by aria-hidden.
-      try {
-        if (typeof document !== "undefined" && document.activeElement instanceof HTMLElement) {
-          document.activeElement.blur()
-        }
-      } catch {
-        // suppressed debug
-      }
-
-      setShowDriverSelection(false)
-      setSelectedDriver("")
-      // Limpiar mensaje de ausencia de conductores al crear viaje
-      setNoDriversNearby("")
-      setRideStatus("pending")
-
-      toast({
-        title: "Viaje solicitado",
-        description: selectedDriver
-          ? "Tu viaje ha sido asignado al conductor seleccionado"
-          : "Tu viaje ha sido solicitado. Esperando confirmación del conductor.",
-      })
-
-      refreshRides()
-    } catch (error) {
-      console.error("Error en solicitarViaje:", error)
-      setRideStatus("idle")
-      toast({
-        title: "Error",
-        description: "Ocurrió un error al solicitar el viaje.",
-        variant: "destructive",
-      })
-    }
-  }
-
-
-
-  // HANDLE REQUEST RIDE MODIFICADO SEGÚN EL FLUJO ESPECIFICADO
   const handleRequestRide = async () => {
     if (!pickup || !destination || !pickupCoords || !destinationCoords || !user || !userData) return
 
-    // Paso 1: Obtener datos de conductores usando driverData
     setRideStatus("searching")
 
     try {
-      
       const driverResult = await driverData(pickupCoords?.lat, pickupCoords?.lng, DEFAULT_RADIUS_KM)
 
       if (!driverResult.success) {
@@ -741,18 +199,14 @@ function PassengerDashboardContent() {
         return
       }
 
-      // Filtrar conductores verificados
       const verifiedDrivers = driverResult.data.filter((driver) => driver.is_verified)
       const onlineDrivers = driverResult.data.filter((driver) => driver.is_online)
-
-      // Si no hay conductores verificados, usar conductores en línea
       const availableDriversToShow = verifiedDrivers.length > 0 ? verifiedDrivers : onlineDrivers
 
       setAvailableDrivers(availableDriversToShow)
 
       if (availableDriversToShow.length === 0) {
         setRideStatus("idle")
-        // Mostrar mensaje persistente en la UI además del toast
         setNoDriversNearby("No hay conductores disponibles en tu área")
         toast({
           title: "Sin conductores",
@@ -762,15 +216,33 @@ function PassengerDashboardContent() {
         return
       }
 
-      // Paso 2: Mostrar diálogo de selección si no hay conductor preseleccionado
       if (!selectedDriver) {
         setShowDriverSelection(true)
-        setRideStatus("idle") // Reset status while user selects
+        setRideStatus("idle")
         return
       }
 
-      // Paso 3: Proceder con la solicitud de viaje
-      await solicitarViaje()
+      const result = await solicitarViaje(
+        user,
+        userData,
+        pickup,
+        pickupCoords,
+        destination,
+        destinationCoords,
+        selectedDriver,
+        availableDrivers,
+        toast,
+        refreshRides
+      )
+
+      if (result.success) {
+        setShowDriverSelection(false)
+        setSelectedDriver("")
+        setNoDriversNearby("")
+        setRideStatus("pending")
+      } else {
+        setRideStatus("idle")
+      }
     } catch (error) {
       console.error("Error en handleRequestRide:", error)
       setRideStatus("idle")
@@ -782,304 +254,6 @@ function PassengerDashboardContent() {
     }
   }
 
-
-
-  // HANDLE CANCEL RIDE MODIFICADO SEGÚN EL FLUJO ESPECIFICADO
-  const handleCancelRide = async (rideId: string, reason?: string) => {
-    try {
-      const ride = rides.find((r) => r.id === rideId)
-      const cancellationReason =
-        reason ||
-        (ride?.status === "in-progress" ? "Cancelado por el pasajero durante el viaje" : "Cancelado por el pasajero")
-
-      const result = await cancelRide(rideId, cancellationReason)
-      if (!result.success) {
-        console.error("Error cancelling ride:", result.error)
-        toast({
-          title: "Error",
-          description: "No se pudo cancelar el viaje. Intenta de nuevo.",
-          variant: "destructive",
-        })
-        return
-      }
-
-      console.log("Ride cancelled successfully")
-      // Reset all states to allow new ride request
-      setRideStatus("idle")
-      setPickup("")
-      setDestination("")
-      setPickupCoords(null)
-      setDestinationCoords(null)
-      setSelectedDriver("")
-      setShowDriverSelection(false)
-      setShowChatDialog(false) // Close chat if open
-      setNoDriversNearby("")
-
-      toast({
-        title: "Viaje cancelado",
-        description: "Tu viaje ha sido cancelado exitosamente.",
-      })
-
-      // Refresh rides to get updated data
-      refreshRides()
-    } catch (error) {
-      console.error("Error in handleCancelRide:", error)
-      toast({
-        title: "Error",
-        description: "Ocurrió un error al cancelar el viaje.",
-        variant: "destructive",
-      })
-    }
-  }
-
-  // HANDLE RATE DRIVER MODIFICADO SEGÚN EL FLUJO ESPECIFICADO
-  const handleRateDriver = async () => {
-    if (!completedRide) return
-
-    // Only allow submit if there is a rating or a comment
-    if (rating === 0 && comment.trim() === "") return
-
-    try {
-      // Prepare payload: include passenger_comment and passenger_rating (nullable)
-      const payload: { passenger_comment?: string | null; passenger_rating?: number } = {
-        passenger_comment: comment.trim() || null,
-      }
-
-      if (rating > 0) {
-        payload.passenger_rating = rating
-      }
-
-  // Update completed ride with passenger rating/comment using typed client
-  const { error } = await (supabase.from("rides") as any)
-        .update(
-          payload as Partial<Database["public"]["Tables"]["rides"]["Update"]>,
-        )
-        .eq("id", completedRide.id)
-
-      if (error) {
-        console.error("Error rating driver:", error)
-        return
-      }
-
-      // Recalculate driver's average rating only if a numeric rating was provided
-      if (rating > 0) {
-        const { data: driverRides } = await supabase
-          .from("rides")
-          .select("passenger_rating")
-          .eq("driver_id", completedRide.driver_id)
-          .not("passenger_rating", "is", null)
-
-        if (driverRides && driverRides.length > 0) {
-          const avgRating =
-            (driverRides as Array<{ passenger_rating?: number }>).reduce(
-              (sum, ride) => sum + Number(ride.passenger_rating ?? 0),
-              0,
-            ) / driverRides.length
-          await (supabase.from("drivers") as any)
-            .update(
-              { rating: avgRating } as Partial<Database["public"]["Tables"]["drivers"]["Update"]>,
-            )
-            .eq("uid", completedRide.driver_id)
-        }
-      }
-
-      // Close dialog and reset state
-      setShowRatingDialog(false)
-      setRating(0)
-      setComment("")
-      setCompletedRide(null)
-
-      toast({
-        title: "Calificación enviada",
-        description: "Gracias por compartir tu experiencia.",
-      })
-    } catch (err: unknown) {
-      console.error("Error submitting rating:", err)
-      toast({
-        title: "Error",
-        description: "No se pudo enviar la calificación.",
-        variant: "destructive",
-      })
-    }
-  }
-
-  // ALLOW SKIPPING THE RATING; IF A COMMENT EXISTS, SAVE IT. IF NOT, MARK HANDLED BY SAVING AN EMPTY STRING
-  const handleSkipRating = async () => {
-    if (!completedRide) return
-    try {
-      const payload = {
-        passenger_comment: comment.trim() || "Omitido por el pasajero",
-        // leave passenger_rating as null to indicate no numeric rating provided
-      }
-  const { error } = await (supabase.from("rides") as any)
-        .update(
-          payload as Partial<Database["public"]["Tables"]["rides"]["Update"]>,
-        )
-        .eq("id", completedRide.id)
-      if (error) {
-        console.error("Error skipping rating:", error)
-        toast({ title: "Error", description: "No se pudo omitir la calificación.", variant: "destructive" })
-        return
-      }
-
-      setShowRatingDialog(false)
-      setRating(0)
-      setComment("")
-      setCompletedRide(null)
-
-      toast({ title: "Omitido", description: "Gracias por tu respuesta." })
-    } catch (err) {
-      console.error("Error in handleSkipRating:", err)
-      toast({ title: "Error", description: "Ocurrió un error.", variant: "destructive" })
-    }
-  }
-
-  // CALCULATE ESTIMATED FARE
-  const calculateEstimatedFare = (pickup: { lat: number; lng: number }, destination: { lat: number; lng: number }) => {
-    const distance = calculateDistance(pickup.lat, pickup.lng, destination.lat, destination.lng)
-    const baseFare = 50
-    const perKmRate = 12
-    return Math.round(baseFare + distance * perKmRate)
-  }
-
-  // CALCULATE ESTIMATED DURATION
-  const calculateEstimatedDuration = (
-    pickup: { lat: number; lng: number },
-    destination: { lat: number; lng: number },
-  ) => {
-    const distance = calculateDistance(pickup.lat, pickup.lng, destination.lat, destination.lng)
-    const avgSpeed = 25
-    return Math.round((distance / avgSpeed) * 60)
-  }
-
-  // CALCULATE DISTANCE
-  const calculateDistance = (lat1: number, lng1: number, lat2: number, lng2: number) => {
-    const R = 6371
-    const dLat = ((lat2 - lat1) * Math.PI) / 180
-    const dLng = ((lng2 - lng1) * Math.PI) / 180
-    const a =
-      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLng / 2) * Math.sin(dLng / 2)
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
-    return R * c
-  }
-
-  // HANDLE USE MY LOCATION — faster UX: quick cached/low-accuracy position first, then refine in background
-  const handleUseMyLocation = async () => {
-    if (typeof window === "undefined" || !navigator.geolocation) {
-      toast({
-        title: "No disponible",
-        description: "Geolocalización no soportada en este dispositivo",
-        variant: "destructive",
-      })
-      return
-    }
-
-    // Show quick feedback immediately
-    toast({ title: "Obteniendo ubicación rápida...", description: "Permitir acceso para mejorar la precisión" })
-
-    const getPosition = (options: PositionOptions) =>
-      new Promise<GeolocationPosition>((resolve, reject) => {
-        try {
-          navigator.geolocation.getCurrentPosition(resolve, reject, options)
-        } catch (e) {
-          reject(e)
-        }
-      })
-
-    try {
-      // First attempt: quick, possibly cached, low-accuracy (fast perceived result)
-      let pos: GeolocationPosition | null = null
-      try {
-        pos = await getPosition({ enableHighAccuracy: false, timeout: 3000, maximumAge: 60000 })
-      } catch (quickErr) {
-        // quick attempt failed/timeout — we'll fall back to a longer attempt below
-        pos = null
-      }
-
-      if (pos) {
-        const lat = pos.coords.latitude
-        const lon = pos.coords.longitude
-        // Immediately update UI/map with coarse address and coords so user sees a fast response
-        setPickup("Ubicación actual")
-        setPickupCoords({ lat, lng: lon })
-        // Fire off nearby drivers lookup without waiting for reverse geocode
-        showNearbyDriversInMap(lat, lon).catch(() => {})
-      }
-
-      // Start background tasks: high-accuracy position and reverse geocode. They won't block the UI.
-      ;(async () => {
-        try {
-          const highPos = await getPosition({ enableHighAccuracy: true, timeout: 10000 })
-          const highLat = highPos.coords.latitude
-          const highLon = highPos.coords.longitude
-          // If we didn't have a quick pos or the high-accuracy pos differs noticeably, update
-          const shouldUpdateCoords = !pos || Math.abs((pos.coords.latitude ?? 0) - highLat) > 0.0005 || Math.abs((pos.coords.longitude ?? 0) - highLon) > 0.0005
-          if (shouldUpdateCoords) {
-            setPickupCoords({ lat: highLat, lng: highLon })
-            // refresh drivers with better accuracy
-            showNearbyDriversInMap(highLat, highLon).catch(() => {})
-          }
-        } catch (highErr) {
-          // ignore background high-accuracy failure — user already has a quick location
-        }
-      })()
-
-      // Reverse geocode in background and update pickup text when available (do not block)
-      ;(async () => {
-        try {
-          // choose coords to reverse geocode: prefer the latest pickupCoords or quick pos
-          const coordsForReverse = ((): { lat: number; lon: number } | null => {
-            const pc = pickupCoords
-            if (pc) return { lat: pc.lat, lon: pc.lng }
-            if (pos) return { lat: pos.coords.latitude, lon: pos.coords.longitude }
-            return null
-          })()
-
-          if (!coordsForReverse) return
-
-          const apiKey = process.env.NEXT_PUBLIC_GEOAPIFY_API_KEY
-          if (!apiKey) return
-
-          const { lat, lon } = coordsForReverse
-          try {
-            const res = await fetch(`https://api.geoapify.com/v1/geocode/reverse?lat=${lat}&lon=${lon}&apiKey=${apiKey}`)
-            if (!res.ok) return
-            const data = await res.json()
-            if (data?.features && data.features.length > 0) {
-              const address = data.features[0].properties.formatted || "Ubicación actual"
-              setPickup(address)
-              toast({ title: "Ubicación actualizada", description: address })
-            }
-          } catch (err) {
-            console.warn("Geoapify reverse geocode failed:", err)
-          }
-        } catch (err) {
-          // ignore reverse geocode background errors
-        }
-      })()
-
-      // If neither quick nor background provided coords (e.g., both timed out), try a fallback blocking attempt
-      if (!pos) {
-        try {
-          const fallback = await getPosition({ enableHighAccuracy: true, timeout: 10000 })
-          const lat = fallback.coords.latitude
-          const lon = fallback.coords.longitude
-          setPickup("Ubicación actual")
-          setPickupCoords({ lat, lng: lon })
-          showNearbyDriversInMap(lat, lon).catch(() => {})
-        } catch (fallbackErr) {
-          console.error("Error obteniendo ubicación:", fallbackErr)
-          toast({ title: "Error", description: "No fue posible obtener tu ubicación", variant: "destructive" })
-        }
-      }
-    } catch (err: unknown) {
-      console.error("Error en handleUseMyLocation:", err)
-      toast({ title: "Error", description: "No fue posible obtener tu ubicación", variant: "destructive" })
-    }
-  }
-
-  // NAVIGATION HANDLERS FOR SIDEBAR BUTTONS
   const handleNavigation = (section: string) => {
     switch (section) {
       case "activity":
@@ -1091,7 +265,7 @@ function PassengerDashboardContent() {
       case "history":
         router.push("/history")
         break
-      case "profile": // Added profile navigation
+      case "profile":
         router.push("/profile")
         break
       case "logout":
@@ -1111,34 +285,10 @@ function PassengerDashboardContent() {
     }
   }
 
-  // RENDERING HELPERS
-  const getDisplayName = () => {
-    const maybeName = (userData as { name?: string; full_name?: string } | null) ?? null
-    const name = maybeName?.name ?? maybeName?.full_name
-    if (typeof name === "string" && name.trim()) return name
-    if (typeof user?.email === "string") return user.email.split("@")[0]
-    return "Usuario"
-  }
-
-  const getProfileImage = () => {
-    try {
-      const ud = userData as Record<string, unknown> | null
-      const img = ud && typeof ud['profile_image'] === 'string' && ud['profile_image'] ? (ud['profile_image'] as string) : null
-      return img || "/placeholder.svg?height=40&width=40"
-    } catch {
-      return "/placeholder.svg?height=40&width=40"
-    }
-  }
-
-  
-
   return (
     <div className="h-screen flex bg-gray-50">
-      {/* Sidebar - unchanged */}
-      <div
-  className={`${sidebarCollapsed ? "w-16 !text-gray-700" : "w-64"} bg-white shadow-lg transition-all duration-300 hidden md:flex md:flex-col`}
-      >
-        {/* Toggle Button (starts collapsed but can be opened) */}
+      {/* Sidebar - Desktop */}
+      <div className={`${sidebarCollapsed ? "w-16 !text-gray-700" : "w-64"} bg-white shadow-lg transition-all duration-300 hidden md:flex md:flex-col`}>
         <div className="p-4 border-b border-gray-200">
           <button
             aria-label={sidebarCollapsed ? "Abrir sidebar" : "Cerrar sidebar"}
@@ -1149,20 +299,17 @@ function PassengerDashboardContent() {
           </button>
         </div>
 
-        {/* User Profile Section */}
         {!sidebarCollapsed && (
           <div className="p-6 border-b border-gray-200">
             <div className="flex items-center space-x-3">
               <Avatar className="h-12 w-12">
-                <AvatarImage src={getProfileImage()} alt="Foto de perfil" className="object-cover" />
+                <AvatarImage src={getProfileImage(userData)} alt="Foto de perfil" className="object-cover" />
                 <AvatarFallback className="bg-gradient-to-r from-blue-500 to-indigo-500 text-white font-bold">
-                  {String(getDisplayName()).charAt(0) || "U"}
+                  {String(getDisplayName(userData, user)).charAt(0) || "U"}
                 </AvatarFallback>
               </Avatar>
               <div>
-                <h2 className="font-semibold text-gray-900">
-                  {String(getDisplayName()) || "Usuario"}
-                </h2>
+                <h2 className="font-semibold text-gray-900">{String(getDisplayName(userData, user)) || "Usuario"}</h2>
                 <button
                   onClick={() => handleNavigation("profile")}
                   className="text-sm text-gray-500 cursor-pointer hover:text-blue-600 transition-colors"
@@ -1174,77 +321,56 @@ function PassengerDashboardContent() {
           </div>
         )}
 
-        {/* Collapsed User Profile */}
         {sidebarCollapsed && (
           <div className="p-3 border-b border-gray-200 flex justify-center">
             <Avatar className="h-10 w-10">
-              <AvatarImage src={getProfileImage()} alt="Foto de perfil" className="object-cover" />
+              <AvatarImage src={getProfileImage(userData)} alt="Foto de perfil" className="object-cover" />
               <AvatarFallback className="bg-gradient-to-r from-blue-500 to-indigo-500 text-white font-bold text-sm">
-                {String(getDisplayName()).charAt(0) || "U"}
+                {String(getDisplayName(userData, user)).charAt(0) || "U"}
               </AvatarFallback>
             </Avatar>
           </div>
         )}
 
-        {/* Navigation (matched to driver style) */}
         <nav className="flex-1 p-4">
           <div className="space-y-2">
             <button
-              onClick={() => {
-                setCurrentView("rides")
-              }}
+              onClick={() => setCurrentView("rides")}
               className={`w-full flex items-center ${sidebarCollapsed ? "justify-center relative" : "space-x-3"} ${sidebarCollapsed ? "px-2" : "px-4"} py-3 rounded-lg text-left transition-colors ${
                 currentView === "rides" ? "bg-blue-500 text-white" : "text-gray-700 hover:bg-gray-100"
               }`}
             >
-              <Car
-                className={`${sidebarCollapsed ? "h-6 w-6" : "h-5 w-5"} ${currentView === "rides" ? "text-white stroke-current" : "!text-gray-700 !stroke-current"}`}
-              />
+              <Car className={`${sidebarCollapsed ? "h-6 w-6" : "h-5 w-5"} ${currentView === "rides" ? "text-white stroke-current" : "!text-gray-700 !stroke-current"}`} />
               {!sidebarCollapsed && <span className="font-medium">Rides</span>}
             </button>
 
             <button
-              onClick={() => {
-                setCurrentView("activity")
-                handleNavigation("activity")
-              }}
+              onClick={() => { setCurrentView("activity"); handleNavigation("activity") }}
               className={`w-full flex items-center ${sidebarCollapsed ? "justify-center relative" : "space-x-3"} ${sidebarCollapsed ? "px-2" : "px-4"} py-3 rounded-lg text-left transition-colors ${
                 currentView === "activity" ? "bg-blue-500 text-white" : "text-gray-700 hover:bg-gray-100"
               }`}
             >
-              <Activity
-                className={`${sidebarCollapsed ? "h-6 w-6" : "h-5 w-5"} ${currentView === "activity" ? "text-white stroke-current" : "!text-gray-700 !stroke-current"}`}
-              />
+              <Activity className={`${sidebarCollapsed ? "h-6 w-6" : "h-5 w-5"} ${currentView === "activity" ? "text-white stroke-current" : "!text-gray-700 !stroke-current"}`} />
               {!sidebarCollapsed && <span className="font-medium">Activity</span>}
             </button>
 
             <button
-              onClick={() => {
-                setCurrentView("settings")
-                handleNavigation("settings")
-              }}
+              onClick={() => { setCurrentView("settings"); handleNavigation("settings") }}
               className={`w-full flex items-center ${sidebarCollapsed ? "justify-center relative" : "space-x-3"} ${sidebarCollapsed ? "px-2" : "px-4"} py-3 rounded-lg text-left transition-colors ${
                 currentView === "settings" ? "bg-blue-500 text-white" : "text-gray-700 hover:bg-gray-100"
               }`}
             >
-              <Settings
-                className={`${sidebarCollapsed ? "h-6 w-6" : "h-5 w-5"} ${currentView === "settings" ? "text-white stroke-current" : "!text-gray-700 !stroke-current"}`}
-              />
+              <Settings className={`${sidebarCollapsed ? "h-6 w-6" : "h-5 w-5"} ${currentView === "settings" ? "text-white stroke-current" : "!text-gray-700 !stroke-current"}`} />
               {!sidebarCollapsed && <span className="font-medium">Configuración</span>}
             </button>
 
             <button
-              onClick={() => {
-                setCurrentView("history")
-                handleNavigation("history")
-              }}
+              onClick={() => { setCurrentView("history"); handleNavigation("history") }}
               className={`w-full flex items-center ${sidebarCollapsed ? "justify-center relative" : "space-x-3"} ${sidebarCollapsed ? "px-2" : "px-4"} py-3 rounded-lg text-left transition-colors ${
                 currentView === "history" ? "bg-blue-500 text-white" : "text-gray-700 hover:bg-gray-100"
               }`}
             >
-              <History
-                className={`${sidebarCollapsed ? "h-6 w-6" : "h-5 w-5"} ${currentView === "history" ? "text-white stroke-current" : "!text-gray-700 !stroke-current"}`}
-              />
+              <History className={`${sidebarCollapsed ? "h-6 w-6" : "h-5 w-5"} ${currentView === "history" ? "text-white stroke-current" : "!text-gray-700 !stroke-current"}`} />
               {!sidebarCollapsed && <span className="font-medium">Historial</span>}
             </button>
           </div>
@@ -1252,10 +378,7 @@ function PassengerDashboardContent() {
 
         <div className="mt-auto p-4 border-t border-gray-200">
           <button
-            onClick={() => {
-              setCurrentView("logout")
-              handleNavigation("logout")
-            }}
+            onClick={() => { setCurrentView("logout"); handleNavigation("logout") }}
             aria-label={sidebarCollapsed ? "Cerrar sesión" : undefined}
             className={`w-full flex items-center ${sidebarCollapsed ? "justify-center" : "space-x-3"} px-3 py-3 rounded-lg text-left text-gray-700 hover:bg-gray-100 transition-colors`}
           >
@@ -1265,19 +388,14 @@ function PassengerDashboardContent() {
         </div>
       </div>
 
+      {/* Mobile Sidebar */}
       {!sidebarCollapsed && (
-        <div
-          className="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden"
-          onClick={() => setSidebarCollapsed(true)}
-        />
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden" onClick={() => setSidebarCollapsed(true)} />
       )}
 
-      <div
-        className={`fixed left-0 top-0 h-full bg-white shadow-lg flex flex-col transition-all duration-300 z-50 md:hidden ${
+      <div className={`fixed left-0 top-0 h-full bg-white shadow-lg flex flex-col transition-all duration-300 z-50 md:hidden ${
           sidebarCollapsed ? "-translate-x-full w-16" : "translate-x-0 w-64"
-        }`}
-      >
-        {/* Toggle Button (starts collapsed but can be opened) */}
+        }`}>
         <div className="p-4 border-b border-gray-200">
           <button
             aria-label={sidebarCollapsed ? "Abrir sidebar" : "Cerrar sidebar"}
@@ -1288,25 +406,19 @@ function PassengerDashboardContent() {
           </button>
         </div>
 
-        {/* User Profile Section */}
         {!sidebarCollapsed && (
           <div className="p-6 border-b border-gray-200">
             <div className="flex items-center space-x-3">
               <Avatar className="h-12 w-12">
-                <AvatarImage src={getProfileImage()} alt="Foto de perfil" className="object-cover" />
+                <AvatarImage src={getProfileImage(userData)} alt="Foto de perfil" className="object-cover" />
                 <AvatarFallback className="bg-gradient-to-r from-blue-500 to-indigo-500 text-white font-bold">
-                  {String(getDisplayName()).charAt(0) || "U"}
+                  {String(getDisplayName(userData, user)).charAt(0) || "U"}
                 </AvatarFallback>
               </Avatar>
               <div>
-                <h2 className="font-semibold text-gray-900">
-                  {String(getDisplayName()) || "Usuario"}
-                </h2>
+                <h2 className="font-semibold text-gray-900">{String(getDisplayName(userData, user)) || "Usuario"}</h2>
                 <button
-                  onClick={() => {
-                    handleNavigation("profile")
-                    setSidebarCollapsed(true) // Close mobile sidebar
-                  }}
+                  onClick={() => { handleNavigation("profile"); setSidebarCollapsed(true) }}
                   className="text-sm text-gray-500 cursor-pointer hover:text-blue-600 transition-colors"
                 >
                   Ver perfil
@@ -1316,77 +428,45 @@ function PassengerDashboardContent() {
           </div>
         )}
 
-        {/* Collapsed User Profile */}
-        {sidebarCollapsed && (
-          <div className="p-3 border-b border-gray-200 flex justify-center">
-            <Avatar className="h-10 w-10">
-              <AvatarImage src={getProfileImage()} alt="Foto de perfil" className="object-cover" />
-              <AvatarFallback className="bg-gradient-to-r from-blue-500 to-indigo-500 text-white font-bold text-sm">
-                {String(getDisplayName()).charAt(0) || "U"}
-              </AvatarFallback>
-            </Avatar>
-          </div>
-        )}
-
-        {/* Navigation (matched to driver style) */}
         <nav className="flex-1 p-4">
           <div className="space-y-2">
             <button
-              onClick={() => {
-                setCurrentView("rides")
-              }}
+              onClick={() => setCurrentView("rides")}
               className={`w-full flex items-center ${sidebarCollapsed ? "justify-center relative" : "space-x-3"} ${sidebarCollapsed ? "px-2" : "px-4"} py-3 rounded-lg text-left transition-colors ${
                 currentView === "rides" ? "bg-blue-500 text-white" : "text-gray-700 hover:bg-gray-100"
               }`}
             >
-              <Car
-                className={`${sidebarCollapsed ? "h-6 w-6" : "h-5 w-5"} ${currentView === "rides" ? "text-white stroke-current" : "!text-gray-700 !stroke-current"}`}
-              />
+              <Car className={`${sidebarCollapsed ? "h-6 w-6" : "h-5 w-5"} ${currentView === "rides" ? "text-white stroke-current" : "!text-gray-700 !stroke-current"}`} />
               {!sidebarCollapsed && <span className="font-medium">Rides</span>}
             </button>
 
             <button
-              onClick={() => {
-                setCurrentView("activity")
-                handleNavigation("activity")
-              }}
+              onClick={() => { setCurrentView("activity"); handleNavigation("activity") }}
               className={`w-full flex items-center ${sidebarCollapsed ? "justify-center relative" : "space-x-3"} ${sidebarCollapsed ? "px-2" : "px-4"} py-3 rounded-lg text-left transition-colors ${
                 currentView === "activity" ? "bg-blue-500 text-white" : "text-gray-700 hover:bg-gray-100"
               }`}
             >
-              <Activity
-                className={`${sidebarCollapsed ? "h-6 w-6" : "h-5 w-5"} ${currentView === "activity" ? "text-white stroke-current" : "!text-gray-700 !stroke-current"}`}
-              />
+              <Activity className={`${sidebarCollapsed ? "h-6 w-6" : "h-5 w-5"} ${currentView === "activity" ? "text-white stroke-current" : "!text-gray-700 !stroke-current"}`} />
               {!sidebarCollapsed && <span className="font-medium">Activity</span>}
             </button>
 
             <button
-              onClick={() => {
-                setCurrentView("settings")
-                handleNavigation("settings")
-              }}
+              onClick={() => { setCurrentView("settings"); handleNavigation("settings") }}
               className={`w-full flex items-center ${sidebarCollapsed ? "justify-center relative" : "space-x-3"} ${sidebarCollapsed ? "px-2" : "px-4"} py-3 rounded-lg text-left transition-colors ${
                 currentView === "settings" ? "bg-blue-500 text-white" : "text-gray-700 hover:bg-gray-100"
               }`}
             >
-              <Settings
-                className={`${sidebarCollapsed ? "h-6 w-6" : "h-5 w-5"} ${currentView === "settings" ? "text-white stroke-current" : "!text-gray-700 !stroke-current"}`}
-              />
+              <Settings className={`${sidebarCollapsed ? "h-6 w-6" : "h-5 w-5"} ${currentView === "settings" ? "text-white stroke-current" : "!text-gray-700 !stroke-current"}`} />
               {!sidebarCollapsed && <span className="font-medium">Configuración</span>}
             </button>
 
             <button
-              onClick={() => {
-                setCurrentView("history")
-                handleNavigation("history")
-              }}
+              onClick={() => { setCurrentView("history"); handleNavigation("history") }}
               className={`w-full flex items-center ${sidebarCollapsed ? "justify-center relative" : "space-x-3"} ${sidebarCollapsed ? "px-2" : "px-4"} py-3 rounded-lg text-left transition-colors ${
                 currentView === "history" ? "bg-blue-500 text-white" : "text-gray-700 hover:bg-gray-100"
               }`}
             >
-              <History
-                className={`${sidebarCollapsed ? "h-6 w-6" : "h-5 w-5"} ${currentView === "history" ? "text-white stroke-current" : "!text-gray-700 !stroke-current"}`}
-              />
+              <History className={`${sidebarCollapsed ? "h-6 w-6" : "h-5 w-5"} ${currentView === "history" ? "text-white stroke-current" : "!text-gray-700 !stroke-current"}`} />
               {!sidebarCollapsed && <span className="font-medium">Historial</span>}
             </button>
           </div>
@@ -1394,10 +474,7 @@ function PassengerDashboardContent() {
 
         <div className="mt-auto p-4 border-t border-gray-200">
           <button
-            onClick={() => {
-              setCurrentView("logout")
-              handleNavigation("logout")
-            }}
+            onClick={() => { setCurrentView("logout"); handleNavigation("logout") }}
             className={`w-full flex items-center ${sidebarCollapsed ? "justify-center" : "space-x-3"} px-3 py-3 rounded-lg text-left text-gray-700 hover:bg-gray-100 transition-colors`}
           >
             <LogOut className={`${sidebarCollapsed ? "h-6 w-6 text-gray-700" : "h-5 w-5 text-gray-700"}`} />
@@ -1415,7 +492,7 @@ function PassengerDashboardContent() {
           <Menu className="h-5 w-5 text-gray-600" />
         </button>
 
-        {/* Map Section - Now full width on mobile */}
+        {/* Map Section */}
         <div className="flex-1 relative h-full">
           <MapComponent
             userType="passenger"
@@ -1424,12 +501,10 @@ function PassengerDashboardContent() {
             driverLocations={driversForMap}
             onMapReady={(userLoc) => {
               if (userLoc) {
-                showNearbyDriversInMap(userLoc.lat, userLoc.lng)
+                showNearbyDriversInMap(userLoc.lat, userLoc.lng).then(drivers => setDriversForMap(drivers))
               }
             }}
           />
-
-          {/* Floating map controls removed per request to keep map UI clean */}
 
           {/* Driver Arrival Notification */}
           {currentRide && currentRide.status === "accepted" && (
@@ -1455,13 +530,11 @@ function PassengerDashboardContent() {
             </div>
           )}
 
+          {/* Ride Details Panel */}
           {currentRide && (
-            <div
-              className={`absolute left-4 right-4 bg-white rounded-lg shadow-xl p-6 ${
-                // Position higher on mobile to avoid button overlap, normal on desktop
+            <div className={`absolute left-4 right-4 bg-white rounded-lg shadow-xl p-6 ${
                 "bottom-20 md:bottom-4"
-              }`}
-            >
+              }`}>
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold text-gray-900">Ride Details</h3>
                 <div className="text-right">
@@ -1521,8 +594,24 @@ function PassengerDashboardContent() {
                     onClick={() =>
                       handleCancelRide(
                         currentRide.id,
+                        rides,
+                        cancelRide,
+                        toast,
+                        refreshRides,
                         currentRide.status === "in-progress" ? "Cancelado durante el viaje" : undefined,
-                      )
+                      ).then((result) => {
+                        if (result.success) {
+                          setRideStatus("idle")
+                          setPickup("")
+                          setDestination("")
+                          setPickupCoords(null)
+                          setDestinationCoords(null)
+                          setSelectedDriver("")
+                          setShowDriverSelection(false)
+                          setShowChatDialog(false)
+                          setNoDriversNearby("")
+                        }
+                      })
                     }
                   >
                     Cancel Ride
@@ -1533,20 +622,18 @@ function PassengerDashboardContent() {
           )}
         </div>
 
+        {/* Mobile Drawer */}
         {isMobileDrawerOpen && (
           <>
-            {/* Backdrop */}
             <div
               className="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden"
               onClick={() => setIsMobileDrawerOpen(false)}
             />
 
-            {/* Drawer */}
             <div
               className="fixed bottom-0 left-0 right-0 bg-white rounded-t-3xl shadow-2xl z-50 md:hidden transition-transform duration-300 ease-out"
               style={{ height: `${drawerHeight}%` }}
             >
-              {/* Drag Handle */}
               <div className="flex justify-center py-3">
                 <div
                   className="w-12 h-1 bg-gray-300 rounded-full cursor-pointer"
@@ -1565,7 +652,6 @@ function PassengerDashboardContent() {
                       document.removeEventListener("touchmove", handleTouchMove)
                       document.removeEventListener("touchend", handleTouchEnd)
 
-                      // Snap to positions
                       if (drawerHeight < 40) {
                         setIsMobileDrawerOpen(false)
                       } else if (drawerHeight < 65) {
@@ -1581,7 +667,6 @@ function PassengerDashboardContent() {
                 />
               </div>
 
-              {/* Close Button */}
               <button
                 className="absolute top-4 right-4 p-2 text-gray-400 hover:text-gray-600"
                 onClick={() => setIsMobileDrawerOpen(false)}
@@ -1589,7 +674,6 @@ function PassengerDashboardContent() {
                 <X className="h-6 w-6" />
               </button>
 
-              {/* Drawer Content */}
               <div className="px-6 pb-6 h-full overflow-y-auto">
                 <h1 className="text-2xl font-bold text-gray-900 mb-6">Request a ride</h1>
 
@@ -1597,7 +681,9 @@ function PassengerDashboardContent() {
                   <Button
                     variant="outline"
                     className="w-full justify-start text-blue-600 border-blue-200 hover:bg-blue-50 bg-transparent"
-                    onClick={handleUseMyLocation}
+                    onClick={() => handleUseMyLocation(setPickup, setPickupCoords, showNearbyDriversInMap, safeToast, pickupCoords).then(() => {
+                      showNearbyDriversInMap(pickupCoords?.lat, pickupCoords?.lng).then(drivers => setDriversForMap(drivers))
+                    })}
                   >
                     <MapPin className="h-4 w-4 mr-2" />
                     Use My Location
@@ -1683,6 +769,7 @@ function PassengerDashboardContent() {
           </>
         )}
 
+        {/* Desktop Request Panel */}
         <div className="w-96 bg-white shadow-lg p-6 flex-col h-full hidden md:flex">
           <div className="flex-1">
             <h1 className="text-2xl font-bold text-gray-900 mb-6">Request a ride</h1>
@@ -1691,7 +778,9 @@ function PassengerDashboardContent() {
               <Button
                 variant="outline"
                 className="w-full justify-start text-blue-600 border-blue-200 hover:bg-blue-50 bg-transparent"
-                onClick={handleUseMyLocation}
+                onClick={() => handleUseMyLocation(setPickup, setPickupCoords, showNearbyDriversInMap, safeToast, pickupCoords).then(() => {
+                  showNearbyDriversInMap(pickupCoords?.lat, pickupCoords?.lng).then(drivers => setDriversForMap(drivers))
+                })}
               >
                 <MapPin className="h-4 w-4 mr-2" />
                 Use My Location
@@ -1771,6 +860,7 @@ function PassengerDashboardContent() {
         </div>
       </div>
 
+      {/* Mobile viajar Button */}
       {!currentRide && (
         <button
           className="fixed bottom-8 left-1/2 transform -translate-x-1/2 bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-full shadow-lg md:hidden z-20 font-semibold text-lg transition-all duration-200 hover:scale-105"
@@ -1781,10 +871,7 @@ function PassengerDashboardContent() {
         </button>
       )}
 
-      {/* ... existing driver arrival notification and ride details panel ... */}
-
-      {/* Quick Destination Dialog removed */}
-      {/* Enhanced Chat Dialog */}
+      {/* Chat Dialog */}
       <Dialog open={showChatDialog} onOpenChange={setShowChatDialog}>
         <DialogContent className="sm:max-w-lg border-0 shadow-2xl">
           <DialogHeader>
@@ -1803,7 +890,8 @@ function PassengerDashboardContent() {
           )}
         </DialogContent>
       </Dialog>
-      {/* Enhanced Driver Selection Dialog */}
+
+      {/* Driver Selection Dialog */}
       <Dialog open={showDriverSelection} onOpenChange={setShowDriverSelection}>
         <DialogContent className="sm:max-w-md border-0 shadow-2xl">
           <DialogHeader>
@@ -1862,7 +950,26 @@ function PassengerDashboardContent() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <Button
                 className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 font-semibold"
-                onClick={solicitarViaje}
+                onClick={async () => {
+                  const result = await solicitarViaje(
+                    user,
+                    userData,
+                    pickup,
+                    pickupCoords!,
+                    destination,
+                    destinationCoords!,
+                    selectedDriver,
+                    availableDrivers,
+                    toast,
+                    refreshRides
+                  )
+                  if (result.success) {
+                    setShowDriverSelection(false)
+                    setSelectedDriver("")
+                    setNoDriversNearby("")
+                    setRideStatus("pending")
+                  }
+                }}
                 disabled={!selectedDriver}
               >
                 ✅ Confirmar Selección
@@ -1870,9 +977,25 @@ function PassengerDashboardContent() {
               <Button
                 variant="outline"
                 className="font-semibold bg-white/60 hover:bg-blue-50"
-                onClick={() => {
+                onClick={async () => {
                   setSelectedDriver("")
-                  solicitarViaje()
+                  const result = await solicitarViaje(
+                    user,
+                    userData,
+                    pickup,
+                    pickupCoords!,
+                    destination,
+                    destinationCoords!,
+                    "",
+                    availableDrivers,
+                    toast,
+                    refreshRides
+                  )
+                  if (result.success) {
+                    setShowDriverSelection(false)
+                    setNoDriversNearby("")
+                    setRideStatus("pending")
+                  }
                 }}
               >
                 🎲 Cualquier Conductor
@@ -1881,7 +1004,8 @@ function PassengerDashboardContent() {
           </div>
         </DialogContent>
       </Dialog>
-      {/* Enhanced Rating Dialog */}
+
+      {/* Rating Dialog */}
       <Dialog open={showRatingDialog} onOpenChange={setShowRatingDialog}>
         <DialogContent className="sm:max-w-md border-0 shadow-2xl">
           <DialogHeader>
@@ -1927,12 +1051,32 @@ function PassengerDashboardContent() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Button
                 className="bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 font-semibold"
-                onClick={handleRateDriver}
+                onClick={async () => {
+                  const result = await handleRateDriver(completedRide, rating, comment, safeToast)
+                  if (result.success) {
+                    setShowRatingDialog(false)
+                    setRating(0)
+                    setComment("")
+                    setCompletedRide(null)
+                  }
+                }}
                 disabled={rating === 0 && comment.trim() === ""}
               >
                 ✨ Enviar Calificación
               </Button>
-              <Button variant="outline" className="font-semibold bg-white/60" onClick={handleSkipRating}>
+              <Button 
+                variant="outline" 
+                className="font-semibold bg-white/60" 
+                onClick={async () => {
+                  const result = await handleSkipRating(completedRide, comment, safeToast)
+                  if (result.success) {
+                    setShowRatingDialog(false)
+                    setRating(0)
+                    setComment("")
+                    setCompletedRide(null)
+                  }
+                }}
+              >
                 Omitir
               </Button>
             </div>

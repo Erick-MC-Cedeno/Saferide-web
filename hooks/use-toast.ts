@@ -192,3 +192,8 @@ function useToast() {
 }
 
 export { useToast, toast }
+
+// Export types for external modules to type `toast` correctly
+export type ToastOptions = Toast
+export type ToastFn = typeof toast
+export type UseToastReturn = ReturnType<typeof useToast>

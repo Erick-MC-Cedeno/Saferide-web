@@ -120,7 +120,7 @@ def generate_response(user_text):
 app = Flask(__name__)
 # Habilitar CORS para permitir solicitudes desde tu frontend
 # Asegúrate de que la URL de origen sea la correcta para tu frontend
-CORS(app, origins=["http://localhost:3000"])
+CORS(app, origins=["https://z5r0re-ip-190-107-209-202.tunnelmole.net"])
 
 @app.route("/chat", methods=["POST"])
 def chat():

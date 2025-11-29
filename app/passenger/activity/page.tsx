@@ -11,6 +11,7 @@ import { useToast } from "@/hooks/use-toast"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
 import { useRouter } from "next/navigation"
+import Loading from "./loading"
 
 interface Ride {
   id: string
@@ -122,6 +123,8 @@ function ActivityContent() {
   useEffect(() => {
     loadRideHistory()
   }, [loadRideHistory])
+
+  if (loading) return <Loading />
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("es-CO", {

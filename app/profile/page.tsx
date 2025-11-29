@@ -41,6 +41,7 @@ import { ProtectedRoute } from "@/components/ProtectedRoute"
 import { useToast } from "@/hooks/use-toast"
 import { ImageCropModal } from "@/components/ImageCropModal"
 import { useRouter } from "next/navigation"
+import Loading from "./loading"
 
 interface UserProfile {
   name: string
@@ -531,14 +532,7 @@ function ProfileContent() {
   }
 
   if (authLoading || (loading && !profile)) {
-    return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Cargando perfil...</p>
-        </div>
-      </div>
-    )
+    return <Loading />
   }
 
   if (profileError && !profile) {
@@ -566,14 +560,10 @@ function ProfileContent() {
   }
 
   if (!profile) {
-    return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
-        <Alert className="max-w-md">
-          <AlertTriangle className="h-4 w-4" />
-          <AlertDescription>No se pudo cargar la información del perfil. Por favor, intenta de nuevo.</AlertDescription>
-        </Alert>
-      </div>
-    )
+    // If we don't have a profile and there's no specific error yet,
+    // show the route's Loading (spinner). Only show the error alert
+    // above when `profileError` is set.
+    return <Loading />
   }
 
   return (

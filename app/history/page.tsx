@@ -35,6 +35,7 @@ import { format } from "date-fns"
 import { es } from "date-fns/locale"
 import { useRouter } from "next/navigation"
 import ProtectedRoute from "@/components/ProtectedRoute"
+import Loading from "./loading"
 
 interface Ride {
   id: string
@@ -294,6 +295,8 @@ function HistoryContent() {
   }
 
  
+
+  if (loading) return <Loading />
 
   return (
     <div className="flex h-screen bg-white">

@@ -37,7 +37,7 @@ import { solicitarViaje, handleCancelRide, handleRateDriver, handleSkipRating, h
 
 function PassengerDashboardContent() {
   const router = useRouter()
-  const { user, userData } = useAuth()
+  const { user, userData, signOut } = useAuth()
   const { toast } = useToast()
   // use a loosely-typed wrapper so we can pass this toast to helper actions
   // that expect a more permissive variant type without causing contravariance errors
@@ -278,10 +278,17 @@ function PassengerDashboardContent() {
 
   const handleLogout = async () => {
     try {
-      await supabase.auth.signOut()
-      router.push("/auth/login")
+      // prefer the centralized signOut implementation from the auth context
+      await signOut()
     } catch (error) {
-      console.error("Error logging out:", error)
+      console.error("Error logging out via auth context:", error)
+    } finally {
+      // navigate to login regardless to avoid leaving user in a protected area
+      try {
+        router.push("/auth/login")
+      } catch (navErr) {
+        console.error("Error redirecting after logout:", navErr)
+      }
     }
   }
 

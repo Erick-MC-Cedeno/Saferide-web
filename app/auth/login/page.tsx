@@ -111,7 +111,7 @@ export default function LoginPage() {
         
         
 
-        <Card className="shadow-2xl border-0 bg-white/80 backdrop-blur-sm">
+        <Card className="border-0 bg-transparent shadow-none">
           <CardHeader className="space-y-6 pb-6">
             <CardTitle className="text-2xl font-bold text-center text-gray-900">Login <Image src="/saferide-icon.svg" width={24} height={24} alt="SafeRide" className="inline ml-2" /></CardTitle>
             <Tabs value={userType} onValueChange={handleUserTypeChange}>

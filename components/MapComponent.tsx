@@ -210,7 +210,7 @@ export function MapComponent({
         background: "#10B981", // Verde
         borderColor: "#FFFFFF",
         glyphColor: "#FFFFFF",
-        glyph: "P",
+        glyphText: "P",
         scale: 1.2,
       });
       
@@ -229,7 +229,7 @@ export function MapComponent({
         background: "#EF4444", // Rojo
         borderColor: "#FFFFFF",
         glyphColor: "#FFFFFF",
-        glyph: "D",
+        glyphText: "D",
         scale: 1.2,
       });
       

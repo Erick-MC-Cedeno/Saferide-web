@@ -162,7 +162,7 @@ export default function ServicesPage() {
             Descubre el plan perfecto para tus necesidades de transporte.
             <br />
             <span className="font-semibold text-purple-600 animate-pulse">Solicitudes ilimitadas</span> con la mejor
-            calidad de servicio en Nicaragua.
+            calidad de servicio.
           </p>
 
           <div className="flex flex-col sm:flex-row gap-6 justify-center items-center">

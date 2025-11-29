@@ -446,7 +446,7 @@ export default function HomePage() {
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-4xl font-bold text-gray-900 mb-4">Lo que dicen nuestros usuarios</h2>
-            <p className="text-xl text-gray-600">Miles de nicaragüenses ya confían en SafeRide</p>
+            <p className="text-xl text-gray-600">Miles de usuarios ya confían en SafeRide</p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -491,7 +491,7 @@ export default function HomePage() {
         <div className="max-w-4xl mx-auto text-center relative z-10">
           <h2 className="text-4xl md:text-5xl font-bold text-white mb-6 animate-pulse">¿Listo para tu primer viaje?</h2>
           <p className="text-xl text-blue-100 mb-8 max-w-2xl mx-auto">
-            Únete a la revolución del transporte seguro en Nicaragua. Descarga la app y comienza a viajar con confianza
+            Únete a la revolución del transporte seguro en nuestra plataforma. Descarga la app y comienza a viajar con confianza
             hoy mismo.
           </p>
 
@@ -570,12 +570,12 @@ export default function HomePage() {
                     <span className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
                       SafeRide
                     </span>
-                    <div className="text-sm text-gray-400">Transporte Seguro Nicaragua</div>
+                    <div className="text-sm text-gray-400">Transporte Seguro</div>
                   </div>
                 </div>
 
                 <p className="text-gray-300 max-w-md leading-relaxed">
-                  Conectamos personas de manera segura y confiable en toda Nicaragua. Tu seguridad es nuestra prioridad
+                  Conectamos personas de manera segura y confiable en nuestra plataforma. Tu seguridad es nuestra prioridad
                   número uno.
                 </p>
 
@@ -690,7 +690,7 @@ export default function HomePage() {
                     </div>
                     <div className="flex items-center">
                       <span className="mr-2">📍</span>
-                      <span>Managua, Nicaragua</span>
+                      <span>Nuestra sede</span>
                     </div>
                   </div>
                 </div>
@@ -724,8 +724,8 @@ export default function HomePage() {
             {/* Bottom Bar */}
             <div className="border-t border-gray-700/50 pt-8 flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
               <div className="text-gray-400 text-center md:text-left">
-                <p>&copy; 2024 SafeRide Nicaragua. Todos los derechos reservados.</p>
-                <p className="text-sm mt-1">Viaja seguro, viaja con confianza. 🇳🇮</p>
+                <p>&copy; 2024 SafeRide. Todos los derechos reservados.</p>
+                <p className="text-sm mt-1">Viaja seguro, viaja con confianza.</p>
               </div>
 
               <div className="flex flex-wrap justify-center md:justify-end gap-6 text-sm">

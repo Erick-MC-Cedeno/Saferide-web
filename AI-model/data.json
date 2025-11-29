@@ -640,7 +640,7 @@
 
     {
       "prompt": "Que es SafeRide?",
-      "completion": "SafeRide es una plataforma de transporte seguro en Nicaragua que conecta pasajeros con conductores verificados. Ofrecemos viajes confiables, planes de suscripción y servicios adicionales como entregas.",
+      "completion": "SafeRide es una plataforma de transporte seguro que conecta pasajeros con conductores verificados. Ofrecemos viajes confiables, planes de suscripción y servicios adicionales como entregas.",
       "intent": "que_es",
       "pattern": ["que es saferide", "que significa saferide", "explica saferide", "para que sirve saferide"],
       "task": "explicar_servicio",
@@ -939,7 +939,7 @@
     },
     {
       "prompt": "Cual es el artículo destacado?",
-      "completion": "El artículo destacado actual es 'SafeRide Alcanza 50,000 Viajes Completados en Nicaragua'.",
+      "completion": "El artículo destacado actual es 'SafeRide Alcanza 50,000 Viajes Completados'.",
       "intent": "articulo_destacado",
       "pattern": ["articulo destacado", "noticia principal", "blog importante"],
       "task": "destacado",

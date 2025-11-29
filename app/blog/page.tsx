@@ -43,11 +43,11 @@ export default function BlogPage() {
 
   const featuredPost = {
     id: 1,
-    title: "SafeRide Alcanza 50,000 Viajes Completados en Nicaragua",
+    title: "SafeRide Alcanza 50,000 Viajes Completados",
     excerpt:
-      "Un hito histórico que demuestra la confianza de los nicaragüenses en nuestra plataforma de transporte seguro.",
+      "Un hito histórico que demuestra la confianza de nuestros usuarios en nuestra plataforma de transporte seguro.",
     content:
-      "Hoy celebramos un momento histórico para SafeRide y para el transporte en Nicaragua. Hemos alcanzado la increíble marca de 50,000 viajes completados exitosamente, lo que representa no solo números, sino historias de personas que han confiado en nosotros para llegar seguras a sus destinos...",
+      "Hoy celebramos un momento histórico para SafeRide y para el transporte. Hemos alcanzado la increíble marca de 50,000 viajes completados exitosamente, lo que representa no solo números, sino historias de personas que han confiado en nosotros para llegar seguras a sus destinos...",
     author: "Carlos Mendoza",
     date: "15 de Diciembre, 2024",
     readTime: "5 min",
@@ -101,7 +101,7 @@ export default function BlogPage() {
     },
     {
       id: 5,
-      title: "Expansión a 15 Ciudades: SafeRide Crece en Nicaragua",
+      title: "Expansión a 15 Ciudades: SafeRide Crece",
       excerpt: "Anunciamos nuestra expansión a nuevas ciudades, llevando transporte seguro a más nicaragüenses.",
       author: "Carlos Mendoza",
       date: "5 de Diciembre, 2024",
@@ -127,7 +127,7 @@ export default function BlogPage() {
     },
     {
       id: 7,
-      title: "El Futuro del Transporte Urbano en Nicaragua",
+      title: "El Futuro del Transporte Urbano",
       excerpt: "Nuestra visión sobre cómo la tecnología transformará la movilidad en las ciudades nicaragüenses.",
       author: "María González",
       date: "1 de Diciembre, 2024",
@@ -199,7 +199,7 @@ export default function BlogPage() {
               <p className="text-2xl text-gray-600 leading-relaxed max-w-4xl mx-auto mb-12">
                 Mantente al día con las últimas{" "}
                 <span className="font-bold text-blue-600 animate-pulse">noticias, actualizaciones</span> y{" "}
-                <span className="font-bold text-green-600">consejos</span> de SafeRide Nicaragua.
+                <span className="font-bold text-green-600">consejos</span> de SafeRide.
               </p>
             </div>
 

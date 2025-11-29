@@ -41,11 +41,11 @@ export default function PressPage() {
   const pressReleases = [
     {
       id: 1,
-      title: "SafeRide Alcanza 50,000 Viajes Completados en Nicaragua",
+      title: "SafeRide Alcanza 50,000 Viajes Completados",
       date: "15 de Diciembre, 2024",
       category: "Hito Empresarial",
       excerpt:
-        "SafeRide celebra un momento histórico al completar 50,000 viajes seguros en todo el territorio nicaragüense, consolidándose como líder en transporte digital.",
+        "SafeRide celebra un momento histórico al completar 50,000 viajes seguros en nuestra plataforma, consolidándose como líder en transporte digital.",
       type: "Comunicado de Prensa",
       downloads: 245,
       views: 1250,
@@ -53,11 +53,11 @@ export default function PressPage() {
     },
     {
       id: 2,
-      title: "Expansión de SafeRide a 15 Ciudades de Nicaragua",
+      title: "Expansión de SafeRide a 15 Ciudades",
       date: "5 de Diciembre, 2024",
       category: "Expansión",
       excerpt:
-        "La plataforma de transporte seguro anuncia su llegada a nuevas ciudades, llevando movilidad confiable a más nicaragüenses.",
+        "La plataforma de transporte seguro anuncia su llegada a nuevas ciudades, llevando movilidad confiable a más usuarios.",
       type: "Nota de Prensa",
       downloads: 189,
       views: 890,
@@ -154,10 +154,10 @@ export default function PressPage() {
   const mediaAppearances = [
     {
       outlet: "Canal 2 Televisión",
-      program: "Buenos Días Nicaragua",
+      program: "Buenos Días",
       date: "10 de Diciembre, 2024",
       type: "Entrevista TV",
-      topic: "El Futuro del Transporte en Nicaragua",
+      topic: "El Futuro del Transporte",
       duration: "15 min",
       icon: Tv,
     },
@@ -184,7 +184,7 @@ export default function PressPage() {
       program: "Economía Digital",
       date: "3 de Diciembre, 2024",
       type: "Reportaje",
-      topic: "Emprendimiento y Tecnología en Nicaragua",
+      topic: "Emprendimiento y Tecnología",
       duration: "Reportaje especial",
       icon: BookOpen,
     },
@@ -193,7 +193,7 @@ export default function PressPage() {
   const awards = [
     {
       name: "Mejor Startup Tecnológica 2024",
-      organization: "Cámara de Comercio de Nicaragua",
+      organization: "Cámara de Comercio",
       date: "Noviembre 2024",
       description: "Reconocimiento a la innovación en transporte digital",
       icon: Award,
@@ -276,7 +276,7 @@ export default function PressPage() {
                 Centro de recursos para{" "}
                 <span className="font-bold text-blue-600 animate-pulse">periodistas y medios</span> de comunicación.
                 Encuentra aquí toda la información oficial de{" "}
-                <span className="font-bold text-green-600">SafeRide Nicaragua</span>.
+                <span className="font-bold text-green-600">SafeRide</span>.
               </p>
             </div>
 

@@ -60,7 +60,7 @@ export default function AboutPage() {
     {
       icon: Heart,
       title: "Compromiso Social",
-      description: "Contribuimos al desarrollo económico y social de Nicaragua",
+      description: "Contribuimos al desarrollo económico y social de la región",
       color: "from-red-500 to-pink-600",
       delay: "200ms",
     },
@@ -84,13 +84,13 @@ export default function AboutPage() {
     {
       year: "2024",
       title: "Fundación de SafeRide",
-      description: "Nace SafeRide con la visión de revolucionar el transporte en Nicaragua",
+      description: "Nace SafeRide con la visión de revolucionar el transporte",
       icon: Rocket,
       color: "from-blue-500 to-purple-600",
     },
     {
       year: "2024",
-      title: "Lanzamiento en Managua",
+      title: "Lanzamiento en la capital",
       description: "Iniciamos operaciones en la capital con 50 conductores certificados",
       icon: MapPin,
       color: "from-green-500 to-blue-600",
@@ -98,7 +98,7 @@ export default function AboutPage() {
     {
       year: "2024",
       title: "Expansión Nacional",
-      description: "Llegamos a 15 ciudades principales de Nicaragua",
+      description: "Llegamos a 15 ciudades principales",
       icon: Globe,
       color: "from-purple-500 to-indigo-600",
     },
@@ -192,10 +192,9 @@ export default function AboutPage() {
               </h1>
 
               <p className="text-2xl text-gray-600 leading-relaxed max-w-4xl mx-auto mb-12">
-                Somos una empresa nicaragüense comprometida con{" "}
-                <span className="font-bold text-blue-600 animate-pulse">revolucionar el transporte</span> en nuestro
-                país, conectando personas de manera{" "}
-                <span className="font-bold text-green-600">segura, confiable y accesible</span>.
+                Somos un SAAS de internet especializado en soluciones de transporte, conectando personas de manera
+                <span className="font-bold text-green-600"> segura, confiable y accesible</span> y ofreciendo tecnología
+                que mejora la movilidad urbana.
               </p>
             </div>
 
@@ -241,7 +240,7 @@ export default function AboutPage() {
                 <p className="text-lg text-gray-600 leading-relaxed">
                   Proporcionar un servicio de transporte{" "}
                   <span className="font-bold text-blue-600">seguro, confiable y accesible</span> que conecte a las
-                  personas en Nicaragua, mejorando su calidad de vida y contribuyendo al desarrollo económico del país.
+                  personas, mejorando su calidad de vida y contribuyendo al desarrollo económico del país.
                 </p>
               </CardContent>
             </Card>
@@ -386,7 +385,7 @@ export default function AboutPage() {
               </span>
             </h2>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              Las mentes brillantes detrás de la revolución del transporte en Nicaragua
+              Las mentes brillantes detrás de la revolución del transporte
             </p>
           </div>
 
@@ -453,7 +452,7 @@ export default function AboutPage() {
             <span className="animate-bounce inline-block delay-500">?</span>
           </h2>
           <p className="text-xl text-blue-100 mb-8 max-w-2xl mx-auto leading-relaxed">
-            Únete a nuestra misión de transformar el transporte en Nicaragua. Juntos construimos un futuro más seguro y
+            Únete a nuestra misión de transformar el transporte. Juntos construimos un futuro más seguro y
             conectado.
           </p>
 

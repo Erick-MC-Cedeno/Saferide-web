@@ -86,7 +86,15 @@ function HistoryContent() {
   const [statusFilter, setStatusFilter] = useState<string>("all")
   const [dateRange, setDateRange] = useState<{ from?: Date; to?: Date }>({})
   // details view removed; no selectedRide state needed
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(true)
+  const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => {
+    try {
+      if (typeof window === "undefined") return true
+      const v = window.localStorage.getItem("saferide:sidebar-collapsed")
+      return v === null ? true : v === "true"
+    } catch (e) {
+      return true
+    }
+  })
   const [currentView, setCurrentView] = useState<string>("history")
 
   const calculateStats = useCallback(
@@ -296,7 +304,15 @@ function HistoryContent() {
         <div className="p-4 border-b border-gray-200">
           <button
             aria-label={sidebarCollapsed ? "Abrir sidebar" : "Cerrar sidebar"}
-            onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+            onClick={() => {
+              const next = !sidebarCollapsed
+              setSidebarCollapsed(next)
+              try {
+                window.localStorage.setItem("saferide:sidebar-collapsed", String(next))
+              } catch (e) {
+                /* ignore */
+              }
+            }}
             className="w-full flex items-center justify-center p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
           >
             <Menu className="h-5 w-5" />
@@ -370,7 +386,7 @@ function HistoryContent() {
                   {!sidebarCollapsed && <span className="font-medium">History</span>}
                 </button>
               </>
-            ) : (
+              ) : (
               <>
                 <button
                   onClick={() => {
@@ -404,6 +420,21 @@ function HistoryContent() {
 
                 <button
                   onClick={() => {
+                    setCurrentView("settings")
+                    handleNavigation("/settings")
+                  }}
+                  className={`w-full flex items-center ${sidebarCollapsed ? "justify-center relative" : "space-x-3"} ${sidebarCollapsed ? "px-2" : "px-4"} py-3 rounded-lg text-left transition-colors ${
+                    currentView === "settings" ? "bg-blue-500 text-white" : "text-gray-700 hover:bg-gray-100"
+                  }`}
+                >
+                  <Settings
+                    className={`${sidebarCollapsed ? "h-6 w-6" : "h-5 w-5"} ${currentView === "settings" ? "text-white stroke-current" : "!text-gray-700 !stroke-current"}`}
+                  />
+                  {!sidebarCollapsed && <span className="font-medium">Configuración</span>}
+                </button>
+
+                <button
+                  onClick={() => {
                     setCurrentView("history")
                     // Already on history page, no navigation needed
                   }}
@@ -414,26 +445,14 @@ function HistoryContent() {
                   <History
                     className={`${sidebarCollapsed ? "h-6 w-6" : "h-5 w-5"} ${currentView === "history" ? "text-white stroke-current" : "!text-gray-700 !stroke-current"}`}
                   />
-                  {!sidebarCollapsed && <span className="font-medium">History</span>}
+                  {!sidebarCollapsed && <span className="font-medium">Historial</span>}
                 </button>
               </>
             )}
           </div>
         </nav>
 
-        {/* Settings */}
-        <div className="p-4 border-t border-gray-200">
-          <button
-            onClick={() => {
-              setCurrentView("settings")
-              handleNavigation("/settings")
-            }}
-            className={`w-full flex items-center ${sidebarCollapsed ? "justify-center" : "space-x-3"} px-4 py-3 rounded-lg text-left text-gray-700 hover:bg-gray-100 transition-colors`}
-          >
-            <Settings className={`${sidebarCollapsed ? "h-6 w-6 !text-gray-700 !stroke-current" : "h-5 w-5"}`} />
-            {!sidebarCollapsed && <span className="font-medium">Settings</span>}
-          </button>
-        </div>
+        
 
         {/* Logout */}
         <div className="p-4 border-t border-gray-200">

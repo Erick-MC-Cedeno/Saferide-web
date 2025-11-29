@@ -56,7 +56,15 @@ function PassengerDashboardContent() {
   const [completedRide, setCompletedRide] = useState<any>(null)
   const [rating, setRating] = useState(0)
   const [comment, setComment] = useState("")
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(true)
+  const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => {
+    try {
+      if (typeof window === "undefined") return true
+      const v = window.localStorage.getItem("saferide:sidebar-collapsed")
+      return v === null ? true : v === "true"
+    } catch (e) {
+      return true
+    }
+  })
   const [currentView, setCurrentView] = useState<string>("rides")
   const [showChatDialog, setShowChatDialog] = useState(false)
   const [driversForMap, setDriversForMap] = useState<Array<{ id: string; uid?: string; name: string; lat: number; lng: number }>>([])
@@ -297,16 +305,20 @@ function PassengerDashboardContent() {
       {/* Sidebar - Desktop */}
       <div className={`${sidebarCollapsed ? "w-16 !text-gray-700" : "w-64"} bg-white shadow-lg transition-all duration-300 hidden md:flex md:flex-col`}>
         <div className="p-4 border-b border-gray-200">
-          <button
+            <button
             aria-label={sidebarCollapsed ? "Abrir sidebar" : "Cerrar sidebar"}
-            onClick={() => setSidebarCollapsed((s) => !s)}
+            onClick={() => {
+              const next = !sidebarCollapsed
+              setSidebarCollapsed(next)
+              try { window.localStorage.setItem("saferide:sidebar-collapsed", String(next)) } catch (e) {}
+            }}
             className="w-full flex items-center justify-center p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
           >
             <Menu className="h-5 w-5" />
           </button>
         </div>
 
-        {!sidebarCollapsed && (
+          {!sidebarCollapsed && (
           <div className="p-6 border-b border-gray-200">
             <div className="flex items-center space-x-3">
               <Avatar className="h-12 w-12">

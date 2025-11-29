@@ -28,6 +28,7 @@ import {
   Car,
   Clock,
   LogOut,
+  History,
 } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
 import { supabase } from "@/lib/supabase"
@@ -53,16 +54,21 @@ interface UserSettings {
 }
 
 // Local type for runtime AudioContext-like constructors to avoid using `any`.
-type AudioCtxConstructor = new () => {
-  resume?: () => Promise<void>
-  createBuffer: (channels: number, length: number, sampleRate: number) => unknown
-  createBufferSource: () => {
-    buffer?: unknown
-    connect: (dest: unknown) => void
-    start: (when?: number) => void
-    stop: (when?: number) => void
+// Some browsers expose an AudioContext-like object that's callable and/or constructible,
+// so we provide both signatures (construct + callable) to satisfy TypeScript.
+interface AudioCtxConstructor {
+  new (...args: any[]): {
+    resume?: () => Promise<void>
+    createBuffer: (channels: number, length: number, sampleRate: number) => unknown
+    createBufferSource: () => {
+      buffer?: unknown
+      connect: (dest: unknown) => void
+      start: (when?: number) => void
+      stop: (when?: number) => void
+    }
+    destination: unknown
   }
-  destination: unknown
+  (...args: any[]): any
 }
 
 const defaultSettings: UserSettings = {
@@ -91,7 +97,15 @@ function SettingsContent() {
   const [initialLoading, setInitialLoading] = useState(true)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [saveSuccess, setSaveSuccess] = useState(false)
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(true)
+  const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => {
+    try {
+      if (typeof window === "undefined") return true
+      const v = window.localStorage.getItem("saferide:sidebar-collapsed")
+      return v === null ? true : v === "true"
+    } catch (e) {
+      return true
+    }
+  })
   const [currentView, setCurrentView] = useState<string>("settings")
 
   const createDefaultSettings = useCallback(async () => {
@@ -116,10 +130,19 @@ function SettingsContent() {
 
   const emitStorageEvent = (key: string, value: string) => {
     try {
-      const event = new StorageEvent("storage", { key, newValue: value, oldValue: null, url: window.location.href })
-      window.dispatchEvent(event)
+      // Some browsers/environments don't allow constructing StorageEvent.
+      // Use a CustomEvent fallback so we never throw during render.
+      const detail = { key, newValue: value }
+      try {
+        window.dispatchEvent(new CustomEvent("saferide:storage", { detail }))
+      } catch (e) {
+        // as a last resort, try a no-detail Event so other listeners don't crash
+        try {
+          window.dispatchEvent(new Event("saferide:storage"))
+        } catch {}
+      }
     } catch (e) {
-      console.warn("Could not emit StorageEvent:", e)
+      console.warn("Could not emit storage fallback event:", e)
     }
   }
 
@@ -312,17 +335,27 @@ function SettingsContent() {
           if (AudioCtx) {
         try {
               // AudioCtx is an unknown runtime constructor (window provided). Cast to a local constructor type.
-              const ctx = new (AudioCtx as AudioCtxConstructor)()
-              if (typeof ctx.resume === "function") ctx.resume().catch(() => {})
+              // Safely attempt to construct an AudioContext-like instance.
+              let ctx: ReturnType<AudioCtxConstructor> | null = null
               try {
-                const buffer = ctx.createBuffer(1, 1, 22050)
-                const src = ctx.createBufferSource()
-                src.buffer = buffer
-                src.connect(ctx.destination)
-                src.start(0)
-                src.stop(0)
-              } catch {
-                // ignore buffer errors
+                ctx = new (AudioCtx as AudioCtxConstructor)()
+              } catch (err) {
+                // Some environments expose an AudioContext-like object that's not constructible.
+                ctx = null
+              }
+
+              if (ctx) {
+                if (typeof ctx.resume === "function") ctx.resume().catch(() => {})
+                try {
+                  const buffer = ctx.createBuffer(1, 1, 22050)
+                  const src = ctx.createBufferSource()
+                  src.buffer = buffer
+                  src.connect(ctx.destination)
+                  src.start(0)
+                  src.stop(0)
+                } catch {
+                  // ignore buffer errors
+                }
               }
             } catch {
               // ignore audio init errors
@@ -479,7 +512,15 @@ function SettingsContent() {
         <div className="p-4 border-b border-gray-200">
           <button
             aria-label={sidebarCollapsed ? "Abrir sidebar" : "Cerrar sidebar"}
-            onClick={() => setSidebarCollapsed((s) => !s)}
+            onClick={() => {
+              const next = !sidebarCollapsed
+              setSidebarCollapsed(next)
+              try {
+                window.localStorage.setItem("saferide:sidebar-collapsed", String(next))
+              } catch (e) {
+                /* ignore */
+              }
+            }}
             className="w-full flex items-center justify-center p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
           >
             <Menu className="h-5 w-5" />
@@ -581,24 +622,38 @@ function SettingsContent() {
                   />
                   {!sidebarCollapsed && <span className="font-medium">Activity</span>}
                 </button>
+
+                <button
+                  onClick={() => {
+                    setCurrentView("settings")
+                    handleNavigation("/settings")
+                  }}
+                  className={`w-full flex items-center ${sidebarCollapsed ? "justify-center relative" : "space-x-3"} ${sidebarCollapsed ? "px-2" : "px-4"} py-3 rounded-lg text-left transition-colors ${
+                    currentView === "settings" ? "bg-blue-500 text-white" : "text-gray-700 hover:bg-gray-100"
+                  }`}
+                >
+                  <Settings
+                    className={`${sidebarCollapsed ? "h-6 w-6" : "h-5 w-5"} ${currentView === "settings" ? "text-white stroke-current" : "!text-gray-700 !stroke-current"}`}
+                  />
+                  {!sidebarCollapsed && <span className="font-medium">Configuración</span>}
+                </button>
+
+                <button
+                  onClick={() => {
+                    setCurrentView("history")
+                    handleNavigation("/history")
+                  }}
+                  className={`w-full flex items-center ${sidebarCollapsed ? "justify-center relative" : "space-x-3"} ${sidebarCollapsed ? "px-2" : "px-4"} py-3 rounded-lg text-left transition-colors ${
+                    currentView === "history" ? "bg-blue-500 text-white" : "text-gray-700 hover:bg-gray-100"
+                  }`}
+                >
+                  <History className={`${sidebarCollapsed ? "h-6 w-6" : "h-5 w-5"} ${currentView === "history" ? "text-white stroke-current" : "!text-gray-700 !stroke-current"}`} />
+                  {!sidebarCollapsed && <span className="font-medium">Historial</span>}
+                </button>
               </>
             )}
           </div>
         </nav>
-
-        <div className="p-4 border-t border-gray-200 space-y-2">
-          <button
-            onClick={() => setCurrentView("settings")}
-            className={`w-full flex items-center ${sidebarCollapsed ? "justify-center" : "space-x-3"} px-4 py-3 rounded-lg text-left transition-colors ${
-              currentView === "settings" ? "bg-blue-500 text-white" : "text-gray-700 hover:bg-gray-100"
-            }`}
-          >
-            <Settings
-              className={`${sidebarCollapsed ? "h-6 w-6" : "h-5 w-5"} ${currentView === "settings" ? "text-white stroke-current" : "!text-gray-700 !stroke-current"}`}
-            />
-            {!sidebarCollapsed && <span className="font-medium">Settings</span>}
-          </button>
-        </div>
 
         <div className="mt-auto p-4 border-t border-gray-200">
           <button

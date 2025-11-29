@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Card } from "@/components/ui/card"
-import { Star, Clock, Settings, LogOut, Menu, Car } from "lucide-react"
+import { Star, Clock, Settings, LogOut, Menu, Car, History } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
 import { supabase } from "@/lib/supabase"
 import { ProtectedRoute } from "@/components/ProtectedRoute"
@@ -54,8 +54,16 @@ function ActivityContent() {
   const [rides, setRides] = useState<Ride[]>([])
   const [stats, setStats] = useState<ActivityStats | null>(null)
   const [loading, setLoading] = useState(true)
-  // Always keep sidebar collapsed for passengers
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(true)
+  // Sidebar collapse state persisted so navigating between pages keeps the same state
+  const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => {
+    try {
+      if (typeof window === "undefined") return true
+      const v = window.localStorage.getItem("saferide:sidebar-collapsed")
+      return v === null ? true : v === "true"
+    } catch (e) {
+      return true
+    }
+  })
   const [currentView, setCurrentView] = useState<string>("activity")
 
   const calculateStats = useCallback((ridesData: Ride[]) => {
@@ -152,7 +160,11 @@ function ActivityContent() {
         <div className="p-4 border-b border-gray-200">
           <button
             aria-label={sidebarCollapsed ? "Abrir sidebar" : "Cerrar sidebar"}
-            onClick={() => setSidebarCollapsed((s) => !s)}
+            onClick={() => {
+              const next = !sidebarCollapsed
+              setSidebarCollapsed(next)
+              try { window.localStorage.setItem("saferide:sidebar-collapsed", String(next)) } catch (e) {}
+            }}
             className="w-full flex items-center justify-center p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
           >
             <Menu className="h-5 w-5" />
@@ -228,21 +240,28 @@ function ActivityContent() {
               />
               {!sidebarCollapsed && <span className="font-medium">Activity</span>}
             </button>
+            
+            <button
+              onClick={() => { setCurrentView("settings"); handleNavigation("/settings") }}
+              className={`w-full flex items-center ${sidebarCollapsed ? "justify-center relative" : "space-x-3"} ${sidebarCollapsed ? "px-2" : "px-4"} py-3 rounded-lg text-left transition-colors ${
+                currentView === "settings" ? "bg-blue-500 text-white" : "text-gray-700 hover:bg-gray-100"
+              }`}
+            >
+              <Settings className={`${sidebarCollapsed ? "h-6 w-6" : "h-5 w-5"} ${currentView === "settings" ? "text-white stroke-current" : "!text-gray-700 !stroke-current"}`} />
+              {!sidebarCollapsed && <span className="font-medium">Configuración</span>}
+            </button>
+
+            <button
+              onClick={() => { setCurrentView("history"); handleNavigation("/history") }}
+              className={`w-full flex items-center ${sidebarCollapsed ? "justify-center relative" : "space-x-3"} ${sidebarCollapsed ? "px-2" : "px-4"} py-3 rounded-lg text-left transition-colors ${
+                currentView === "history" ? "bg-blue-500 text-white" : "text-gray-700 hover:bg-gray-100"
+              }`}
+            >
+              <History className={`${sidebarCollapsed ? "h-6 w-6" : "h-5 w-5"} ${currentView === "history" ? "text-white stroke-current" : "!text-gray-700 !stroke-current"}`} />
+              {!sidebarCollapsed && <span className="font-medium">Historial</span>}
+            </button>
           </div>
         </nav>
-
-        <div className="p-4 border-t border-gray-200 space-y-2">
-          <button
-            onClick={() => {
-              setCurrentView("settings")
-              handleNavigation("/settings")
-            }}
-            className={`w-full flex items-center ${sidebarCollapsed ? "justify-center" : "space-x-3"} px-4 py-3 rounded-lg text-left text-gray-700 hover:bg-gray-100 transition-colors`}
-          >
-            <Settings className={`${sidebarCollapsed ? "h-6 w-6 !text-gray-700 !stroke-current" : "h-5 w-5"}`} />
-            {!sidebarCollapsed && <span className="font-medium">Settings</span>}
-          </button>
-        </div>
 
         <div className="mt-auto p-4 border-t border-gray-200">
           <button

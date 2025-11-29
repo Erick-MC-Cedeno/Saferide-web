@@ -4,7 +4,7 @@ import type React from "react"
 import { useState, useEffect, useRef } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardDescription } from "@/components/ui/card"
+// Removed Card wrapper to avoid boxed UI on reset-password page
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
@@ -199,18 +199,16 @@ export default function ResetPasswordPage() {
   }
 
   // LOADING STATE - CHECKING TOKEN
-  if (checkingToken) {
+      if (checkingToken) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-cyan-50 flex items-center justify-center p-4 relative overflow-hidden">
         <div className="w-full max-w-md relative z-10">
-          <Card className="shadow-2xl border-0 bg-white/80 backdrop-blur-sm">
-            <CardContent className="flex flex-col items-center justify-center p-8">
-              <Image src="/saferide-icon.svg" alt="SafeRide" width={56} height={56} />
-              <Loader2 className="h-8 w-8 animate-spin text-blue-600 mb-4" />
-              <h2 className="text-xl font-semibold text-gray-900 mb-2">SafeRide</h2>
-              <p className="text-gray-600 text-center">Verificando link de recuperación...</p>
-            </CardContent>
-          </Card>
+              <div className="flex flex-col items-center justify-center p-8">
+                <Image src="/saferide-icon.svg" alt="SafeRide" width={56} height={56} />
+                <Loader2 className="h-8 w-8 animate-spin text-blue-600 mb-4" />
+                <h2 className="text-xl font-semibold text-gray-900 mb-2">SafeRide</h2>
+                <p className="text-gray-600 text-center">Verificando link de recuperación...</p>
+              </div>
         </div>
       </div>
     )
@@ -231,23 +229,21 @@ export default function ResetPasswordPage() {
             </div>
           </div>
 
-          <Card className="shadow-2xl border-0 bg-white/80 backdrop-blur-sm">
-            <CardContent className="p-8">
-              <Alert className="border-red-200 bg-red-50">
-                <AlertCircle className="h-4 w-4 text-red-600" />
-                <AlertDescription className="text-red-700">
-                  <div className="space-y-2">
-                    <p className="font-semibold">Link inválido o expirado</p>
-                    <p className="text-sm">{error}</p>
-                  </div>
-                </AlertDescription>
-              </Alert>
+          <div className="p-8">
+            <Alert className="border-red-200 bg-red-50">
+              <AlertCircle className="h-4 w-4 text-red-600" />
+              <AlertDescription className="text-red-700">
+                <div className="space-y-2">
+                  <p className="font-semibold">Link inválido o expirado</p>
+                  <p className="text-sm">{error}</p>
+                </div>
+              </AlertDescription>
+            </Alert>
 
-              <div className="mt-6 text-center">
-                <Link href="/auth/forgot-password" className="text-sm text-blue-600 hover:text-blue-700 font-medium hover:underline">Solicitar nuevo link de recuperación</Link>
-              </div>
-            </CardContent>
-          </Card>
+            <div className="mt-6 text-center">
+              <Link href="/auth/forgot-password" className="text-sm text-blue-600 hover:text-blue-700 font-medium hover:underline">Solicitar nuevo link de recuperación</Link>
+            </div>
+          </div>
         </div>
       </div>
     )
@@ -268,21 +264,19 @@ export default function ResetPasswordPage() {
           <p className="text-gray-600">{success ? "¡Contraseña actualizada!" : "Ingresa tu nueva contraseña"}</p>
         </div>
 
-        <Card className="shadow-2xl border-0 bg-white/80 backdrop-blur-sm">
-          <CardHeader>
-            <CardDescription className="text-center">
-              {success ? (
-                <div className="flex flex-col items-center space-y-2">
-                  <Lock className="h-12 w-12 text-green-600" />
-                  <p className="text-base">Contraseña cambiada exitosamente</p>
-                </div>
-              ) : (
-                "Tu nueva contraseña debe ser segura y diferente a la anterior"
-              )}
-            </CardDescription>
-          </CardHeader>
+        <div className="bg-transparent">
+          <div className="text-center">
+            {success ? (
+              <div className="flex flex-col items-center space-y-2">
+                <Lock className="h-12 w-12 text-green-600" />
+                <p className="text-base">Contraseña cambiada exitosamente</p>
+              </div>
+            ) : (
+              <p className="text-sm text-gray-700">Tu nueva contraseña debe ser segura y diferente a la anterior</p>
+            )}
+          </div>
 
-          <CardContent>
+          <div className="p-0">
             {success && (
               <Alert className="mb-6 border-green-200 bg-green-50">
                 <CheckCircle2 className="h-4 w-4 text-green-600" />
@@ -370,8 +364,8 @@ export default function ResetPasswordPage() {
                 </Link>
               </div>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
         <div className="mt-6 text-center">
           <p className="text-xs text-gray-500">{success ? "Tu sesión será cerrada por seguridad" : "Por seguridad, serás desconectado después de cambiar tu contraseña"}</p>

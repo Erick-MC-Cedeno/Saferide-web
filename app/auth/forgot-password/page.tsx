@@ -4,7 +4,7 @@ import type React from "react"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardDescription } from "@/components/ui/card"
+// Removed Card UI wrapper so the page doesn't render inside a boxed card
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
@@ -101,21 +101,19 @@ export default function ForgotPasswordPage() {
           <p className="text-gray-600">{success ? "¡Revisa tu correo!" : "Ingresa tu correo y te enviaremos un link de recuperación"}</p>
         </div>
 
-        <Card className="shadow-2xl border-0 bg-white/80 backdrop-blur-sm">
-          <CardHeader>
-            <CardDescription className="text-center">
+        <div className="bg-transparent">
+          <div className="px-4 py-6">
+            <div className="text-center">
               {success ? (
                 <div className="flex flex-col items-center space-y-2">
                   <Mail className="h-12 w-12 text-blue-600" />
                   <p className="text-base">Correo enviado exitosamente</p>
                 </div>
               ) : (
-                "No te preocupes, te ayudaremos a recuperar tu cuenta"
+                <p className="text-sm text-gray-700">No te preocupes, te ayudaremos a recuperar tu cuenta</p>
               )}
-            </CardDescription>
-          </CardHeader>
+            </div>
 
-          <CardContent>
             {success && (
               <Alert className="mb-6 border-green-200 bg-green-50">
                 <CheckCircle2 className="h-4 w-4 text-green-600" />
@@ -211,8 +209,8 @@ export default function ForgotPasswordPage() {
                 </Link>
               </div>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
         <div className="mt-6 text-center">
           <p className="text-xs text-gray-500">

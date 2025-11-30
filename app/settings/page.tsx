@@ -1,6 +1,8 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
+import { useTranslation } from "react-i18next"
+import i18n from "i18next"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -105,6 +107,7 @@ function SettingsContent() {
     }
   })
   const [currentView, setCurrentView] = useState<string>("settings")
+  const { t } = useTranslation()
 
   const createDefaultSettings = useCallback(async () => {
     if (!user?.uid || !supabase) return
@@ -426,13 +429,45 @@ function SettingsContent() {
   }
 
   const updatePreferenceSetting = (key: keyof UserSettings["preferences"], value: string | boolean) => {
-    setSettings((prev) => ({
-      ...prev,
-      preferences: {
-        ...prev.preferences,
-        [key]: value,
-      },
-    }))
+    setSettings((prev) => {
+      const next = {
+        ...prev,
+        preferences: {
+          ...prev.preferences,
+          [key]: value,
+        },
+      }
+
+      if (key === "language") {
+        const lang = String(value)
+        try {
+          i18n.changeLanguage(lang).catch(() => {})
+        } catch {}
+
+        try {
+          localStorage.setItem("saferide:lang", lang)
+        } catch {}
+
+        ;(async () => {
+          try {
+            if (user?.uid && supabase) {
+              await supabase.from("user_settings").upsert(
+                {
+                  user_id: user.uid,
+                  settings: next,
+                  updated_at: new Date().toISOString(),
+                },
+                { onConflict: "user_id" },
+              )
+            }
+          } catch (e) {
+            console.warn("Could not persist language to DB:", e)
+          }
+        })()
+      }
+
+      return next
+    })
   }
 
   const exportData = async () => {
@@ -526,7 +561,7 @@ function SettingsContent() {
       >
         <div className="p-4 border-b border-gray-200">
           <button
-            aria-label={sidebarCollapsed ? "Abrir sidebar" : "Cerrar sidebar"}
+            aria-label={sidebarCollapsed ? t("ui.open_sidebar") : t("ui.close_sidebar")}
             onClick={() => {
               const next = !sidebarCollapsed
               setSidebarCollapsed(next)
@@ -546,16 +581,16 @@ function SettingsContent() {
           <div className="p-6 border-b border-gray-200">
             <div className="flex items-center space-x-3">
               <Avatar className="w-12 h-12">
-                <AvatarImage src={(userData as Record<string, unknown> | null)?.profile_image as string | undefined} alt="Foto de perfil" />
+                <AvatarImage src={(userData as Record<string, unknown> | null)?.profile_image as string | undefined} alt={t("ui.profile_photo")} />
                 <AvatarFallback className="bg-blue-600 text-white font-semibold text-lg">
                   {String(((userData as { name?: string; full_name?: string } | null) ?? {})?.name ?? String(((userData as { full_name?: string } | null)?.full_name ?? user?.email ?? "")).split("@")[0]).charAt(0) || "U"}
                 </AvatarFallback>
               </Avatar>
               <div>
                 <h3 className="font-semibold text-gray-900">
-                  {String(((userData as { name?: string; full_name?: string } | null) ?? {})?.name ?? String(((userData as { full_name?: string } | null)?.full_name ?? user?.email ?? "")).split("@")[0]) || "Usuario"}
+                  {String(((userData as { name?: string; full_name?: string } | null) ?? {})?.name ?? String(((userData as { full_name?: string } | null)?.full_name ?? user?.email ?? "")).split("@")[0]) || t("ui.user")}
                 </h3>
-                <p className="text-sm text-gray-500 hover:text-blue-600 cursor-pointer">Ver perfil</p>
+                <p className="text-sm text-gray-500 hover:text-blue-600 cursor-pointer">{t("ui.view_profile")}</p>
               </div>
             </div>
           </div>
@@ -588,7 +623,7 @@ function SettingsContent() {
                   <Car
                     className={`${sidebarCollapsed ? "h-6 w-6" : "h-5 w-5"} ${currentView === "dashboard" ? "text-white stroke-current" : "!text-gray-700 !stroke-current"}`}
                   />
-                  {!sidebarCollapsed && <span className="font-medium">Dashboard</span>}
+                  {!sidebarCollapsed && <span className="font-medium">{t("ui.dashboard")}</span>}
                 </button>
 
                 <button
@@ -603,7 +638,7 @@ function SettingsContent() {
                   <Clock
                     className={`${sidebarCollapsed ? "h-6 w-6" : "h-5 w-5"} ${currentView === "history" ? "text-white stroke-current" : "!text-gray-700 !stroke-current"}`}
                   />
-                  {!sidebarCollapsed && <span className="font-medium">History</span>}
+                  {!sidebarCollapsed && <span className="font-medium">{t("ui.history")}</span>}
                 </button>
               </>
             ) : (
@@ -620,7 +655,7 @@ function SettingsContent() {
                   <Car
                     className={`${sidebarCollapsed ? "h-6 w-6" : "h-5 w-5"} ${currentView === "rides" ? "text-white stroke-current" : "!text-gray-700 !stroke-current"}`}
                   />
-                  {!sidebarCollapsed && <span className="font-medium">Rides</span>}
+                  {!sidebarCollapsed && <span className="font-medium">{t("ui.rides")}</span>}
                 </button>
 
                 <button
@@ -635,7 +670,7 @@ function SettingsContent() {
                   <Clock
                     className={`${sidebarCollapsed ? "h-6 w-6" : "h-5 w-5"} ${currentView === "activity" ? "text-white stroke-current" : "!text-gray-700 !stroke-current"}`}
                   />
-                  {!sidebarCollapsed && <span className="font-medium">Activity</span>}
+                  {!sidebarCollapsed && <span className="font-medium">{t("ui.activity")}</span>}
                 </button>
 
                 <button
@@ -650,7 +685,7 @@ function SettingsContent() {
                   <Settings
                     className={`${sidebarCollapsed ? "h-6 w-6" : "h-5 w-5"} ${currentView === "settings" ? "text-white stroke-current" : "!text-gray-700 !stroke-current"}`}
                   />
-                  {!sidebarCollapsed && <span className="font-medium">Configuración</span>}
+                  {!sidebarCollapsed && <span className="font-medium">{t("ui.settings")}</span>}
                 </button>
 
                 <button
@@ -663,7 +698,7 @@ function SettingsContent() {
                   }`}
                 >
                   <History className={`${sidebarCollapsed ? "h-6 w-6" : "h-5 w-5"} ${currentView === "history" ? "text-white stroke-current" : "!text-gray-700 !stroke-current"}`} />
-                  {!sidebarCollapsed && <span className="font-medium">Historial</span>}
+                  {!sidebarCollapsed && <span className="font-medium">{t("ui.history")}</span>}
                 </button>
               </>
             )}
@@ -685,19 +720,19 @@ function SettingsContent() {
       <div className="flex-1 overflow-auto">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="mb-8">
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Configuración</h1>
-            <p className="text-gray-600">Personaliza tu experiencia en SafeRide</p>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">{t("settings.title")}</h1>
+            <p className="text-gray-600">{t("settings.subtitle")}</p>
           </div>
 
           <div className="space-y-6">
             <Card className="shadow-lg">
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <Bell className="h-5 w-5 text-blue-600" />
-                  <span>Notificaciones</span>
-                </CardTitle>
-                <CardDescription>Controla cómo y cuándo recibes notificaciones</CardDescription>
-              </CardHeader>
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <Bell className="h-5 w-5 text-blue-600" />
+                    <span>{t("ui.notifications")}</span>
+                  </CardTitle>
+                  <CardDescription>{t("ui.notifications_description")}</CardDescription>
+                </CardHeader>
               <CardContent className="space-y-6">
                 <div className="grid md:grid-cols-2 gap-6">
                   <div className="space-y-4">
@@ -705,9 +740,9 @@ function SettingsContent() {
                       <div className="space-y-0.5">
                         <Label className="flex items-center space-x-2">
                           <Smartphone className="h-4 w-4" />
-                          <span>Notificaciones push</span>
+                          <span>{t("ui.push_notifications")}</span>
                         </Label>
-                        <p className="text-sm text-gray-600">Recibe notificaciones en tu dispositivo</p>
+                        <p className="text-sm text-gray-600">{t("ui.push_notifications_description")}</p>
                       </div>
                       <Switch
                         checked={settings.notifications.push}
@@ -719,9 +754,9 @@ function SettingsContent() {
                       <div className="space-y-0.5">
                         <Label className="flex items-center space-x-2">
                           <Mail className="h-4 w-4" />
-                          <span>Notificaciones por email</span>
+                          <span>{t("ui.email_notifications")}</span>
                         </Label>
-                        <p className="text-sm text-gray-600">Recibe actualizaciones por correo</p>
+                        <p className="text-sm text-gray-600">{t("ui.email_notifications_description")}</p>
                       </div>
                       <Switch
                         checked={settings.notifications.email}
@@ -738,9 +773,9 @@ function SettingsContent() {
                       <div className="space-y-0.5">
                         <Label className="flex items-center space-x-2">
                           <Shield className="h-4 w-4" />
-                          <span>Alertas de seguridad</span>
+                          <span>{t("ui.security_alerts")}</span>
                         </Label>
-                        <p className="text-sm text-gray-600">Notificaciones importantes</p>
+                        <p className="text-sm text-gray-600">{t("ui.security_alerts_description")}</p>
                       </div>
                       <Switch
                         checked={settings.notifications.safety}
@@ -749,11 +784,11 @@ function SettingsContent() {
                     </div>
                     <div className="flex items-center justify-between">
                       <div className="space-y-0.5">
-                        <Label className="flex items-center space-x-2">
+                          <Label className="flex items-center space-x-2">
                           <MessageCircle className="h-4 w-4" />
-                          <span>Sonido de chat</span>
+                          <span>{t("ui.chat_sound")}</span>
                         </Label>
-                        <p className="text-sm text-gray-600">Reproducir tono cuando recibes mensajes de chat</p>
+                        <p className="text-sm text-gray-600">{t("ui.chat_sound_description")}</p>
                       </div>
                       <Switch
                         checked={settings.notifications.chatNotifications}
@@ -771,9 +806,9 @@ function SettingsContent() {
               <CardHeader>
                 <CardTitle className="flex items-center space-x-2">
                   <Settings className="h-5 w-5 text-purple-600" />
-                  <span>Preferencias</span>
+                  <span>{t("ui.preferences")}</span>
                 </CardTitle>
-                <CardDescription>Personaliza la apariencia y comportamiento de la app</CardDescription>
+                <CardDescription>{t("ui.preferences_description")}</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="grid md:grid-cols-2 gap-6">
@@ -781,7 +816,7 @@ function SettingsContent() {
                     <div className="space-y-2">
                       <Label className="flex items-center space-x-2">
                         <Globe className="h-4 w-4" />
-                        <span>Idioma</span>
+                        <span>{t("settings.language_label")}</span>
                       </Label>
                       <Select
                         value={settings.preferences.language}
@@ -801,7 +836,7 @@ function SettingsContent() {
                     <div className="space-y-2">
                       <Label className="flex items-center space-x-2">
                         <CreditCard className="h-4 w-4" />
-                        <span>Moneda</span>
+                        <span>{t("ui.currency")}</span>
                       </Label>
                       <Select
                         value={settings.preferences.currency}
@@ -822,7 +857,7 @@ function SettingsContent() {
                     <div className="space-y-2">
                       <Label className="flex items-center space-x-2">
                         <Moon className="h-4 w-4" />
-                        <span>Tema</span>
+                        <span>{t("ui.theme")}</span>
                       </Label>
                       <Select
                         value={settings.preferences.theme}
@@ -848,8 +883,8 @@ function SettingsContent() {
                     {userType === "driver" && (
                       <div className="flex items-center justify-between">
                         <div className="space-y-0.5">
-                          <Label>Auto-aceptar viajes</Label>
-                          <p className="text-sm text-gray-600">Acepta automáticamente viajes cercanos</p>
+                          <Label>{t("ui.auto_accept")}</Label>
+                          <p className="text-sm text-gray-600">{t("ui.auto_accept_description")}</p>
                         </div>
                         <Switch
                           checked={settings.preferences.autoAcceptRides}
@@ -863,33 +898,33 @@ function SettingsContent() {
             </Card>
 
             <Card className="shadow-lg">
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <Lock className="h-5 w-5 text-red-600" />
-                  <span>Datos y Seguridad</span>
-                </CardTitle>
-                <CardDescription>Gestiona tus datos personales y configuración de seguridad</CardDescription>
-              </CardHeader>
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <Lock className="h-5 w-5 text-red-600" />
+                    <span>{t("settings.data_security")}</span>
+                  </CardTitle>
+                  <CardDescription>{t("settings.data_security_description")}</CardDescription>
+                </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex items-center justify-between p-4 border rounded-lg">
                   <div>
-                    <h4 className="font-medium">Exportar mis datos</h4>
-                    <p className="text-sm text-gray-600">Descarga una copia de toda tu información</p>
+                    <h4 className="font-medium">{t("ui.export_data")}</h4>
+                    <p className="text-sm text-gray-600">{t("ui.export_data_description")}</p>
                   </div>
-                  <Button variant="outline" size="sm" onClick={exportData}>
+                    <Button variant="outline" size="sm" onClick={exportData}>
                     <Download className="h-4 w-4 mr-2" />
-                    Exportar
+                    {t("ui.export")}
                   </Button>
                 </div>
 
                 <div className="flex items-center justify-between p-4 border rounded-lg">
                   <div>
-                    <h4 className="font-medium">Eliminar cuenta</h4>
-                    <p className="text-sm text-gray-600">Elimina permanentemente tu cuenta y datos</p>
+                    <h4 className="font-medium">{t("ui.delete_account")}</h4>
+                    <p className="text-sm text-gray-600">{t("ui.delete_account_description")}</p>
                   </div>
                   <Button variant="destructive" size="sm" onClick={() => setShowDeleteDialog(true)}>
                     <Trash2 className="h-4 w-4 mr-2" />
-                    Eliminar
+                    {t("ui.delete")}
                   </Button>
                 </div>
 
@@ -897,14 +932,13 @@ function SettingsContent() {
                   <Alert className="border-red-200 bg-red-50">
                     <AlertTriangle className="h-4 w-4 text-red-600" />
                     <AlertDescription className="text-red-800">
-                      <strong>¡Atención!</strong> Esta acción no se puede deshacer. Todos tus datos serán eliminados
-                      permanentemente.
+                      <strong>{t("ui.delete_warning_title")}</strong> {t("ui.delete_warning_body")}
                       <div className="mt-2 space-x-2">
                         <Button size="sm" variant="destructive" onClick={deleteAccount}>
-                          Confirmar eliminación
+                          {t("ui.confirm_delete")}
                         </Button>
                         <Button size="sm" variant="outline" onClick={() => setShowDeleteDialog(false)}>
-                          Cancelar
+                          {t("ui.cancel")}
                         </Button>
                       </div>
                     </AlertDescription>
@@ -935,8 +969,8 @@ function SettingsContent() {
                     </svg>
                     ¡Guardado!
                   </>
-                ) : (
-                  "Guardar configuración"
+                  ) : (
+                  t("settings.save")
                 )}
               </Button>
             </div>

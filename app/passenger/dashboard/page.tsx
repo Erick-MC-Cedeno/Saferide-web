@@ -22,6 +22,7 @@ import {
 } from "lucide-react"
 import { useRealTimeRides } from "@/hooks/useRealTimeRides"
 import { useAuth } from "@/lib/auth-context"
+import { useTranslation } from "react-i18next"
 import { MapComponent } from "@/components/MapComponent"
 import { AddressAutocomplete } from "@/components/AddressAutocomplete"
 import { ProtectedRoute } from "@/components/ProtectedRoute"
@@ -39,6 +40,7 @@ function PassengerDashboardContent() {
   const router = useRouter()
   const { user, userData, signOut } = useAuth()
   const { toast } = useToast()
+  const { t } = useTranslation()
   // use a loosely-typed wrapper so we can pass this toast to helper actions
   // that expect a more permissive variant type without causing contravariance errors
   const safeToast = (opts: any) => toast(opts as any)
@@ -130,10 +132,10 @@ function PassengerDashboardContent() {
         const driverResult = await driverData(pickupCoords?.lat, pickupCoords?.lng, DEFAULT_RADIUS_KM)
 
         if (driverResult && driverResult.noRangesConfigured) {
-          setNoDriversNearby("Aún no hay rangos configurados")
+          setNoDriversNearby(t("ui.no_ranges_configured"))
           safeToast({
-            title: "Rangos no configurados",
-            description: "Aún no hay rangos configurados en el servidor",
+            title: t("ui.ranges_not_configured_title"),
+            description: t("ui.ranges_not_configured_description"),
             variant: "destructive",
           })
           setAvailableDrivers([])
@@ -147,10 +149,10 @@ function PassengerDashboardContent() {
         setAvailableDrivers(availableDriversToShow)
 
         if (availableDriversToShow.length === 0) {
-          setNoDriversNearby("No hay conductores disponibles en tu área")
+          setNoDriversNearby(t("ui.no_drivers_available"))
           safeToast({
-            title: "Sin conductores",
-            description: "No hay conductores disponibles en este momento",
+            title: t("ui.no_drivers_title"),
+            description: t("ui.no_drivers_description"),
             variant: "destructive",
           })
         } else {
@@ -159,8 +161,8 @@ function PassengerDashboardContent() {
       } catch (error) {
         console.error("Error de red al cargar conductores:", error)
         safeToast({
-          title: "Error de conexión",
-          description: "No se pudo conectar con el servidor",
+          title: t("ui.connection_error_title"),
+          description: t("ui.connection_error_description"),
           variant: "destructive",
         })
         setAvailableDrivers([])
@@ -200,8 +202,8 @@ function PassengerDashboardContent() {
         console.error("Error en driverData:", driverResult.error)
         setRideStatus("idle")
         toast({
-          title: "Error",
-          description: "No se pudieron obtener los conductores disponibles",
+          title: t("ui.error"),
+          description: t("ui.could_not_fetch_drivers"),
           variant: "destructive",
         })
         return
@@ -215,10 +217,10 @@ function PassengerDashboardContent() {
 
       if (availableDriversToShow.length === 0) {
         setRideStatus("idle")
-        setNoDriversNearby("No hay conductores disponibles en tu área")
+        setNoDriversNearby(t("ui.no_drivers_nearby"))
         toast({
-          title: "Sin conductores",
-          description: "No hay conductores disponibles en este momento",
+          title: t("ui.no_drivers"),
+          description: t("ui.no_drivers_description"),
           variant: "destructive",
         })
         return
@@ -255,8 +257,8 @@ function PassengerDashboardContent() {
       console.error("Error en handleRequestRide:", error)
       setRideStatus("idle")
       toast({
-        title: "Error",
-        description: "Ocurrió un error al procesar la solicitud",
+        title: t("ui.error"),
+        description: t("ui.error_processing_request"),
         variant: "destructive",
       })
     }
@@ -306,7 +308,7 @@ function PassengerDashboardContent() {
       <div className={`${sidebarCollapsed ? "w-16 !text-gray-700" : "w-64"} bg-white shadow-lg transition-all duration-300 hidden md:flex md:flex-col`}>
         <div className="p-4 border-b border-gray-200">
             <button
-            aria-label={sidebarCollapsed ? "Abrir sidebar" : "Cerrar sidebar"}
+            aria-label={sidebarCollapsed ? t("ui.open_sidebar") : t("ui.close_sidebar")}
             onClick={() => {
               const next = !sidebarCollapsed
               setSidebarCollapsed(next)
@@ -322,18 +324,18 @@ function PassengerDashboardContent() {
           <div className="p-6 border-b border-gray-200">
             <div className="flex items-center space-x-3">
               <Avatar className="h-12 w-12">
-                <AvatarImage src={getProfileImage(userData)} alt="Foto de perfil" className="object-cover" />
+                <AvatarImage src={getProfileImage(userData)} alt={t("ui.profile_photo")} className="object-cover" />
                 <AvatarFallback className="bg-gradient-to-r from-blue-500 to-indigo-500 text-white font-bold">
                   {String(getDisplayName(userData, user)).charAt(0) || "U"}
                 </AvatarFallback>
               </Avatar>
               <div>
-                <h2 className="font-semibold text-gray-900">{String(getDisplayName(userData, user)) || "Usuario"}</h2>
+                <h2 className="font-semibold text-gray-900">{String(getDisplayName(userData, user)) || t("ui.user")}</h2>
                 <button
                   onClick={() => handleNavigation("profile")}
                   className="text-sm text-gray-500 cursor-pointer hover:text-blue-600 transition-colors"
                 >
-                  Ver perfil
+                  {t("ui.view_profile")}
                 </button>
               </div>
             </div>
@@ -343,7 +345,7 @@ function PassengerDashboardContent() {
         {sidebarCollapsed && (
           <div className="p-3 border-b border-gray-200 flex justify-center">
             <Avatar className="h-10 w-10">
-              <AvatarImage src={getProfileImage(userData)} alt="Foto de perfil" className="object-cover" />
+              <AvatarImage src={getProfileImage(userData)} alt={t("ui.profile_photo")} className="object-cover" />
               <AvatarFallback className="bg-gradient-to-r from-blue-500 to-indigo-500 text-white font-bold text-sm">
                 {String(getDisplayName(userData, user)).charAt(0) || "U"}
               </AvatarFallback>
@@ -360,7 +362,7 @@ function PassengerDashboardContent() {
               }`}
             >
               <Car className={`${sidebarCollapsed ? "h-6 w-6" : "h-5 w-5"} ${currentView === "rides" ? "text-white stroke-current" : "!text-gray-700 !stroke-current"}`} />
-              {!sidebarCollapsed && <span className="font-medium">Rides</span>}
+              {!sidebarCollapsed && <span className="font-medium">{t("ui.rides")}</span>}
             </button>
 
             <button
@@ -370,7 +372,7 @@ function PassengerDashboardContent() {
               }`}
             >
               <Activity className={`${sidebarCollapsed ? "h-6 w-6" : "h-5 w-5"} ${currentView === "activity" ? "text-white stroke-current" : "!text-gray-700 !stroke-current"}`} />
-              {!sidebarCollapsed && <span className="font-medium">Activity</span>}
+              {!sidebarCollapsed && <span className="font-medium">{t("ui.activity")}</span>}
             </button>
 
             <button
@@ -380,7 +382,7 @@ function PassengerDashboardContent() {
               }`}
             >
               <Settings className={`${sidebarCollapsed ? "h-6 w-6" : "h-5 w-5"} ${currentView === "settings" ? "text-white stroke-current" : "!text-gray-700 !stroke-current"}`} />
-              {!sidebarCollapsed && <span className="font-medium">Configuración</span>}
+              {!sidebarCollapsed && <span className="font-medium">{t("ui.settings")}</span>}
             </button>
 
             <button
@@ -390,7 +392,7 @@ function PassengerDashboardContent() {
               }`}
             >
               <History className={`${sidebarCollapsed ? "h-6 w-6" : "h-5 w-5"} ${currentView === "history" ? "text-white stroke-current" : "!text-gray-700 !stroke-current"}`} />
-              {!sidebarCollapsed && <span className="font-medium">Historial</span>}
+              {!sidebarCollapsed && <span className="font-medium">{t("ui.history")}</span>}
             </button>
           </div>
         </nav>
@@ -398,11 +400,11 @@ function PassengerDashboardContent() {
         <div className="mt-auto p-4 border-t border-gray-200">
           <button
             onClick={() => { setCurrentView("logout"); handleNavigation("logout") }}
-            aria-label={sidebarCollapsed ? "Cerrar sesión" : undefined}
+            aria-label={sidebarCollapsed ? t("ui.logout") : undefined}
             className={`w-full flex items-center ${sidebarCollapsed ? "justify-center" : "space-x-3"} px-3 py-3 rounded-lg text-left text-gray-700 hover:bg-gray-100 transition-colors`}
           >
             <LogOut className={`${sidebarCollapsed ? "h-6 w-6 text-gray-700" : "h-5 w-5 text-gray-700"}`} />
-            {!sidebarCollapsed && <span className="font-medium">Logout</span>}
+            {!sidebarCollapsed && <span className="font-medium">{t("ui.logout")}</span>}
           </button>
         </div>
       </div>
@@ -417,7 +419,7 @@ function PassengerDashboardContent() {
         }`}>
         <div className="p-4 border-b border-gray-200">
           <button
-            aria-label={sidebarCollapsed ? "Abrir sidebar" : "Cerrar sidebar"}
+            aria-label={sidebarCollapsed ? t("ui.open_sidebar") : t("ui.close_sidebar")}
             onClick={() => setSidebarCollapsed((s) => !s)}
             className="w-full flex items-center justify-center p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
           >
@@ -429,18 +431,18 @@ function PassengerDashboardContent() {
           <div className="p-6 border-b border-gray-200">
             <div className="flex items-center space-x-3">
               <Avatar className="h-12 w-12">
-                <AvatarImage src={getProfileImage(userData)} alt="Foto de perfil" className="object-cover" />
+                <AvatarImage src={getProfileImage(userData)} alt={t("ui.profile_photo")} className="object-cover" />
                 <AvatarFallback className="bg-gradient-to-r from-blue-500 to-indigo-500 text-white font-bold">
                   {String(getDisplayName(userData, user)).charAt(0) || "U"}
                 </AvatarFallback>
               </Avatar>
               <div>
-                <h2 className="font-semibold text-gray-900">{String(getDisplayName(userData, user)) || "Usuario"}</h2>
+                <h2 className="font-semibold text-gray-900">{String(getDisplayName(userData, user)) || t("ui.user")}</h2>
                 <button
                   onClick={() => { handleNavigation("profile"); setSidebarCollapsed(true) }}
                   className="text-sm text-gray-500 cursor-pointer hover:text-blue-600 transition-colors"
                 >
-                  Ver perfil
+                  {t("ui.view_profile")}
                 </button>
               </div>
             </div>
@@ -456,7 +458,7 @@ function PassengerDashboardContent() {
               }`}
             >
               <Car className={`${sidebarCollapsed ? "h-6 w-6" : "h-5 w-5"} ${currentView === "rides" ? "text-white stroke-current" : "!text-gray-700 !stroke-current"}`} />
-              {!sidebarCollapsed && <span className="font-medium">Rides</span>}
+              {!sidebarCollapsed && <span className="font-medium">{t("ui.rides")}</span>}
             </button>
 
             <button
@@ -466,7 +468,7 @@ function PassengerDashboardContent() {
               }`}
             >
               <Activity className={`${sidebarCollapsed ? "h-6 w-6" : "h-5 w-5"} ${currentView === "activity" ? "text-white stroke-current" : "!text-gray-700 !stroke-current"}`} />
-              {!sidebarCollapsed && <span className="font-medium">Activity</span>}
+              {!sidebarCollapsed && <span className="font-medium">{t("ui.activity")}</span>}
             </button>
 
             <button
@@ -476,7 +478,7 @@ function PassengerDashboardContent() {
               }`}
             >
               <Settings className={`${sidebarCollapsed ? "h-6 w-6" : "h-5 w-5"} ${currentView === "settings" ? "text-white stroke-current" : "!text-gray-700 !stroke-current"}`} />
-              {!sidebarCollapsed && <span className="font-medium">Configuración</span>}
+              {!sidebarCollapsed && <span className="font-medium">{t("ui.settings")}</span>}
             </button>
 
             <button
@@ -486,7 +488,7 @@ function PassengerDashboardContent() {
               }`}
             >
               <History className={`${sidebarCollapsed ? "h-6 w-6" : "h-5 w-5"} ${currentView === "history" ? "text-white stroke-current" : "!text-gray-700 !stroke-current"}`} />
-              {!sidebarCollapsed && <span className="font-medium">Historial</span>}
+              {!sidebarCollapsed && <span className="font-medium">{t("ui.history")}</span>}
             </button>
           </div>
         </nav>
@@ -497,7 +499,7 @@ function PassengerDashboardContent() {
             className={`w-full flex items-center ${sidebarCollapsed ? "justify-center" : "space-x-3"} px-3 py-3 rounded-lg text-left text-gray-700 hover:bg-gray-100 transition-colors`}
           >
             <LogOut className={`${sidebarCollapsed ? "h-6 w-6 text-gray-700" : "h-5 w-5 text-gray-700"}`} />
-            {!sidebarCollapsed && <span className="font-medium">Logout</span>}
+            {!sidebarCollapsed && <span className="font-medium">{t("ui.logout")}</span>}
           </button>
         </div>
       </div>
@@ -528,21 +530,21 @@ function PassengerDashboardContent() {
           {/* Driver Arrival Notification */}
           {currentRide && currentRide.status === "accepted" && (
             <div className="absolute top-4 left-1/2 transform -translate-x-1/2">
-              <div className="bg-white rounded-lg shadow-lg p-4 flex items-center space-x-3 min-w-[280px]">
+                <div className="bg-white rounded-lg shadow-lg p-4 flex items-center space-x-3 min-w-[280px]">
                 <Avatar className="h-10 w-10">
                   <AvatarFallback className="bg-gradient-to-r from-blue-500 to-indigo-500 text-white font-bold">
                     {String(currentRide.driver_name ?? "").charAt(0) || "D"}
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex-1">
-                  <p className="text-sm font-medium text-blue-600">Arriving in 3 minutes</p>
+                  <p className="text-sm font-medium text-blue-600">{t("ui.arriving_in", { minutes: 3 })}</p>
                   <div className="flex items-center space-x-2">
                     <span className="font-semibold text-gray-900">{currentRide.driver_name}</span>
                     <div className="flex items-center space-x-1">
                       <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                      <span className="text-sm text-gray-600">4.98</span>
+                      <span className="text-sm text-gray-600">{currentRide.driver_rating?.toFixed(2) ?? "N/A"}</span>
                     </div>
-                    <span className="text-sm text-gray-500">• Toyota Camry</span>
+                    <span className="text-sm text-gray-500">• {currentRide.vehicle_model ?? t("ui.unknown_vehicle")}</span>
                   </div>
                 </div>
               </div>
@@ -554,17 +556,17 @@ function PassengerDashboardContent() {
             <div className={`absolute left-4 right-4 bg-white rounded-lg shadow-xl p-6 ${
                 "bottom-20 md:bottom-4"
               }`}>
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-gray-900">Ride Details</h3>
+                <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-900">{t("ui.ride_details")}</h3>
                 <div className="text-right">
-                  <p className="text-sm text-gray-500">Estimated Fare</p>
+                  <p className="text-sm text-gray-500">{t("ui.estimated_fare")}</p>
                   <p className="text-2xl font-bold text-gray-900">${currentRide.estimated_fare}</p>
                 </div>
               </div>
 
               <div className="flex items-center space-x-2 mb-4">
                 <span className="text-sm font-medium text-gray-600">ID: #{currentRide.id?.toString().slice(-6)}</span>
-                <Badge
+                  <Badge
                   className={`${
                     currentRide.status === "pending"
                       ? "bg-yellow-100 text-yellow-800"
@@ -573,19 +575,19 @@ function PassengerDashboardContent() {
                         : "bg-blue-100 text-blue-800"
                   }`}
                 >
-                  {currentRide.status === "pending" && "Pending"}
-                  {currentRide.status === "accepted" && "Accepted"}
-                  {currentRide.status === "in-progress" && "In-progress"}
+                  {currentRide.status === "pending" && t("ui.status.pending")}
+                  {currentRide.status === "accepted" && t("ui.status.accepted")}
+                  {currentRide.status === "in-progress" && t("ui.status.in_progress")}
                 </Badge>
               </div>
 
               <div className="grid grid-cols-2 gap-4 mb-6">
                 <div>
-                  <p className="text-sm font-medium text-gray-600 mb-1">From</p>
+                  <p className="text-sm font-medium text-gray-600 mb-1">{t("ui.from")}</p>
                   <p className="text-sm text-gray-900">{currentRide.pickup_address}</p>
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-gray-600 mb-1">To</p>
+                  <p className="text-sm font-medium text-gray-600 mb-1">{t("ui.to")}</p>
                   <p className="text-sm text-gray-900">{currentRide.destination_address}</p>
                 </div>
               </div>
@@ -600,7 +602,7 @@ function PassengerDashboardContent() {
                     }}
                   >
                     <MessageCircle className="h-4 w-4 mr-2" />
-                    Contact Driver
+                    {t("ui.contact_driver")}
                     {chatUnread > 0 && (
                       <span className="ml-2 bg-red-500 text-white text-xs rounded-full px-2 py-0.5">{chatUnread}</span>
                     )}
@@ -617,7 +619,7 @@ function PassengerDashboardContent() {
                         cancelRide,
                         toast,
                         refreshRides,
-                        currentRide.status === "in-progress" ? "Cancelado durante el viaje" : undefined,
+                        currentRide.status === "in-progress" ? t("ui.cancelled_during_ride") : undefined,
                       ).then((result) => {
                         if (result.success) {
                           setRideStatus("idle")
@@ -633,7 +635,7 @@ function PassengerDashboardContent() {
                       })
                     }
                   >
-                    Cancel Ride
+                    {t("ui.cancel_ride")}
                   </Button>
                 )}
               </div>
@@ -694,7 +696,7 @@ function PassengerDashboardContent() {
               </button>
 
               <div className="px-6 pb-6 h-full overflow-y-auto">
-                <h1 className="text-2xl font-bold text-gray-900 mb-6">Request a ride</h1>
+                <h1 className="text-2xl font-bold text-gray-900 mb-6">{t("ui.request_a_ride")}</h1>
 
                 <div className="space-y-4 mb-6">
                   <Button
@@ -705,7 +707,7 @@ function PassengerDashboardContent() {
                     })}
                   >
                     <MapPin className="h-4 w-4 mr-2" />
-                    Use My Location
+                    {t("ui.use_my_location")}
                   </Button>
 
                   <div className="relative">
@@ -713,7 +715,7 @@ function PassengerDashboardContent() {
                       <div className="w-3 h-3 bg-gray-400 rounded-full"></div>
                     </div>
                     <AddressAutocomplete
-                      placeholder="Enter pickup location"
+                      placeholder={t("ui.enter_pickup_location")}
                       value={pickup}
                       onChange={setPickup}
                       onAddressSelect={(address, coords) => {
@@ -729,7 +731,7 @@ function PassengerDashboardContent() {
                       <div className="w-3 h-3 bg-gray-900 rounded-full"></div>
                     </div>
                     <AddressAutocomplete
-                      placeholder="Enter destination"
+                      placeholder={t("ui.enter_destination")}
                       value={destination}
                       onChange={setDestination}
                       onAddressSelect={(address, coords) => {
@@ -744,15 +746,15 @@ function PassengerDashboardContent() {
                 {pickupCoords && destinationCoords && (
                   <div className="space-y-3 mb-6">
                     <div className="flex justify-between items-center">
-                      <span className="text-gray-600">Estimated Fare</span>
+                      <span className="text-gray-600">{t("ui.estimated_fare")}</span>
                       <span className="text-lg font-semibold text-gray-900">
                         ${calculateEstimatedFare(pickupCoords, destinationCoords)}
                       </span>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-gray-600">Estimated Duration</span>
+                      <span className="text-gray-600">{t("ui.estimated_duration")}</span>
                       <span className="text-gray-900 font-medium">
-                        {calculateEstimatedDuration(pickupCoords, destinationCoords)} minutes
+                        {calculateEstimatedDuration(pickupCoords, destinationCoords)} {t("ui.minutes")}
                       </span>
                     </div>
                   </div>
@@ -777,11 +779,9 @@ function PassengerDashboardContent() {
                   {rideStatus === "searching" ? (
                     <>
                       <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-3"></div>
-                      Searching for driver...
+                      {t("ui.searching_for_driver")}
                     </>
-                  ) : (
-                    "Request Ride"
-                  )}
+                  ) : t("ui.request_ride")}
                 </Button>
               </div>
             </div>
@@ -791,7 +791,7 @@ function PassengerDashboardContent() {
         {/* Desktop Request Panel */}
         <div className="w-96 bg-white shadow-lg p-6 flex-col h-full hidden md:flex">
           <div className="flex-1">
-            <h1 className="text-2xl font-bold text-gray-900 mb-6">Request a ride</h1>
+            <h1 className="text-2xl font-bold text-gray-900 mb-6">{t("ui.request_a_ride")}</h1>
 
             <div className="space-y-4 mb-6">
               <Button
@@ -802,7 +802,7 @@ function PassengerDashboardContent() {
                 })}
               >
                 <MapPin className="h-4 w-4 mr-2" />
-                Use My Location
+                {t("ui.use_my_location")}
               </Button>
 
               <div className="relative">
@@ -810,7 +810,7 @@ function PassengerDashboardContent() {
                   <div className="w-3 h-3 bg-gray-400 rounded-full"></div>
                 </div>
                 <AddressAutocomplete
-                  placeholder="Enter pickup location"
+                  placeholder={t("ui.enter_pickup_location")}
                   value={pickup}
                   onChange={setPickup}
                   onAddressSelect={(address, coords) => {
@@ -826,7 +826,7 @@ function PassengerDashboardContent() {
                   <div className="w-3 h-3 bg-gray-900 rounded-full"></div>
                 </div>
                 <AddressAutocomplete
-                  placeholder="Enter destination"
+                  placeholder={t("ui.enter_destination")}
                   value={destination}
                   onChange={setDestination}
                   onAddressSelect={(address, coords) => {
@@ -841,15 +841,15 @@ function PassengerDashboardContent() {
             {pickupCoords && destinationCoords && (
               <div className="space-y-3 mb-6">
                 <div className="flex justify-between items-center">
-                  <span className="text-gray-600">Estimated Fare</span>
+                  <span className="text-gray-600">{t("ui.estimated_fare")}</span>
                   <span className="text-lg font-semibold text-gray-900">
                     ${calculateEstimatedFare(pickupCoords, destinationCoords)}
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-gray-600">Estimated Duration</span>
+                  <span className="text-gray-600">{t("ui.estimated_duration")}</span>
                   <span className="text-gray-900 font-medium">
-                    {calculateEstimatedDuration(pickupCoords, destinationCoords)} minutes
+                    {calculateEstimatedDuration(pickupCoords, destinationCoords)} {t("ui.minutes")}
                   </span>
                 </div>
               </div>
@@ -870,11 +870,9 @@ function PassengerDashboardContent() {
             {rideStatus === "searching" ? (
               <>
                 <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-3"></div>
-                Searching for driver...
+                {t("ui.searching_for_driver")}
               </>
-            ) : (
-              "Request Ride"
-            )}
+            ) : t("ui.request_ride")}
           </Button>
         </div>
       </div>
@@ -886,17 +884,17 @@ function PassengerDashboardContent() {
           onClick={() => setIsMobileDrawerOpen(true)}
         >
           <Car className="h-5 w-5 mr-2 inline" />
-          viajar
+          {t("ui.travel")}
         </button>
       )}
 
       {/* Chat Dialog */}
       <Dialog open={showChatDialog} onOpenChange={setShowChatDialog}>
         <DialogContent className="sm:max-w-lg border-0 shadow-2xl">
-          <DialogHeader>
+              <DialogHeader>
             <DialogTitle className="text-xl font-bold flex items-center space-x-2">
               <MessageCircle className="h-5 w-5 text-blue-600" />
-              <span>Chat con Conductor</span>
+              <span>{t("ui.chat_with_driver")}</span>
             </DialogTitle>
           </DialogHeader>
           {currentRide && currentRide.driver_id && (
@@ -914,23 +912,23 @@ function PassengerDashboardContent() {
       <Dialog open={showDriverSelection} onOpenChange={setShowDriverSelection}>
         <DialogContent className="sm:max-w-md border-0 shadow-2xl">
           <DialogHeader>
-            <DialogTitle className="text-xl font-bold">Seleccionar Conductor</DialogTitle>
+            <DialogTitle className="text-xl font-bold">{t("ui.select_driver")}</DialogTitle>
             <DialogDescription className="text-base">
-              {availableDrivers.length} conductores disponibles
+              {availableDrivers.length} {t("ui.drivers_available")}
               {availableDrivers.some((d) => d.is_verified)
-                ? `(${availableDrivers.filter((d) => d.is_verified).length} verificados)`
-                : "(conductores en línea)"}
+                ? `(${availableDrivers.filter((d) => d.is_verified).length} ${t("ui.verified")})`
+                : `(${t("ui.online_drivers")})`}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-6">
             <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
               <p className="text-sm text-blue-700 font-medium">
-                💡 Puedes elegir un conductor específico o dejar que el sistema asigne automáticamente
+                {t("ui.choose_driver_tip")}
               </p>
             </div>
             <Select value={selectedDriver} onValueChange={setSelectedDriver}>
-              <SelectTrigger className="h-12">
-                <SelectValue placeholder="Selecciona un conductor" />
+                <SelectTrigger className="h-12">
+                <SelectValue placeholder={t("ui.select_driver_placeholder")} />
               </SelectTrigger>
               <SelectContent>
                 {availableDrivers.map((driver) => (
@@ -946,11 +944,11 @@ function PassengerDashboardContent() {
                           <p className="font-semibold text-gray-800">{driver.name}</p>
                           {driver.is_verified ? (
                             <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
-                              ✓ Verificado
+                              {t("ui.verified")}
                             </span>
                           ) : (
                             <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full">
-                              En línea
+                              {t("ui.online")}
                             </span>
                           )}
                         </div>
@@ -991,7 +989,7 @@ function PassengerDashboardContent() {
                 }}
                 disabled={!selectedDriver}
               >
-                ✅ Confirmar Selección
+                {t("ui.confirm_selection")}
               </Button>
               <Button
                 variant="outline"
@@ -1017,7 +1015,7 @@ function PassengerDashboardContent() {
                   }
                 }}
               >
-                🎲 Cualquier Conductor
+                {t("ui.any_driver")}
               </Button>
             </div>
           </div>
@@ -1028,9 +1026,9 @@ function PassengerDashboardContent() {
       <Dialog open={showRatingDialog} onOpenChange={setShowRatingDialog}>
         <DialogContent className="sm:max-w-md border-0 shadow-2xl">
           <DialogHeader>
-            <DialogTitle className="text-xl font-bold">⭐ Califica tu viaje</DialogTitle>
+            <DialogTitle className="text-xl font-bold">{t("ui.rate_your_ride")}</DialogTitle>
             <DialogDescription className="text-base">
-              Ayuda a otros pasajeros compartiendo tu experiencia con este conductor
+              {t("ui.rate_description")}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-6">
@@ -1041,7 +1039,7 @@ function PassengerDashboardContent() {
                 </AvatarFallback>
               </Avatar>
               <p className="font-bold text-lg text-gray-800">{completedRide?.driver_name}</p>
-              <p className="text-gray-600 font-medium">¿Cómo fue tu experiencia?</p>
+              <p className="text-gray-600 font-medium">{t("ui.how_was_experience")}</p>
             </div>
             <div className="flex justify-center space-x-2">
               {[1, 2, 3, 4, 5].map((star) => (
@@ -1056,11 +1054,11 @@ function PassengerDashboardContent() {
             </div>
             <div className="space-y-3">
               <Label htmlFor="comment" className="text-base font-semibold">
-                Comentario (opcional)
+                {t("ui.comment_optional")}
               </Label>
               <Textarea
                 id="comment"
-                placeholder="Comparte tu experiencia..."
+                placeholder={t("ui.share_experience")}
                 value={comment}
                 onChange={(e) => setComment(e.target.value)}
                 rows={3}
@@ -1081,7 +1079,7 @@ function PassengerDashboardContent() {
                 }}
                 disabled={rating === 0 && comment.trim() === ""}
               >
-                ✨ Enviar Calificación
+                {t("ui.submit_rating")}
               </Button>
               <Button 
                 variant="outline" 
@@ -1096,7 +1094,7 @@ function PassengerDashboardContent() {
                   }
                 }}
               >
-                Omitir
+                {t("ui.skip")}
               </Button>
             </div>
           </div>

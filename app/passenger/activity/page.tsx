@@ -8,6 +8,7 @@ import { useAuth } from "@/lib/auth-context"
 import { supabase } from "@/lib/supabase"
 import { ProtectedRoute } from "@/components/ProtectedRoute"
 import { useToast } from "@/hooks/use-toast"
+import { useTranslation } from "react-i18next"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
 import { useRouter } from "next/navigation"
@@ -51,6 +52,7 @@ function ActivityContent() {
     return email ? email.split("@")[0] : ""
   })()
   const { toast } = useToast()
+    const { t } = useTranslation()
   const router = useRouter()
   const [rides, setRides] = useState<Ride[]>([])
   const [stats, setStats] = useState<ActivityStats | null>(null)
@@ -162,7 +164,7 @@ function ActivityContent() {
         {/* Toggle Button (starts collapsed but can be opened) */}
         <div className="p-4 border-b border-gray-200">
           <button
-            aria-label={sidebarCollapsed ? "Abrir sidebar" : "Cerrar sidebar"}
+            aria-label={sidebarCollapsed ? t("ui.open_sidebar") : t("ui.close_sidebar")}
             onClick={() => {
               const next = !sidebarCollapsed
               setSidebarCollapsed(next)
@@ -180,7 +182,7 @@ function ActivityContent() {
               <Avatar className="w-12 h-12">
                 <AvatarImage
                   src={(userData as Record<string, unknown> | null)?.profile_image as string | undefined}
-                  alt="Foto de perfil"
+                  alt={t("ui.profile_photo")}
                 />
                 <AvatarFallback className="bg-blue-600 text-white font-semibold text-lg">
                   {String(((userInfo ?? {})?.name ?? (userInfo?.full_name ?? fallbackName))).charAt(0) || "U"}
@@ -188,13 +190,13 @@ function ActivityContent() {
               </Avatar>
               <div>
                 <h3 className="font-semibold text-gray-900">
-                  {String(((userInfo ?? {})?.name ?? (userInfo?.full_name ?? fallbackName))) || "Usuario"}
+                  {String(((userInfo ?? {})?.name ?? (userInfo?.full_name ?? fallbackName))) || t("ui.user")}
                 </h3>
                 <button
                   onClick={() => handleNavigation("/profile")}
                   className="text-sm text-gray-500 hover:text-blue-600 cursor-pointer transition-colors"
                 >
-                  Ver perfil
+                  {t("ui.view_profile")}
                 </button>
               </div>
             </div>
@@ -229,7 +231,7 @@ function ActivityContent() {
               <Car
                 className={`${sidebarCollapsed ? "h-6 w-6" : "h-5 w-5"} ${currentView === "rides" ? "text-white stroke-current" : "!text-gray-700 !stroke-current"}`}
               />
-              {!sidebarCollapsed && <span className="font-medium">Rides</span>}
+              {!sidebarCollapsed && <span className="font-medium">{t("ui.rides")}</span>}
             </button>
 
             <button
@@ -241,7 +243,7 @@ function ActivityContent() {
               <Clock
                 className={`${sidebarCollapsed ? "h-6 w-6" : "h-5 w-5"} ${currentView === "activity" ? "text-white stroke-current" : "!text-gray-700 !stroke-current"}`}
               />
-              {!sidebarCollapsed && <span className="font-medium">Activity</span>}
+              {!sidebarCollapsed && <span className="font-medium">{t("ui.activity")}</span>}
             </button>
             
             <button
@@ -251,7 +253,7 @@ function ActivityContent() {
               }`}
             >
               <Settings className={`${sidebarCollapsed ? "h-6 w-6" : "h-5 w-5"} ${currentView === "settings" ? "text-white stroke-current" : "!text-gray-700 !stroke-current"}`} />
-              {!sidebarCollapsed && <span className="font-medium">Configuración</span>}
+              {!sidebarCollapsed && <span className="font-medium">{t("ui.settings")}</span>}
             </button>
 
             <button
@@ -261,7 +263,7 @@ function ActivityContent() {
               }`}
             >
               <History className={`${sidebarCollapsed ? "h-6 w-6" : "h-5 w-5"} ${currentView === "history" ? "text-white stroke-current" : "!text-gray-700 !stroke-current"}`} />
-              {!sidebarCollapsed && <span className="font-medium">Historial</span>}
+              {!sidebarCollapsed && <span className="font-medium">{t("ui.history")}</span>}
             </button>
           </div>
         </nav>
@@ -269,34 +271,34 @@ function ActivityContent() {
         <div className="mt-auto p-4 border-t border-gray-200">
           <button
             onClick={handleLogout}
-            aria-label={sidebarCollapsed ? "Cerrar sesión" : undefined}
+            aria-label={sidebarCollapsed ? t("ui.logout") : undefined}
             className={`w-full flex items-center ${sidebarCollapsed ? "justify-center" : "space-x-3"} px-3 py-3 rounded-lg text-left text-gray-700 hover:bg-gray-100 transition-colors`}
           >
             <LogOut className={`${sidebarCollapsed ? "h-6 w-6 text-gray-700" : "h-5 w-5 text-gray-700"}`} />
-            {!sidebarCollapsed && <span className="font-medium">Logout</span>}
+            {!sidebarCollapsed && <span className="font-medium">{t("ui.logout")}</span>}
           </button>
         </div>
       </div>
 
       <div className="flex-1 overflow-auto">
         <div className="p-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-8">Activity</h1>
+          <h1 className="text-3xl font-bold text-gray-900 mb-8">{t("ui.activity")}</h1>
 
           <div className="mb-8">
-            <h2 className="text-xl font-semibold text-gray-900 mb-6">Overview</h2>
+            <h2 className="text-xl font-semibold text-gray-900 mb-6">{t("ui.overview")}</h2>
 
             {stats && (
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mb-8">
                 <Card className="p-6">
                   <div>
-                    <p className="text-sm text-gray-600 mb-2">Total trips</p>
+                    <p className="text-sm text-gray-600 mb-2">{t("ui.total_trips")}</p>
                     <p className="text-3xl font-bold text-gray-900">{stats.totalTrips}</p>
                   </div>
                 </Card>
 
                 <Card className="p-6">
                   <div>
-                    <p className="text-sm text-gray-600 mb-2">Average rating</p>
+                    <p className="text-sm text-gray-600 mb-2">{t("ui.average_rating")}</p>
                     <div className="flex items-center space-x-2">
                       <p className="text-3xl font-bold text-gray-900">{stats.averageRating.toFixed(1)}</p>
                       <Star className="h-6 w-6 fill-yellow-400 text-yellow-400" />
@@ -306,7 +308,7 @@ function ActivityContent() {
 
                 <Card className="p-6">
                   <div>
-                    <p className="text-sm text-gray-600 mb-2">Total spent</p>
+                    <p className="text-sm text-gray-600 mb-2">{t("ui.total_spent")}</p>
                     <p className="text-3xl font-bold text-gray-900">{formatCurrency(stats.totalSpent)}</p>
                   </div>
                 </Card>
@@ -315,13 +317,13 @@ function ActivityContent() {
           </div>
 
           <div>
-            <h2 className="text-xl font-semibold text-gray-900 mb-6">Recent trips</h2>
+          <h2 className="text-xl font-semibold text-gray-900 mb-6">{t("ui.recent_trips")}</h2>
 
             {rides.length === 0 ? (
               <Card className="p-8">
                 <div className="text-center">
                   <Clock className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                  <p className="text-gray-600">No recent trips found.</p>
+                  <p className="text-gray-600">{t("ui.no_recent_trips")}</p>
                 </div>
               </Card>
             ) : (
@@ -332,21 +334,21 @@ function ActivityContent() {
                     <table className="w-full">
                       <thead className="bg-gray-50">
                         <tr>
-                          <th className="px-4 py-3 sm:px-6 sm:py-4 text-left text-sm font-medium text-gray-500">Driver</th>
-                          <th className="px-4 py-3 sm:px-6 sm:py-4 text-left text-sm font-medium text-gray-500">Date</th>
-                          <th className="px-4 py-3 sm:px-6 sm:py-4 text-left text-sm font-medium text-gray-500">Duration</th>
-                          <th className="px-4 py-3 sm:px-6 sm:py-4 text-left text-sm font-medium text-gray-500">Cost</th>
-                          <th className="px-4 py-3 sm:px-6 sm:py-4 text-left text-sm font-medium text-gray-500">Rating</th>
+                          <th className="px-4 py-3 sm:px-6 sm:py-4 text-left text-sm font-medium text-gray-500">{t("ui.table.driver")}</th>
+                          <th className="px-4 py-3 sm:px-6 sm:py-4 text-left text-sm font-medium text-gray-500">{t("ui.table.date")}</th>
+                          <th className="px-4 py-3 sm:px-6 sm:py-4 text-left text-sm font-medium text-gray-500">{t("ui.table.duration")}</th>
+                          <th className="px-4 py-3 sm:px-6 sm:py-4 text-left text-sm font-medium text-gray-500">{t("ui.table.cost")}</th>
+                          <th className="px-4 py-3 sm:px-6 sm:py-4 text-left text-sm font-medium text-gray-500">{t("ui.table.rating")}</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-200">
                         {rides.map((ride) => (
                           <tr key={ride.id} className="hover:bg-gray-50">
-                            <td className="px-4 py-3 sm:px-6 sm:py-4 text-sm text-gray-900">{ride.driver_name || "Sin asignar"}</td>
+                            <td className="px-4 py-3 sm:px-6 sm:py-4 text-sm text-gray-900">{ride.driver_name || t("ui.unassigned")}</td>
                             <td className="px-4 py-3 sm:px-6 sm:py-4 text-sm text-gray-600">
                               {format(new Date(ride.requested_at), "MMM d, yyyy", { locale: es })}
                             </td>
-                            <td className="px-4 py-3 sm:px-6 sm:py-4 text-sm text-gray-600">{ride.estimated_duration} min</td>
+                            <td className="px-4 py-3 sm:px-6 sm:py-4 text-sm text-gray-600">{ride.estimated_duration} {t("ui.minutes")}</td>
                             <td className="px-4 py-3 sm:px-6 sm:py-4 text-sm text-gray-900">
                               {formatCurrency(ride.actual_fare || ride.estimated_fare)}
                             </td>
@@ -363,7 +365,7 @@ function ActivityContent() {
                                     </div>
                                   )
                                 } else {
-                                  return <span className="text-sm text-gray-400">-</span>
+                                  return <span className="text-sm text-gray-400">{t("ui.no_rating")}</span>
                                 }
                               })()}
                             </td>

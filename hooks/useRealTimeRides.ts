@@ -3,7 +3,9 @@
 import { useEffect, useState, useRef, useCallback } from "react"
 import { supabase, type Database } from "@/lib/supabase"
 
-type Ride = Database["public"]["Tables"]["rides"]["Row"]
+// Extend the DB ride row with optional runtime-only fields that may be
+// added by join queries or API responses (e.g. the driver's vehicle model).
+type Ride = Database["public"]["Tables"]["rides"]["Row"] & { vehicle_model?: string }
 
 /* --------- simple in-memory cache to cut DB calls ---------- */
 const ridesCache = new Map<string, { data: Ride[]; timestamp: number }>()

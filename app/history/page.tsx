@@ -29,6 +29,7 @@ import {
   LogOut,
 } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
+import { useTranslation } from "react-i18next"
 import { supabase } from "@/lib/supabase"
 import { useToast } from "@/hooks/use-toast"
 import { format } from "date-fns"
@@ -78,6 +79,7 @@ function HistoryContent() {
     return email ? email.split("@")[0] : ""
   })()
   const { toast } = useToast()
+  const { t } = useTranslation()
   const router = useRouter()
   const [rides, setRides] = useState<Ride[]>([])
   const [filteredRides, setFilteredRides] = useState<Ride[]>([])
@@ -148,8 +150,8 @@ function HistoryContent() {
     } catch (error) {
       console.error("Error loading ride history:", error)
       toast({
-        title: "Error",
-        description: "No se pudo cargar el historial de viajes.",
+        title: t("ui.error"),
+        description: t("history.load_error"),
         variant: "destructive",
       })
     } finally {
@@ -199,13 +201,13 @@ function HistoryContent() {
 
   const exportToCSV = () => {
     const headers = [
-      "Fecha",
-      "Origen",
-      "Destino",
-      "Estado",
-      "Tarifa",
-      "Calificación",
-      userType === "driver" ? "Pasajero" : "Conductor",
+      t("ui.table.date"),
+      t("ui.table.origin"),
+      t("ui.table.destination"),
+      t("ui.table.status"),
+      t("ui.table.fare"),
+      t("ui.table.rating"),
+      userType === "driver" ? t("ui.table.passenger") : t("ui.table.driver"),
     ]
 
     const csvData = filteredRides.map((ride) => [
@@ -231,20 +233,21 @@ function HistoryContent() {
     document.body.removeChild(link)
 
     toast({
-      title: "Historial exportado",
-      description: "El archivo CSV ha sido descargado exitosamente.",
+      title: t("history.exported_title"),
+      description: t("history.exported_description"),
     })
   }
 
   const getStatusText = (status: string) => {
-    const statusMap = {
-      pending: "Pendiente",
-      accepted: "Aceptado",
-      "in-progress": "En progreso",
-      completed: "Completado",
-      cancelled: "Cancelado",
+    const statusKeyMap: Record<string, string> = {
+      pending: "pending",
+      accepted: "accepted",
+      "in-progress": "in_progress",
+      completed: "completed",
+      cancelled: "canceled",
     }
-    return statusMap[status as keyof typeof statusMap] || status
+    const key = statusKeyMap[status] || status
+    return t(`ui.status.${key}`) || status
   }
 
   const getStatusColor = (status: string) => {
@@ -306,7 +309,7 @@ function HistoryContent() {
         {/* Toggle Button */}
         <div className="p-4 border-b border-gray-200">
           <button
-            aria-label={sidebarCollapsed ? "Abrir sidebar" : "Cerrar sidebar"}
+            aria-label={sidebarCollapsed ? t("ui.open_sidebar") : t("ui.close_sidebar")}
             onClick={() => {
               const next = !sidebarCollapsed
               setSidebarCollapsed(next)
@@ -327,16 +330,16 @@ function HistoryContent() {
           <div className="p-6 border-b border-gray-200">
             <div className="flex items-center space-x-3">
               <Avatar className="w-12 h-12">
-                <AvatarImage src={(userData as Record<string, unknown> | null)?.profile_image as string | undefined} alt="Foto de perfil" />
+                <AvatarImage src={(userData as Record<string, unknown> | null)?.profile_image as string | undefined} alt={t("ui.profile_photo")} />
                 <AvatarFallback className="bg-blue-600 text-white font-semibold text-lg">
                   {String(((userInfo ?? {})?.name ?? (userInfo?.full_name ?? fallbackName))).charAt(0) || "U"}
                 </AvatarFallback>
               </Avatar>
               <div>
                 <h3 className="font-semibold text-gray-900">
-                  {String(((userInfo ?? {})?.name ?? (userInfo?.full_name ?? fallbackName))) || "Usuario"}
+                  {String(((userInfo ?? {})?.name ?? (userInfo?.full_name ?? fallbackName))) || t("ui.user")}
                 </h3>
-                <p className="text-sm text-gray-500 hover:text-blue-600 cursor-pointer">Ver perfil</p>
+                <p className="text-sm text-gray-500 hover:text-blue-600 cursor-pointer">{t("ui.view_profile")}</p>
               </div>
             </div>
           </div>
@@ -346,7 +349,7 @@ function HistoryContent() {
         {sidebarCollapsed && (
           <div className="p-3 border-b border-gray-200 flex justify-center">
             <Avatar className="w-10 h-10">
-              <AvatarImage src={(userData as Record<string, unknown> | null)?.profile_image as string | undefined} alt="Foto de perfil" />
+              <AvatarImage src={(userData as Record<string, unknown> | null)?.profile_image as string | undefined} alt={t("ui.profile_photo")} />
               <AvatarFallback className="bg-blue-600 text-white font-semibold text-sm">
                 {String(((userInfo ?? {})?.name ?? (userInfo?.full_name ?? fallbackName))).charAt(0) || "U"}
               </AvatarFallback>
@@ -371,7 +374,7 @@ function HistoryContent() {
                   <Car
                     className={`${sidebarCollapsed ? "h-6 w-6" : "h-5 w-5"} ${currentView === "dashboard" ? "text-white stroke-current" : "!text-gray-700 !stroke-current"}`}
                   />
-                  {!sidebarCollapsed && <span className="font-medium">Dashboard</span>}
+                  {!sidebarCollapsed && <span className="font-medium">{t("ui.dashboard")}</span>}
                 </button>
 
                 <button
@@ -386,7 +389,7 @@ function HistoryContent() {
                   <History
                     className={`${sidebarCollapsed ? "h-6 w-6" : "h-5 w-5"} ${currentView === "history" ? "text-white stroke-current" : "!text-gray-700 !stroke-current"}`}
                   />
-                  {!sidebarCollapsed && <span className="font-medium">History</span>}
+                  {!sidebarCollapsed && <span className="font-medium">{t("ui.history")}</span>}
                 </button>
               </>
               ) : (
@@ -403,7 +406,7 @@ function HistoryContent() {
                   <Car
                     className={`${sidebarCollapsed ? "h-6 w-6" : "h-5 w-5"} ${currentView === "rides" ? "text-white stroke-current" : "!text-gray-700 !stroke-current"}`}
                   />
-                  {!sidebarCollapsed && <span className="font-medium">Rides</span>}
+                  {!sidebarCollapsed && <span className="font-medium">{t("ui.rides")}</span>}
                 </button>
 
                 <button
@@ -418,7 +421,7 @@ function HistoryContent() {
                   <Clock
                     className={`${sidebarCollapsed ? "h-6 w-6" : "h-5 w-5"} ${currentView === "activity" ? "text-white stroke-current" : "!text-gray-700 !stroke-current"}`}
                   />
-                  {!sidebarCollapsed && <span className="font-medium">Activity</span>}
+                  {!sidebarCollapsed && <span className="font-medium">{t("ui.activity")}</span>}
                 </button>
 
                 <button
@@ -433,7 +436,7 @@ function HistoryContent() {
                   <Settings
                     className={`${sidebarCollapsed ? "h-6 w-6" : "h-5 w-5"} ${currentView === "settings" ? "text-white stroke-current" : "!text-gray-700 !stroke-current"}`}
                   />
-                  {!sidebarCollapsed && <span className="font-medium">Configuración</span>}
+                  {!sidebarCollapsed && <span className="font-medium">{t("ui.settings")}</span>}
                 </button>
 
                 <button
@@ -448,7 +451,7 @@ function HistoryContent() {
                   <History
                     className={`${sidebarCollapsed ? "h-6 w-6" : "h-5 w-5"} ${currentView === "history" ? "text-white stroke-current" : "!text-gray-700 !stroke-current"}`}
                   />
-                  {!sidebarCollapsed && <span className="font-medium">Historial</span>}
+                  {!sidebarCollapsed && <span className="font-medium">{t("ui.history")}</span>}
                 </button>
               </>
             )}
@@ -461,11 +464,11 @@ function HistoryContent() {
         <div className="p-4 border-t border-gray-200">
           <button
             onClick={handleLogout}
-            aria-label={sidebarCollapsed ? "Cerrar sesión" : undefined}
+            aria-label={sidebarCollapsed ? t("ui.logout") : undefined}
             className={`w-full flex items-center ${sidebarCollapsed ? "justify-center" : "space-x-3"} px-3 py-3 rounded-lg text-left text-gray-700 hover:bg-gray-100 transition-colors`}
           >
             <LogOut className={`${sidebarCollapsed ? "h-6 w-6 text-gray-700" : "h-5 w-5 text-gray-700"}`} />
-            {!sidebarCollapsed && <span className="font-medium">Logout</span>}
+            {!sidebarCollapsed && <span className="font-medium">{t("ui.logout")}</span>}
           </button>
         </div>
       </div>
@@ -474,10 +477,10 @@ function HistoryContent() {
         <div className="flex-1 overflow-auto">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
             {/* Header */}
-            <div className="mb-8">
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">Historial de Viajes</h1>
-              <p className="text-gray-600">Revisa todos tus viajes y estadísticas</p>
-            </div>
+              <div className="mb-8">
+                <h1 className="text-3xl font-bold text-gray-900 mb-2">{t("history.title")}</h1>
+                <p className="text-gray-600">{t("history.subtitle")}</p>
+              </div>
 
             {/* Stats Cards */}
             {stats && (
@@ -486,7 +489,7 @@ function HistoryContent() {
                   <CardContent className="p-4 text-center">
                     <Car className="h-8 w-8 text-blue-600 mx-auto mb-2" />
                     <div className="text-2xl font-bold text-blue-600">{stats.totalTrips}</div>
-                    <div className="text-sm text-gray-600">Total viajes</div>
+                    <div className="text-sm text-gray-600">{t("ui.total_trips")}</div>
                   </CardContent>
                 </Card>
 
@@ -494,7 +497,7 @@ function HistoryContent() {
                   <CardContent className="p-4 text-center">
                     <DollarSign className="h-8 w-8 text-green-600 mx-auto mb-2" />
                     <div className="text-lg font-bold text-green-600">{formatCurrency(stats.totalSpent)}</div>
-                    <div className="text-sm text-gray-600">Total gastado</div>
+                    <div className="text-sm text-gray-600">{t("ui.total_spent")}</div>
                   </CardContent>
                 </Card>
 
@@ -502,7 +505,7 @@ function HistoryContent() {
                   <CardContent className="p-4 text-center">
                     <Star className="h-8 w-8 text-yellow-600 mx-auto mb-2" />
                     <div className="text-2xl font-bold text-yellow-600">{stats.averageRating.toFixed(1)}</div>
-                    <div className="text-sm text-gray-600">Rating promedio</div>
+                    <div className="text-sm text-gray-600">{t("ui.average_rating")}</div>
                   </CardContent>
                 </Card>
 
@@ -510,7 +513,7 @@ function HistoryContent() {
                   <CardContent className="p-4 text-center">
                     <Route className="h-8 w-8 text-purple-600 mx-auto mb-2" />
                     <div className="text-2xl font-bold text-purple-600">{stats.totalDistance.toFixed(0)}</div>
-                    <div className="text-sm text-gray-600">km recorridos</div>
+                    <div className="text-sm text-gray-600">{t("ui.total_distance")}</div>
                   </CardContent>
                 </Card>
 
@@ -518,7 +521,7 @@ function HistoryContent() {
                   <CardContent className="p-4 text-center">
                     <TrendingUp className="h-8 w-8 text-indigo-600 mx-auto mb-2" />
                     <div className="text-lg font-bold text-indigo-600">{formatCurrency(stats.averageFare)}</div>
-                    <div className="text-sm text-gray-600">Tarifa promedio</div>
+                    <div className="text-sm text-gray-600">{t("ui.average_fare")}</div>
                   </CardContent>
                 </Card>
 
@@ -526,7 +529,7 @@ function HistoryContent() {
                   <CardContent className="p-4 text-center">
                     <Clock className="h-8 w-8 text-orange-600 mx-auto mb-2" />
                     <div className="text-2xl font-bold text-orange-600">{stats.completedTrips}</div>
-                    <div className="text-sm text-gray-600">Completados</div>
+                    <div className="text-sm text-gray-600">{t("ui.completed")}</div>
                   </CardContent>
                 </Card>
               </div>
@@ -537,47 +540,36 @@ function HistoryContent() {
               <CardHeader>
                 <CardTitle className="flex items-center space-x-2">
                   <Filter className="h-5 w-5 text-blue-600" />
-                  <span>Filtros</span>
+                  <span>{t("ui.filters")}</span>
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="grid md:grid-cols-4 gap-4">
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Buscar</label>
-                    <div className="relative">
-                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                      <Input
-                        placeholder="Buscar por dirección o nombre..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="pl-10"
-                      />
-                    </div>
-                  </div>
+                  {/* Search input removed per request */}
 
                   <div className="space-y-2">
-                    <label className="text-sm font-medium">Estado</label>
+                    <label className="text-sm font-medium">{t("ui.state")}</label>
                     <Select value={statusFilter} onValueChange={setStatusFilter}>
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="all">Todos los estados</SelectItem>
-                        <SelectItem value="completed">Completado</SelectItem>
-                        <SelectItem value="cancelled">Cancelado</SelectItem>
-                        <SelectItem value="pending">Pendiente</SelectItem>
-                        <SelectItem value="in-progress">En progreso</SelectItem>
+                        <SelectItem value="all">{t("ui.all_states")}</SelectItem>
+                        <SelectItem value="completed">{t("ui.status.completed")}</SelectItem>
+                        <SelectItem value="cancelled">{t("ui.status.canceled")}</SelectItem>
+                        <SelectItem value="pending">{t("ui.status.pending")}</SelectItem>
+                        <SelectItem value="in-progress">{t("ui.status.in_progress")}</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-sm font-medium">Fecha desde</label>
+                    <label className="text-sm font-medium">{t("ui.date_from")}</label>
                     <Popover>
                       <PopoverTrigger asChild>
                         <Button variant="outline" className="w-full justify-start text-left font-normal bg-transparent">
                           <CalendarIcon className="mr-2 h-4 w-4" />
-                          {dateRange.from ? format(dateRange.from, "dd/MM/yyyy", { locale: es }) : "Seleccionar fecha"}
+                          {dateRange.from ? format(dateRange.from, "dd/MM/yyyy", { locale: es }) : t("ui.select_date")}
                         </Button>
                       </PopoverTrigger>
                       <PopoverContent className="w-auto p-0" align="start">
@@ -592,11 +584,11 @@ function HistoryContent() {
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-sm font-medium">Acciones</label>
+                    <label className="text-sm font-medium">{t("ui.actions")}</label>
                     <div className="space-x-2">
                       <Button variant="outline" size="sm" onClick={exportToCSV}>
                         <Download className="h-4 w-4 mr-2" />
-                        Exportar CSV
+                        {t("ui.export_csv")}
                       </Button>
                       <Button
                         variant="outline"
@@ -607,7 +599,7 @@ function HistoryContent() {
                           setDateRange({})
                         }}
                       >
-                        Limpiar
+                        {t("ui.clear")}
                       </Button>
                     </div>
                   </div>
@@ -619,10 +611,10 @@ function HistoryContent() {
             <Card className="shadow-lg">
               <CardHeader>
                 <CardTitle className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <History className="h-5 w-5 text-blue-600" />
-                    <span>Viajes ({filteredRides.length})</span>
-                  </div>
+                    <div className="flex items-center space-x-2">
+                      <History className="h-5 w-5 text-blue-600" />
+                      <span>{t("ui.trips_label")} ({filteredRides.length})</span>
+                    </div>
                 </CardTitle>
               </CardHeader>
               <CardContent className="max-h-96 overflow-y-auto">
@@ -638,14 +630,14 @@ function HistoryContent() {
                       <table className="w-full">
                         <thead className="bg-gray-50">
                           <tr>
-                            <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Estado</th>
-                            <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Fecha</th>
-                            <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Origen</th>
-                            <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Destino</th>
-                            <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Conductor</th>
-                            <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Tarifa</th>
-                            <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Duración</th>
-                            <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Rating</th>
+                            <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">{t("ui.table.status")}</th>
+                            <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">{t("ui.table.date")}</th>
+                            <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">{t("ui.table.origin")}</th>
+                            <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">{t("ui.table.destination")}</th>
+                            <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">{t("ui.table.driver")}</th>
+                            <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">{t("ui.table.fare")}</th>
+                            <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">{t("ui.table.duration")}</th>
+                            <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">{t("ui.table.rating")}</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-200">
@@ -681,12 +673,12 @@ function HistoryContent() {
                               <div className="space-y-2">
                                 <div className="flex items-center space-x-2">
                                   <MapPin className="h-4 w-4 text-green-600" />
-                                  <span className="text-sm font-medium truncate">Origen:</span>
+                                  <span className="text-sm font-medium truncate">{t("ui.table.origin") + ":"}</span>
                                 </div>
                                 <p className="text-sm text-gray-600 ml-6 truncate">{ride.pickup_address}</p>
                                 <div className="flex items-center space-x-2 mt-2">
                                   <MapPin className="h-4 w-4 text-red-600" />
-                                  <span className="text-sm font-medium truncate">Destino:</span>
+                                  <span className="text-sm font-medium truncate">{t("ui.table.destination") + ":"}</span>
                                 </div>
                                 <p className="text-sm text-gray-600 ml-6 truncate">{ride.destination_address}</p>
                               </div>

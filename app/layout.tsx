@@ -8,6 +8,7 @@ import { PWARegister } from "@/components/PWARegister"
 import { PWAInstallPrompt } from "@/components/PWAInstallPrompt"
 import { ConditionalNavbar } from "@/components/ConditionalNavbar"
 import { DevelopmentNotice } from "@/components/DevelopmentNotice"
+import I18nProvider from "@/components/I18nProvider"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -48,9 +49,11 @@ export default function RootLayout({
           <PWARegister />
           <PWAInstallPrompt />
           <AuthProvider>
-            <ConditionalNavbar />
-            <DevelopmentNotice />
-            <main>{children}</main>
+            <I18nProvider>
+              <ConditionalNavbar />
+              <DevelopmentNotice />
+              <main>{children}</main>
+            </I18nProvider>
           </AuthProvider>
         </ErrorBoundary>
       </body>

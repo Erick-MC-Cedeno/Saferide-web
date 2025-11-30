@@ -12,7 +12,6 @@ import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import {
   History,
-  Search,
   Filter,
   Download,
   MapPin,
@@ -590,17 +589,7 @@ function HistoryContent() {
                         <Download className="h-4 w-4 mr-2" />
                         {t("ui.export_csv")}
                       </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          setSearchTerm("")
-                          setStatusFilter("all")
-                          setDateRange({})
-                        }}
-                      >
-                        {t("ui.clear")}
-                      </Button>
+                      {/* Clear button removed as requested */}
                     </div>
                   </div>
                 </div>

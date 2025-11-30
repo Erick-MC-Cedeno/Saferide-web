@@ -19,7 +19,10 @@ export default function I18nProvider({ children }: { children: React.ReactNode }
     }
   }, [])
 
-  if (!ready) return <>{children}</>
+  // Don't render children until i18n is initialized. Rendering children
+  // before the provider is ready causes react-i18next to complain with
+  // NO_I18NEXT_INSTANCE when components call `useTranslation`.
+  if (!ready) return null
 
   return <I18nextProvider i18n={i18n}>{children}</I18nextProvider>
 }

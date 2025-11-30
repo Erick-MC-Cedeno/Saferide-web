@@ -47,7 +47,6 @@ interface UserSettings {
     language: string
     currency: string
     theme: string
-    mapStyle: string
     autoAcceptRides: boolean
     soundEnabled: boolean
   }
@@ -82,7 +81,6 @@ const defaultSettings: UserSettings = {
     language: "es",
     currency: "COP",
     theme: "light",
-    mapStyle: "default",
     autoAcceptRides: false,
     soundEnabled: true,
   },
@@ -114,11 +112,11 @@ function SettingsContent() {
     try {
   const { error } = await supabase.from("user_settings").upsert(
         {
-          uid: user.uid,
+          user_id: user.uid,
           settings: defaultSettings,
         },
         {
-          onConflict: "uid",
+          onConflict: "user_id",
         },
       )
 
@@ -202,7 +200,7 @@ function SettingsContent() {
     try {
       const res = await supabase.from("user_settings")
         .select("settings")
-        .eq("uid", user.uid)
+        .eq("user_id", user.uid)
         .single()
       const { data, error } = res as unknown as { data?: { settings?: unknown } | null; error?: unknown }
 
@@ -288,12 +286,12 @@ function SettingsContent() {
     try {
   const { error } = await supabase.from("user_settings").upsert(
         {
-          uid: user.uid,
+          user_id: user.uid,
           settings: settings,
           updated_at: new Date().toISOString(),
         },
         {
-          onConflict: "uid",
+          onConflict: "user_id",
         },
       )
 
@@ -400,6 +398,23 @@ function SettingsContent() {
             localStorage.setItem(key, valStr)
             emitStorageEvent(key, valStr)
             emitPrefChanged(key, valStr)
+          }
+
+          // If enabling chat notifications, play a sample chat tone to demonstrate
+          if (value === true) {
+            ;(async () => {
+              try {
+                const res = await fetch("/api/sounds/saferidechattone")
+                const j = await res.json()
+                if (j?.base64) {
+                  const audio = new Audio(`data:audio/mpeg;base64,${j.base64}`)
+                  audio.preload = "auto"
+                  audio.play().catch(() => {})
+                }
+              } catch (e) {
+                // ignore sample play errors
+              }
+            })()
           }
         } catch (e) {
           console.warn("Could not write saferide_chat_notification to localStorage:", e)
@@ -826,36 +841,9 @@ function SettingsContent() {
                   </div>
 
                   <div className="space-y-4">
-                    <div className="space-y-2">
-                      <Label>Estilo de mapa</Label>
-                      <Select
-                        value={settings.preferences.mapStyle}
-                        onValueChange={(value) => updatePreferenceSetting("mapStyle", value)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="default">Por defecto</SelectItem>
-                          <SelectItem value="satellite">Satélite</SelectItem>
-                          <SelectItem value="terrain">Terreno</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
+                    {/* Estilo de mapa eliminado según solicitud - la preferencia fue removida */}
 
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-0.5">
-                        <Label className="flex items-center space-x-2">
-                          <Volume2 className="h-4 w-4" />
-                          <span>Sonidos</span>
-                        </Label>
-                        <p className="text-sm text-gray-600">Reproducir sonidos de notificación</p>
-                      </div>
-                      <Switch
-                        checked={settings.preferences.soundEnabled}
-                        onCheckedChange={(value) => updatePreferenceSetting("soundEnabled", value)}
-                      />
-                    </div>
+                    {/* Sonidos movido a Notificaciones */}
 
                     {userType === "driver" && (
                       <div className="flex items-center justify-between">

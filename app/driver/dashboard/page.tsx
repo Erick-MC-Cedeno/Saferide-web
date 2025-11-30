@@ -143,7 +143,7 @@ function DriverDashboardContent() {
     const loadSettings = async () => {
       if (!user?.uid || !supabase) return
       try {
-        const { data } = await supabase.from("user_settings").select("settings").eq("uid", user.uid).single()
+        const { data } = await supabase.from("user_settings").select("settings").eq("user_id", user.uid).single()
   const d = data as { settings?: unknown } | null
   const s = d?.settings as unknown
         // prefer localStorage if available (mirrors profile toggle)

@@ -20,7 +20,7 @@ export function MapFallback({ error, onRetry, userType }: MapFallbackProps) {
   }
 
   return (
-    <Card className="h-96">
+    <Card className="h-full w-full">
       <CardContent className="h-full flex items-center justify-center p-6">
         <div className="text-center space-y-4 max-w-md">
           {error ? (

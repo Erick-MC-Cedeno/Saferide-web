@@ -507,7 +507,7 @@ function PassengerDashboardContent() {
       </div>
 
       {/* Main Content Area */}
-      <div className="flex-1 flex h-full md:ml-0">
+      <div className="flex-1 flex h-full md:ml-0 min-h-0">
         <button
           className="fixed top-4 left-4 z-30 bg-white rounded-full p-3 shadow-lg md:hidden"
           onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
@@ -516,7 +516,7 @@ function PassengerDashboardContent() {
         </button>
 
         {/* Map Section */}
-        <div className="flex-1 relative h-full">
+        <div className="flex-1 relative h-full min-h-0">
           <MapComponent
             userType="passenger"
             pickupLocation={pickupCoords ?? undefined}

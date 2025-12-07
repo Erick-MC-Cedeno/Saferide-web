@@ -397,11 +397,12 @@ function PassengerDashboardContent() {
           </div>
         </nav>
 
-        <div className="mt-auto p-4 border-t border-gray-200">
+        <div className="mt-auto p-4 border-t border-gray-200 relative z-50">
           <button
+            type="button"
             onClick={() => { setCurrentView("logout"); handleNavigation("logout") }}
             aria-label={sidebarCollapsed ? t("ui.logout") : undefined}
-            className={`w-full flex items-center ${sidebarCollapsed ? "justify-center" : "space-x-3"} px-3 py-3 rounded-lg text-left text-gray-700 hover:bg-gray-100 transition-colors`}
+            className={`w-full flex items-center ${sidebarCollapsed ? "justify-center" : "space-x-3"} px-3 py-3 rounded-lg text-left text-gray-700 hover:bg-gray-100 transition-colors pointer-events-auto`}
           >
             <LogOut className={`${sidebarCollapsed ? "h-6 w-6 text-gray-700" : "h-5 w-5 text-gray-700"}`} />
             {!sidebarCollapsed && <span className="font-medium">{t("ui.logout")}</span>}
@@ -493,10 +494,11 @@ function PassengerDashboardContent() {
           </div>
         </nav>
 
-        <div className="mt-auto p-4 border-t border-gray-200">
+        <div className="mt-auto p-4 border-t border-gray-200 relative z-50">
           <button
+            type="button"
             onClick={() => { setCurrentView("logout"); handleNavigation("logout") }}
-            className={`w-full flex items-center ${sidebarCollapsed ? "justify-center" : "space-x-3"} px-3 py-3 rounded-lg text-left text-gray-700 hover:bg-gray-100 transition-colors`}
+            className={`w-full flex items-center ${sidebarCollapsed ? "justify-center" : "space-x-3"} px-3 py-3 rounded-lg text-left text-gray-700 hover:bg-gray-100 transition-colors pointer-events-auto`}
           >
             <LogOut className={`${sidebarCollapsed ? "h-6 w-6 text-gray-700" : "h-5 w-5 text-gray-700"}`} />
             {!sidebarCollapsed && <span className="font-medium">{t("ui.logout")}</span>}
